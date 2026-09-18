@@ -3,9 +3,9 @@
  *
  * The stylesheet is built from this and nothing else, so a part never writes a
  * colour, a radius, a duration or an easing of its own. Colours and shadows are
- * themed; radii, type and motion are not. Four further tokens are runtime-only
- * and listed in RUNTIME_TOKENS: they arrive through `setProperty`, per reviewer
- * or per mark, and declaring them here would give them a wrong default.
+ * themed; radii, type and motion are not. The runtime-only tokens are listed
+ * in RUNTIME_TOKENS: they arrive through `setProperty`, per reviewer or per
+ * painted frame, and declaring them here would give them a wrong default.
  */
 
 /** A token with a value for each of the overlay's two schemes. */
@@ -157,6 +157,10 @@ export const RUNTIME_TOKENS: readonly string[] = [
   "--mk-slot-ink",
   "--mk-pin",
   "--mk-pin-ink",
+  "--mk-x",
+  "--mk-y",
+  "--mk-w",
+  "--mk-h",
 ];
 
 /**

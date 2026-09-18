@@ -10,6 +10,7 @@
 
 import { composerCss } from "./composer/css.js";
 import { islandCss } from "./island/css.js";
+import { marksCss } from "./marks/css.js";
 import {
   COLOR_TOKENS,
   MOTION_TOKENS,
@@ -209,6 +210,7 @@ h3 {
   }
 }
 
+${marksCss()}
 ${islandCss()}
 ${composerCss()}
 `.trim();

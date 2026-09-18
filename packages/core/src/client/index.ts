@@ -7,6 +7,8 @@
  * and `Error` subclasses, never Effect.
  */
 
+export { createDraftKeeper, DRAFT_DEBOUNCE_MS, DRAFT_LIFETIME_MS, draftIdFor } from "./drafts.js";
+export type { DraftKeeper, DraftKeeperOptions } from "./drafts.js";
 export { matchesFilter, openCount, visibleComments } from "./filters.js";
 export { COMMENT_FILTERS } from "./types.js";
 export type {

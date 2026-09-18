@@ -44,7 +44,7 @@ blocks or proxies it.
 6. _Allow members to create public repositories_ cannot be turned off on a Free
    organisation; GitHub refuses a private-only creation policy. Nothing to do.
 
-## 3. Enable Socket.dev
+## 3. Socket.dev — done
 
 Socket reviews every dependency change for install scripts, obfuscated code and
 sudden maintainer changes. It is the control that catches a compromised release
@@ -68,10 +68,23 @@ There is no API for it, which is the only reason this section is manual.
 
 Verify: open a pull request that adds a dependency and confirm Socket comments.
 
-## 4. Register the GitHub App
+## 4. Register the GitHub App — done
 
-One app serves both the comment posting in US1 and the merge gate in US2. Create
-it now so the app id and key exist before the code needs them.
+One app serves both the comment posting in US1 and the merge gate in US2.
+
+**It exists: <https://github.com/apps/maple-kit>**, installed on the `maple-kit`
+organisation with access to all repositories, Device Flow on, and the
+permissions in the table below. Verified by signing a JWT with its private key,
+minting an installation token, and asking GitHub for a device code.
+
+Note the app is named `maple-kit`, not `Maple`: GitHub App names are globally
+unique and `Maple` was taken.
+
+The private key is shown once, at creation, and is not recoverable. If it is
+lost, generate a new one on the app's settings page and revoke the old one.
+
+The rest of this section is the record of how it was configured, for whoever has
+to recreate or audit it.
 
 The quickest route is an **app manifest**: POST one to
 `https://github.com/organizations/maple-kit/settings/apps/new` from a local page,
@@ -108,6 +121,10 @@ Filling the form by hand instead:
 8. Install the app on the `maple-kit` organisation.
 
 ## 5. Branch protection
+
+**Not enabled yet, by choice.** Requiring status checks blocks direct pushes to
+`main`, and Phase 0 was built by pushing directly. Turn it on at the start of
+US1, so the first feature work goes through a pull request.
 
 On `maple-kit/maple`, protect `main`:
 

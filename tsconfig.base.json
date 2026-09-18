@@ -18,14 +18,14 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@maplekit/core": ["./packages/core/src/index.ts"],
-      "@maplekit/core/connectors": ["./packages/core/src/connectors/index.ts"],
-      "@maplekit/core/logger": ["./packages/core/src/logger/index.ts"],
-      "@maplekit/core/config": ["./packages/core/src/config/index.ts"],
-      "@maplekit/core/overlay": ["./packages/core/src/overlay/index.ts"],
-      "@maplekit/core/testing": ["./packages/core/src/testing/index.ts"],
-      "@maplekit/cli": ["./packages/cli/src/index.ts"],
-      "@maplekit/mcp": ["./packages/mcp/src/index.ts"]
+      "@maple-kit/core": ["./packages/core/src/index.ts"],
+      "@maple-kit/core/connectors": ["./packages/core/src/connectors/index.ts"],
+      "@maple-kit/core/logger": ["./packages/core/src/logger/index.ts"],
+      "@maple-kit/core/config": ["./packages/core/src/config/index.ts"],
+      "@maple-kit/core/overlay": ["./packages/core/src/overlay/index.ts"],
+      "@maple-kit/core/testing": ["./packages/core/src/testing/index.ts"],
+      "@maple-kit/cli": ["./packages/cli/src/index.ts"],
+      "@maple-kit/mcp": ["./packages/mcp/src/index.ts"]
     }
   }
 }

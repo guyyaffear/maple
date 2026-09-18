@@ -16,7 +16,7 @@ else has to fit.
 | `maple-action` | GitHub Action skeleton. `action.yml` at the root, `node24`, ncc bundle. Inputs and the gate decision are implemented and tested; the API calls are not. |
 | `maple-tui`    | README only. Rust + ratatui, deliberately not started.                                                                                                  |
 
-### `@maplekit/core`
+### `@maple-kit/core`
 
 - **The connector contract** — `StoreConnector`, `MediaConnector`,
   `ObservabilityConnector`, `IdentityConnector`. Plain Promises, structural
@@ -37,16 +37,16 @@ else has to fit.
   `validateConfigSync`. No validation library is bundled.
 - **`stableStringify`** in `src/lib/` — a ported helper rather than a
   dependency, with its reasoning recorded in that directory's README.
-- **The shared connector contract suite** in `@maplekit/core/testing`, plus an
+- **The shared connector contract suite** in `@maple-kit/core/testing`, plus an
   in-memory reference connector that runs against it.
 
-### `@maplekit/cli`
+### `@maple-kit/cli`
 
 `maple connectors` prints the capability matrix, derived from core's tables.
 `--json` everywhere. Zero runtime dependencies beyond core; argument parsing is
 about forty lines.
 
-### `@maplekit/mcp`
+### `@maple-kit/mcp`
 
 The tool contract: `list_comments`, `wait_for_comments`, `resolve_comment`,
 `get_comment_context`, with the wait clamped to 55 seconds — under the 60-second
@@ -55,7 +55,7 @@ result, never an error.
 
 ### Toolchain
 
-- pnpm workspaces, changesets, tsdown, publint.
+- pnpm workspaces, changesets, tsdown, publint, arethetypeswrong.
 - `.npmrc`: exact versions, engine-strict, no install scripts.
   `pnpm-workspace.yaml` refuses anything published in the last three days.
 - ESLint flat config, errors not warnings: no console, comment budget,
@@ -65,11 +65,15 @@ result, never an error.
 - A local ESLint plugin implementing `max-comment-lines`.
 - vitest for logic, vitest browser mode in real Chromium for anything that
   depends on constructed stylesheets or shadow DOM.
-- lefthook: gitleaks, eslint, prettier, conventional-commit and DCO checks.
+- lefthook: gitleaks, eslint, prettier, conventional-commit, DCO, commit
+  identity and lockfile checks.
+- One native dependency, `better-sqlite3`, needs `pnpm rebuild better-sqlite3`
+  after install: `ignore-scripts=true` overrides `onlyBuiltDependencies`
+  entirely. CI does this in the setup action.
 - CI: lint, typecheck, format, test, browser test, build, publint, attw,
   gitleaks, DCO.
 
-**97 tests pass** — 94 in Node, 3 in Chromium. `pnpm lint && pnpm typecheck &&
+**101 tests pass** — 98 in Node, 3 in Chromium. `pnpm lint && pnpm typecheck &&
 pnpm test && pnpm build` is green, and all three packages are publint-clean.
 
 ### Documented decisions
@@ -90,19 +94,16 @@ pnpm test && pnpm build` is green, and all three packages are publint-clean.
 
 Knowing what was skipped on purpose is worth as much as knowing what landed.
 
-- **The overlay.** `@maplekit/core/overlay` is an entrypoint, two constraints
+- **The overlay.** `@maple-kit/core/overlay` is an entrypoint, two constraints
   and one function. There is no UI.
 - **msw handlers.** The harness is wired and tested — `createTestServer` fails
   any request nobody mocked — but `handlers.ts` is empty, because Maple makes no
   network calls yet. The first connector fills it.
-- **evalite.** No AI code means no eval cases. `evals/` holds the config and the
-  conventions. Note for whoever adds it: evalite pulls `better-sqlite3`, which
-  builds at install time, so it needs an entry in `onlyBuiltDependencies`.
+- **Eval cases.** evalite is installed and `evals/` holds the config and the
+  conventions, but there is no AI code to score yet.
 - **The examples.** `examples/next-app` and `examples/vite-app` are READMEs
   stating what each has to prove. Pulling a framework into the lockfile to
   demonstrate nothing is cost without return.
-- **`@arethetypeswrong/cli`** runs through `pnpm dlx` in CI rather than as a
-  dependency: it is a publish gate, not part of the development loop.
 
 ## What the first milestone needs next
 
@@ -132,7 +133,7 @@ In dependency order:
 7. **Screenshots** via a client-side capture, **with the paste-a-real-screenshot
    escape hatch on day one.** Client capture fails hardest on exactly the visual
    details people comment about, so the escape hatch is not a later refinement.
-8. **The MCP server** behind the contract in `@maplekit/mcp`, plus a Stop hook
+8. **The MCP server** behind the contract in `@maple-kit/mcp`, plus a Stop hook
    that blocks an agent from finishing while comments are open.
 
 The first connector to write with `contribute-connector` is the GitHub PR store,

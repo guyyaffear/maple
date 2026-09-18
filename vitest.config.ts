@@ -13,8 +13,8 @@ function here(path: string): string {
  * a test run never depends on a prior build or tests stale output.
  */
 const alias = [
-  { find: /^@maplekit\/core$/, replacement: here("./packages/core/src/index.ts") },
-  { find: /^@maplekit\/core\/(.*)$/, replacement: here("./packages/core/src/$1/index.ts") },
+  { find: /^@maple-kit\/core$/, replacement: here("./packages/core/src/index.ts") },
+  { find: /^@maple-kit\/core\/(.*)$/, replacement: here("./packages/core/src/$1/index.ts") },
 ];
 
 export default defineConfig({

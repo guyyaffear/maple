@@ -1,5 +1,5 @@
 {
-  "name": "@maplekit/mcp",
+  "name": "@maple-kit/mcp",
   "version": "0.0.0",
   "description": "Model Context Protocol server that gives an agent Maple's review comments",
   "license": "Apache-2.0",
@@ -25,7 +25,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@maplekit/core": "workspace:*"
+    "@maple-kit/core": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

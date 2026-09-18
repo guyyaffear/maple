@@ -1,4 +1,4 @@
-import { CONNECTOR_METHODS } from "@maplekit/core";
+import { CONNECTOR_METHODS } from "@maple-kit/core";
 import { describe, expect, it } from "vitest";
 
 import { HELP } from "../src/help.js";

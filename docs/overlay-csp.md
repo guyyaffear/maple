@@ -30,7 +30,7 @@ still needs `style-src 'unsafe-inline'`.
 CSSOM string APIs are not CSP-checked. Positions are pinned with
 `style.setProperty()`, never by assigning `cssText`.
 
-`createOverlayStyleSheet` in `@maplekit/core/overlay` is the only way styles
+`createOverlayStyleSheet` in `@maple-kit/core/overlay` is the only way styles
 enter the overlay, which keeps the rule enforceable by reading one function.
 
 ### Blob workers die under `strict-dynamic`

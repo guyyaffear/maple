@@ -5,7 +5,7 @@ methods, and that is the whole contract — there is no registration step, no ba
 class, and no Effect.
 
 ```ts
-import type { StoreConnector } from "@maplekit/core/connectors";
+import type { StoreConnector } from "@maple-kit/core/connectors";
 
 export function myStore(options: MyOptions): StoreConnector {
   return {
@@ -26,7 +26,7 @@ A connector's capabilities are exactly the methods it defines. There is no
 second place to declare them, so the two cannot disagree.
 
 ```ts
-import { capabilitiesOf } from "@maplekit/core/connectors";
+import { capabilitiesOf } from "@maple-kit/core/connectors";
 
 capabilitiesOf("store", myStore(options));
 // { list: true, append: true, setStatus: false, watch: false }
@@ -64,7 +64,7 @@ below the table.
 | `memory` (reference) | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           |
 | `datadog`            | ~    | ✓      | ~         | —     | —       | —      | ~             | ✓           | ~           |
 
-The reference connector lives in `@maplekit/core/testing` and exists so the
+The reference connector lives in `@maple-kit/core/testing` and exists so the
 contract suite has something to run against. It is not for production.
 
 ## Datadog
@@ -128,7 +128,7 @@ matrix above.
 The contract suite is the gate:
 
 ```ts
-import { runStoreContract } from "@maplekit/core/testing";
+import { runStoreContract } from "@maple-kit/core/testing";
 
 runStoreContract({
   name: "my-store",

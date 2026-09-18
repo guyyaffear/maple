@@ -6,7 +6,7 @@
  * contract can be reviewed and tested on its own.
  */
 
-import type { Comment, CommentStatus } from "@maplekit/core";
+import type { Comment, CommentStatus } from "@maple-kit/core";
 
 /** Every tool name Maple registers. */
 export const TOOL_NAMES = [

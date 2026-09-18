@@ -27,7 +27,7 @@ Maple stores nothing itself. A connector is one file implementing plain
 Promise-returning methods:
 
 ```ts
-import type { StoreConnector } from "@maplekit/core/connectors";
+import type { StoreConnector } from "@maple-kit/core/connectors";
 
 export function myStore(options: MyOptions): StoreConnector {
   return {
@@ -48,13 +48,13 @@ connector's capabilities are exactly the methods it defines. See
 
 ## Packages
 
-| Package          | What it is                                   |
-| ---------------- | -------------------------------------------- |
-| `@maplekit/core` | Server SDK, overlay and connector contracts. |
-| `@maplekit/cli`  | The `maple` command.                         |
-| `@maplekit/mcp`  | The MCP server an agent talks to.            |
+| Package           | What it is                                   |
+| ----------------- | -------------------------------------------- |
+| `@maple-kit/core` | Server SDK, overlay and connector contracts. |
+| `@maple-kit/cli`  | The `maple` command.                         |
+| `@maple-kit/mcp`  | The MCP server an agent talks to.            |
 
-The product is Maple, the binary is `maple`, and the packages are `@maplekit/*`
+The product is Maple, the binary is `maple`, and the packages are `@maple-kit/*`
 because `maple` on npm is taken.
 
 ## Documentation

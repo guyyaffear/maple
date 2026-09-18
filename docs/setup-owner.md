@@ -9,10 +9,10 @@ it in a password manager and inject it with `op run --env-file`, never in a file
 
 ---
 
-## 1. Claim the npm scope `@maplekit`
+## 1. Claim the npm scope `@maple-kit`
 
-The packages are published as `@maplekit/core`, `@maplekit/cli` and
-`@maplekit/mcp`. The scope was unclaimed when this was written; claiming it is
+The packages are published as `@maple-kit/core`, `@maple-kit/cli` and
+`@maple-kit/mcp`. The scope was unclaimed when this was written; claiming it is
 what stops someone else taking it.
 
 1. Sign in at <https://www.npmjs.com> as the account that will own the packages.
@@ -21,7 +21,7 @@ what stops someone else taking it.
 3. Under the organisation's **Members**, add anyone who will publish.
 4. Under **Settings**, require two-factor authentication for all members.
 
-Verify: `npm view @maplekit/core` reports a 404 with your scope existing, and
+Verify: `npm view @maple-kit/core` reports a 404 with your scope existing, and
 <https://www.npmjs.com/org/maplekit> loads while you are signed in.
 
 ## 2. Configure the GitHub organisation

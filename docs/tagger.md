@@ -57,7 +57,7 @@ is a preview:
 const isPreview = process.env["MAPLE_PREVIEW"] === "1";
 
 export default {
-  experimental: { swcPlugins: isPreview ? [["@maplekit/swc-plugin-tagger", {}]] : [] },
+  experimental: { swcPlugins: isPreview ? [["@maple-kit/swc-plugin-tagger", {}]] : [] },
   compiler: { reactRemoveProperties: isPreview ? false : { properties: ["^data-maple-"] } },
 };
 ```
@@ -68,7 +68,7 @@ A Babel plugin for projects on Babel, and for Vite a transform inside the Maple
 plugin so no extra configuration is needed:
 
 ```ts
-import { maple } from "@maplekit/core/vite";
+import { maple } from "@maple-kit/core/vite";
 
 export default defineConfig({ plugins: [maple({ tagger: mode !== "production" })] });
 ```

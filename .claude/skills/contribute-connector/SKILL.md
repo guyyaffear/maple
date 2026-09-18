@@ -87,7 +87,7 @@ before starting.
    `docs/connectors.md`:
 
    ```
-   pnpm --filter @maplekit/core exec node -e "
+   pnpm --filter @maple-kit/core exec node -e "
      import('./dist/connectors/index.js').then(({ capabilitiesOf }) =>
        import('./dist/connectors/<name>.js').then(({ myStore }) =>
          console.log(capabilitiesOf('store', myStore(sampleOptions)))))"

@@ -1,7 +1,7 @@
 # Example: Next
 
 **Status:** stub. There is nothing to mount yet — the overlay in
-`@maplekit/core/overlay` is a reserved entrypoint, not an implementation. This
+`@maple-kit/core/overlay` is a reserved entrypoint, not an implementation. This
 example is built in US1, against a real overlay.
 
 It is not a workspace package yet, deliberately: an example that pulls a

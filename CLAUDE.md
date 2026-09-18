@@ -68,7 +68,7 @@ Every connector runs the shared contract suite in
 
 ### Logging
 
-`createLogger({ sinks })` from `@maplekit/core/logger`. Raw `console.*` is a
+`createLogger({ sinks })` from `@maple-kit/core/logger`. Raw `console.*` is a
 lint error everywhere except `src/logger/sinks/console.ts`, which is the one
 sanctioned exit and says so at the top of the file.
 

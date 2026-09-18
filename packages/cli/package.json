@@ -1,5 +1,5 @@
 {
-  "name": "@maplekit/cli",
+  "name": "@maple-kit/cli",
   "version": "0.0.0",
   "description": "Command line interface for Maple",
   "license": "Apache-2.0",
@@ -28,7 +28,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@maplekit/core": "workspace:*"
+    "@maple-kit/core": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

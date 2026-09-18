@@ -1,6 +1,6 @@
-import { CONNECTOR_METHODS, REQUIRED_METHODS } from "@maplekit/core";
+import { CONNECTOR_METHODS, REQUIRED_METHODS } from "@maple-kit/core";
 
-import type { ConnectorKind } from "@maplekit/core";
+import type { ConnectorKind } from "@maple-kit/core";
 
 /** One row of the capability matrix, as `maple connectors` prints it. */
 export interface ConnectorKindRow {

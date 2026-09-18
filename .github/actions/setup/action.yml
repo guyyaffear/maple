@@ -16,3 +16,9 @@ runs:
       # --frozen-lockfile fails rather than resolving: a lockfile that does not
       # match package.json is a review problem, not something CI should fix.
       run: pnpm install --frozen-lockfile
+
+    - name: Build the allowlisted native dependency
+      shell: bash
+      # ignore-scripts=true overrides onlyBuiltDependencies, so the binding has
+      # to be built explicitly. See evals/README.md.
+      run: pnpm rebuild better-sqlite3

@@ -64,14 +64,9 @@ jobs:
       - name: publint
         run: pnpm publint
       - name: Are the types wrong?
-        # Run through dlx rather than as a dependency: it is a publish gate, not
-        # part of the development loop, and it pulls a large tree of its own.
         # --profile esm-only: these packages publish ESM with an exports map and
         # no CJS entry, so node10 and CJS resolution are expected not to apply.
-        run: |
-          for pkg in packages/core packages/cli packages/mcp; do
-            (cd "$pkg" && pnpm dlx @arethetypeswrong/cli --pack . --profile esm-only)
-          done
+        run: pnpm attw
 
   lockfile:
     runs-on: ubuntu-latest

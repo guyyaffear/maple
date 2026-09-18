@@ -10,4 +10,7 @@ minimumReleaseAge: 4320
 
 # .npmrc sets ignore-scripts=true. Packages that genuinely need a build step at
 # install time are allowed back one at a time, with a reason.
-onlyBuiltDependencies: []
+onlyBuiltDependencies:
+  # evalite's local result store. Ships prebuilt binaries fetched by a postinstall
+  # script, so without this the eval runner installs but cannot open its database.
+  - better-sqlite3

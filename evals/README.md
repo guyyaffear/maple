@@ -20,10 +20,24 @@ evalite is not a dependency yet. When the first eval lands:
 pnpm add -Dw evalite
 ```
 
-It pulls in `better-sqlite3` for its local result store, which builds at install
-time. Because `.npmrc` sets `ignore-scripts=true`, that build is blocked until
-`better-sqlite3` is added to `onlyBuiltDependencies` in `pnpm-workspace.yaml` —
-with a one-line reason, as that list requires.
+It pulls in `better-sqlite3` for its local result store, which compiles a native
+binding at install time.
+
+`.npmrc` sets `ignore-scripts=true`, and that wins over everything: listing
+`better-sqlite3` in `onlyBuiltDependencies` does **not** bring the build back,
+and `pnpm install` finishes with no binding at all. evalite's CLI still starts,
+because it loads the database lazily, so the failure only appears when an eval
+actually runs.
+
+Build it explicitly, once per machine and after any change to that dependency:
+
+```
+pnpm rebuild better-sqlite3
+```
+
+The binding then survives subsequent `pnpm install` runs. `better-sqlite3` is
+listed in `onlyBuiltDependencies` anyway, so the intent is recorded where a
+reader looks for it.
 
 If evalite fights the Effect-based code in `packages/core/src/ai/`, port the
 scoring harness onto plain vitest rather than working around it. The conventions

@@ -10,7 +10,7 @@ import { useComments, useMaple } from "@maple-kit/react";
 import { createElement, forwardRef, Fragment } from "react";
 
 import { byReason } from "./comments.js";
-import { listId, useIsland } from "./context.js";
+import { listId, reasonOf, useIsland } from "./context.js";
 import { FILTER_LABELS, ISLAND_COPY } from "./language.js";
 import { cx, renderPart } from "./part.js";
 
@@ -36,7 +36,7 @@ export const List = /** @__PURE__ */ forwardRef<HTMLDivElement, ListProps>(
 
     const rows =
       filter === "unpinned"
-        ? byReason(comments, (comment) => island.orphans.get(comment.id))
+        ? byReason(comments, (comment) => reasonOf(island.resolutions, comment.id))
         : comments;
     const body =
       rows.length === 0

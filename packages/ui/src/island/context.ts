@@ -10,7 +10,7 @@
 import { createContext, useContext } from "react";
 
 import type { Comment } from "@maple-kit/core";
-import type { OrphanReason } from "@maple-kit/core/anchor";
+import type { OrphanReason, Resolution } from "@maple-kit/core/anchor";
 
 /** Open, shut, or on its way out: a close animates before it unmounts. */
 export type IslandPhase = "closed" | "closing" | "open";
@@ -31,8 +31,40 @@ export interface IslandContextValue {
   readonly numbers: ReadonlyMap<string, number>;
   /** Everything on the branch, whatever the filter says. */
   readonly comments: readonly Comment[];
-  /** Why each unpinned comment has no place, asked of the page as it is now. */
-  readonly orphans: ReadonlyMap<string, OrphanReason>;
+  /** What the cascade says about each anchor, asked of the page as it is now. */
+  readonly resolutions: ReadonlyMap<string, Resolution>;
+  /** The comment a link or a mark asked to be looked at, for the row to mark. */
+  readonly selected: string | null;
+  /** Drag state, so the pill moves the island and the card stays where it is. */
+  readonly drag: DragHandlers;
+}
+
+/** What the pill spreads to become the island's handle. */
+export interface DragHandlers {
+  /** A ref callback for the island itself, which is the thing that moves. */
+  readonly attach: (node: HTMLElement | null) => void;
+  readonly onPointerDown: (event: PointerEventLike) => void;
+  readonly onPointerMove: (event: PointerEventLike) => void;
+  readonly onPointerUp: (event: PointerEventLike) => void;
+  /** True once the pointer travelled far enough to be a drag, not a click. */
+  readonly moved: () => boolean;
+}
+
+/** The parts of a pointer event a drag needs. Structural, so it tests flat. */
+export interface PointerEventLike {
+  readonly clientX: number;
+  readonly clientY: number;
+  readonly pointerId: number;
+  readonly currentTarget: EventTarget | null;
+}
+
+/** Why this comment has no place, out of what the cascade answered. */
+export function reasonOf(
+  resolutions: ReadonlyMap<string, Resolution>,
+  id: string,
+): OrphanReason | undefined {
+  const resolution = resolutions.get(id);
+  return resolution?.status === "orphaned" ? resolution.reason : undefined;
 }
 
 /** Internal: `Maple.Island` is the only supported way to fill this. */

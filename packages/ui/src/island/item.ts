@@ -9,21 +9,31 @@
  */
 
 import { labelFor } from "@maple-kit/core/anchor";
-import { forwardRef, useState } from "react";
+import { createElement, forwardRef, useState } from "react";
 
-import { dataAttributes } from "../data.js";
+import { confidenceFor, dataAttributes } from "../data.js";
+import { TargetIcon } from "../icons/target.js";
 import { STATUS_LABELS } from "../language.js";
 import { applyReviewerSlot } from "../slots.js";
 import { kindOf } from "./comments.js";
 import { useIsland } from "./context.js";
-import { ISLAND_COPY, kindPhrase, ORPHAN_LABELS, orphanTitle } from "./language.js";
+import {
+  ISLAND_COPY,
+  kindPhrase,
+  ORPHAN_LABELS,
+  orphanTitle,
+  PATH_COPY,
+  rungLabel,
+  rungTitle,
+} from "./language.js";
 import { Leaf } from "./leaf.js";
 import { cx, renderPart } from "./part.js";
 import { relativeTime } from "./time.js";
+import { Tip } from "./tip.js";
 
 import type { PartProps } from "./part.js";
-import type { Comment, CommentAuthor } from "@maple-kit/core";
-import type { OrphanReason } from "@maple-kit/core/anchor";
+import type { Comment, CommentAnchor, CommentAuthor } from "@maple-kit/core";
+import type { Orphaned, Resolution, Rung } from "@maple-kit/core/anchor";
 import type { ReactNode } from "react";
 
 /** One comment. The row renders it; it takes no view of its own. */
@@ -44,6 +54,7 @@ export const Item = /** @__PURE__ */ forwardRef<HTMLElement, ItemProps>(function
 
   const long = comment.body.length > LONG_BODY;
   const number = island.numbers.get(comment.id) ?? 0;
+  const resolution = island.resolutions.get(comment.id);
 
   return renderPart(
     "article",
@@ -52,6 +63,7 @@ export const Item = /** @__PURE__ */ forwardRef<HTMLElement, ItemProps>(function
       ...dataAttributes({ status: comment.status }),
       ...rest,
       "data-mk-expanded": String(expanded),
+      "data-mk-selected": String(island.selected === comment.id),
       className: cx("mk-row", className),
       ref,
     },
@@ -59,7 +71,7 @@ export const Item = /** @__PURE__ */ forwardRef<HTMLElement, ItemProps>(function
       top(comment, number),
       renderPart("p", false, { key: "body", className: "mk-text mk-body" }, comment.body),
       long ? more(expanded, () => setExpanded(!expanded)) : null,
-      meta(comment, island.orphans.get(comment.id)),
+      meta(comment, { resolution, developer: island.developer }),
     ],
   );
 });
@@ -157,16 +169,60 @@ function initials(name: string): string {
   return letters.join("").toUpperCase() || "?";
 }
 
+/** How much of the anchor's story the row is allowed to tell. */
+interface Detail {
+  readonly resolution: Resolution | undefined;
+  readonly developer: boolean;
+}
+
 /** What it is on, or why it has nowhere to be, and whether a shot came with it. */
-function meta(comment: Comment, reason: OrphanReason | undefined): ReactNode {
+function meta(comment: Comment, detail: Detail): ReactNode {
   const attachments = comment.attachments?.length ?? 0;
+  const { developer, resolution } = detail;
 
   return renderPart("div", false, { key: "meta", className: "mk-meta" }, [
-    reason === undefined ? place(comment) : lost(reason),
+    resolution?.status === "orphaned" ? lost(resolution, developer) : place(comment),
+    ...(developer ? technical(comment.anchor, resolution) : []),
     attachments > 0
       ? renderPart("span", false, { key: "shot", className: "mk-chip" }, ISLAND_COPY.attachment)
       : null,
   ]);
+}
+
+/**
+ * The rung, the confidence and the two paths — each a chip carrying a value
+ * and a tooltip carrying the sentence, because a row is scanned, not read.
+ */
+function technical(anchor: CommentAnchor, resolution: Resolution | undefined): ReactNode[] {
+  const chips: ReactNode[] = [];
+  if (resolution?.status === "resolved") chips.push(rung(resolution.by, resolution.confidence));
+  if (anchor.source !== undefined) chips.push(path("source", anchor.source));
+  if (anchor.selector !== undefined) chips.push(path("selector", anchor.selector));
+  return chips;
+}
+
+/** The crosshair and the percentage. The sentence says what the number buys. */
+function rung(by: Rung, confidence: number): ReactNode {
+  return createElement(
+    Tip,
+    {
+      key: "rung",
+      className: "mk-chip-dev mk-num",
+      sentence: rungTitle(by, confidenceFor(confidence)),
+    },
+    createElement(TargetIcon, { key: "icon", size: 11 }),
+    rungLabel(Math.round(confidence * 100)),
+  );
+}
+
+/** A path the cascade recorded, ellipsised: it is a value, not a field name. */
+function path(kind: "selector" | "source", value: string): ReactNode {
+  const copy = PATH_COPY[kind];
+  return createElement(
+    Tip,
+    { key: kind, className: "mk-chip-dev", sentence: `${copy.sentence} ${value}` },
+    createElement("span", { key: "v", className: "mk-path" }, value),
+  );
 }
 
 function place(comment: Comment): ReactNode {
@@ -177,11 +233,16 @@ function place(comment: Comment): ReactNode {
   ]);
 }
 
-function lost(reason: OrphanReason): ReactNode {
-  return renderPart(
-    "span",
-    false,
-    { key: "lost", className: "mk-chip mk-chip-lost", title: orphanTitle(reason) },
+/** Two words on the chip; the sentence, and the rungs tried, in the tooltip. */
+function lost(resolution: Orphaned, developer: boolean): ReactNode {
+  const { reason, tried } = resolution;
+  return createElement(
+    Tip,
+    {
+      key: "lost",
+      className: "mk-chip-lost",
+      sentence: orphanTitle(reason, developer ? tried : []),
+    },
     ORPHAN_LABELS[reason],
   );
 }

@@ -4,7 +4,8 @@
  * Half of what Maple has and a comment box does not, which is why it is on
  * screen while the comment is written rather than behind a disclosure.
  * `formatContext` renders it from a captured page or a stored comment — one
- * formatter, two inputs, so the two can never drift.
+ * formatter, two inputs, so the two can never drift. Developer detail adds
+ * the layout width, the breakpoint, the ratio and the locale to it.
  */
 
 import { formatContext } from "@maple-kit/core/overlay";
@@ -34,7 +35,7 @@ const LEADING_DIGITS = /^\d+/;
 /** Every width is tabular: they all change in place. */
 export const MapleContextBadge = /** @__PURE__ */ forwardRef<HTMLElement, MapleContextProps>(
   function MapleContextBadge(props, ref) {
-    const { composer } = useMaple();
+    const { composer, detail } = useMaple();
     const context = props.context ?? composer.target?.context;
     const Element = (props.asChild ? Slot : "div") as "div";
 
@@ -48,7 +49,7 @@ export const MapleContextBadge = /** @__PURE__ */ forwardRef<HTMLElement, MapleC
           ? `mk-composer-row mk-ctx ${props.className}`
           : "mk-composer-row mk-ctx",
       },
-      ...formatContext(context).split(SEPARATOR).map(fact),
+      ...formatContext(context, detail).split(SEPARATOR).map(fact),
     );
   },
 );

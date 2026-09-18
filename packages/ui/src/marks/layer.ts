@@ -9,7 +9,15 @@
 
 import { resolveAnchor } from "@maple-kit/core/anchor";
 import { useMaple } from "@maple-kit/react";
-import { createElement, forwardRef, useCallback, useMemo, useRef, useState } from "react";
+import {
+  createElement,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useMapleUi } from "../context.js";
 import { useFrameLoop, viewportHeight } from "./frame.js";
@@ -42,13 +50,14 @@ export interface MarkLayerProps {
 /** The marks, and the one ring they share. */
 export const MapleMarkLayer = /** @__PURE__ */ forwardRef<HTMLDivElement, MarkLayerProps>(
   function MapleMarkLayer(props, ref) {
-    const { className, onSelect, selectedId } = props;
+    const { className, onSelect } = props;
     const { container } = useMapleUi(PART);
     const state = useMaple();
     const [hovered, setHovered] = useState<string>();
 
     const comments = props.comments ?? state.comments;
     const visible = props.visible ?? state.visible;
+    const selectedId = props.selectedId ?? state.selected ?? undefined;
     const address = useMemo(() => addresses(comments), [comments]);
     const placed = useMemo(
       () => placements(visible, address, container.ownerDocument),
@@ -66,6 +75,7 @@ export const MapleMarkLayer = /** @__PURE__ */ forwardRef<HTMLDivElement, MarkLa
     }, [container, placed]);
 
     useFrameLoop(PART, paint);
+    useScrollTo(placed, selectedId);
 
     // Memoised so a keystroke in the composer re-renders the ring and not
     // thirty marks, each of which measures an element to draw itself.
@@ -92,11 +102,29 @@ export const MapleMarkLayer = /** @__PURE__ */ forwardRef<HTMLDivElement, MarkLa
       ...marks,
       createElement(
         MapleTargetRing,
-        ringFor({ client: state, placed, hovered, root: container.ownerDocument }),
+        ringFor({
+          client: state,
+          placed,
+          hovered: hovered ?? selectedId,
+          root: container.ownerDocument,
+        }),
       ),
     );
   },
 );
+
+/**
+ * A link naming a comment has to land on it: the island opens, the ring is
+ * drawn, and the page moves to what it is about rather than asking anyone to.
+ */
+function useScrollTo(placed: readonly Placement[], selectedId: string | undefined): void {
+  const found = placed.find((placement) => placement.comment.id === selectedId);
+  const target = found?.element;
+
+  useEffect(() => {
+    target?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+  }, [target]);
+}
 
 /** What one frame does to one mark: cull it, or clear it of its neighbours. */
 function step(

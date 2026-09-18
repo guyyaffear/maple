@@ -5,20 +5,23 @@
  * both halves of the job — what has been said here, and how to say something.
  * That is why entering comment mode has no chrome of its own: a second
  * permanent thing over the preview is wrong before anything else about it.
+ * Which corner it sits in, and whether it is showing at all, are the
+ * controller's: both outlive this component and both are shared.
  */
 
-import { useMaple } from "@maple-kit/react";
+import { useMaple, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef, useCallback, useId, useMemo, useState } from "react";
 
 import { useMapleUi } from "../context.js";
-import { numbersFor, orphanReason } from "./comments.js";
+import { composeRefs } from "../slot.js";
+import { numbersFor, resolutionsFor } from "./comments.js";
 import { IslandContext } from "./context.js";
+import { useDrag } from "./drag.js";
 import { cx, renderPart } from "./part.js";
 
 import type { IslandContextValue, IslandPhase } from "./context.js";
 import type { PartProps } from "./part.js";
-import type { Comment } from "@maple-kit/core";
-import type { OrphanReason } from "@maple-kit/core/anchor";
+import type { Corner } from "@maple-kit/core/client";
 import type { ReactNode } from "react";
 
 const PART = "<Maple.Island>";
@@ -34,7 +37,10 @@ export interface IslandProps extends PartProps {
 export const Island = /** @__PURE__ */ forwardRef<HTMLDivElement, IslandProps>(
   function Island(props, ref) {
     const { asChild, children, className, defaultOpen, ...rest } = props;
+    const { hidden, position } = useMaple();
     const value = useIslandState(defaultOpen === true);
+
+    if (hidden) return null;
 
     const element = renderPart(
       "div",
@@ -42,8 +48,9 @@ export const Island = /** @__PURE__ */ forwardRef<HTMLDivElement, IslandProps>(
       {
         ...rest,
         className: cx("mk-island", className),
-        "data-mk-open": String(isOpen(value)),
-        ref,
+        "data-mk-open": String(value.phase !== "closed"),
+        "data-mk-corner": position,
+        ref: composeRefs(ref, value.drag.attach),
       },
       children,
     );
@@ -52,32 +59,47 @@ export const Island = /** @__PURE__ */ forwardRef<HTMLDivElement, IslandProps>(
   },
 );
 
-function isOpen(value: IslandContextValue): boolean {
-  return value.phase !== "closed";
-}
-
 /**
  * Opening is immediate and closing runs the exit first, because a close that
  * waits for anything reads as a surface that did not hear the click.
  */
 function useIslandState(defaultOpen: boolean): IslandContextValue {
-  const { comments } = useMaple();
+  const { comments, detail, selected } = useMaple();
+  const client = useMapleClient();
+  const { container } = useMapleUi(PART);
   const [phase, setPhase] = useState<IslandPhase>(defaultOpen ? "open" : "closed");
-  const [developer, setDeveloper] = useState(false);
   const contentId = useId();
 
-  const setOpen = useCallback((open: boolean) => {
-    setPhase((current) => (open ? "open" : leaving(current)));
-  }, []);
+  const setOpen = useCallback(
+    (open: boolean) => {
+      if (!open) client.select(null);
+      setPhase((current) => (open ? "open" : leaving(current)));
+    },
+    [client],
+  );
   const settled = useCallback(() => {
     setPhase((current) => (current === "closing" ? "closed" : current));
   }, []);
+  const setDeveloper = useCallback(
+    (on: boolean) => {
+      client.setDetail(on ? "developer" : "default");
+    },
+    [client],
+  );
+
+  const developer = detail === "developer";
   const numbers = useMemo(() => numbersFor(comments), [comments]);
-  const orphans = useOrphans(comments);
+  const page = container.ownerDocument;
+  const resolutions = useMemo(
+    () => resolutionsFor(comments, page, developer),
+    [comments, page, developer],
+  );
+  const snap = useCallback((corner: Corner) => client.setPosition(corner), [client]);
+  const drag = useDrag(container, snap);
 
   return useMemo(
     () => ({
-      phase,
+      phase: selected === null ? phase : "open",
       setOpen,
       settled,
       developer,
@@ -85,32 +107,27 @@ function useIslandState(defaultOpen: boolean): IslandContextValue {
       contentId,
       numbers,
       comments,
-      orphans,
+      resolutions,
+      selected,
+      drag,
     }),
-    [phase, setOpen, settled, developer, contentId, numbers, comments, orphans],
+    [
+      comments,
+      contentId,
+      developer,
+      drag,
+      numbers,
+      phase,
+      resolutions,
+      selected,
+      setDeveloper,
+      setOpen,
+      settled,
+    ],
   );
 }
 
 /** A close runs its exit first; anything already closed stays closed. */
 function leaving(phase: IslandPhase): IslandPhase {
   return phase === "open" ? "closing" : phase;
-}
-
-/**
- * Why each unpinned comment has no place, resolved once for the island rather
- * than once per row: the wire records the anchor, never what came of it.
- */
-function useOrphans(comments: readonly Comment[]): ReadonlyMap<string, OrphanReason> {
-  const { container } = useMapleUi(PART);
-  const page = container.ownerDocument;
-
-  return useMemo(() => {
-    const found = new Map<string, OrphanReason>();
-    for (const comment of comments) {
-      if (comment.status !== "orphaned") continue;
-      const reason = orphanReason(comment.anchor, page);
-      if (reason !== undefined) found.set(comment.id, reason);
-    }
-    return found;
-  }, [comments, page]);
 }

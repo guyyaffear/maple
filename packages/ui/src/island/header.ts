@@ -66,7 +66,7 @@ export const Logo = /** @__PURE__ */ forwardRef<HTMLHeadingElement, LogoProps>(
     const { asChild, children, className, ...rest } = props;
 
     return renderPart("h2", asChild, { ...rest, className: cx("mk-head-title", className), ref }, [
-      renderPart(Leaf, false, { key: "leaf", size: 17, className: "mk-leaf" }),
+      renderPart(Leaf, false, { key: "leaf", size: 17, className: "mk-logo-leaf" }),
       children ?? ISLAND_COPY.title,
     ]);
   },

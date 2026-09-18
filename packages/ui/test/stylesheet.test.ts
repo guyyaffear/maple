@@ -15,8 +15,13 @@ import {
 const TOKENS = tokenCss();
 const RULES = ruleCss();
 
-/** Every name the sheet declares, whichever block declared it. */
-const declared = new Set([...TOKENS.matchAll(/^ *(--mk-[\w-]+):/gm)].map((match) => match[1]!));
+/**
+ * Every name the sheet declares, whichever block declared it — a part may
+ * derive a local alias on its own selector rather than on `:host`.
+ */
+const declared = new Set(
+  [...`${TOKENS}\n${RULES}`.matchAll(/^ *(--mk-[\w-]+):/gm)].map((match) => match[1]!),
+);
 
 /** Every name the sheet reads back out of a variable. */
 const referenced = new Set(

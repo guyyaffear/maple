@@ -48,9 +48,11 @@ indexes it dynamically.
 from it. No part writes a colour, a radius, a duration or an easing of its own;
 `packages/ui/test/stylesheet.test.ts` fails if a rule spells one.
 
-Four tokens are never declared and only ever arrive through `setProperty`:
-`--mk-slot`, `--mk-slot-ink`, `--mk-pin` and `--mk-pin-ink`. A reviewer's colour
-is `applyReviewerSlot(element, slot)` and never a generated rule per reviewer.
+The tokens in `RUNTIME_TOKENS` are never declared and only ever arrive through
+`setProperty`: `--mk-slot`, `--mk-slot-ink`, `--mk-pin` and `--mk-pin-ink` for
+colour, and `--mk-x`, `--mk-y`, `--mk-w` and `--mk-h` for anything a frame
+moves. A reviewer's colour is `applyReviewerSlot(element, slot)` and never a
+generated rule per reviewer.
 
 Host classes do not exist inside the shadow root. Nothing may assume Tailwind,
 the application's fonts or its custom properties: the overlay declares its own

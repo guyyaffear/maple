@@ -111,6 +111,7 @@ export const MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-scale-island": "0.97",
   "--mk-scale-tooltip": "0.98",
   "--mk-rise-mark": "8px",
+  "--mk-shift-composer": "100%",
   "--mk-icon-scale": "0.25",
   "--mk-icon-blur": "4px",
 };
@@ -142,6 +143,7 @@ export const REDUCED_MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-scale-island": "1",
   "--mk-scale-tooltip": "1",
   "--mk-rise-mark": "0px",
+  "--mk-shift-composer": "0%",
   "--mk-icon-scale": "1",
   "--mk-icon-blur": "0px",
 };

@@ -9,20 +9,20 @@ it in a password manager and inject it with `op run --env-file`, never in a file
 
 ---
 
-## 1. Claim the npm scope `@maple-kit`
+## 1. The npm scope `@maple-kit` — done
 
-The packages are published as `@maple-kit/core`, `@maple-kit/cli` and
-`@maple-kit/mcp`. The scope was unclaimed when this was written; claiming it is
-what stops someone else taking it.
+The organisation exists and the packages publish as `@maple-kit/core`,
+`@maple-kit/cli` and `@maple-kit/mcp`. The unhyphenated `maplekit` was
+unavailable on npm, which is why the scope matches the GitHub organisation
+rather than being shorter than it.
 
-1. Sign in at <https://www.npmjs.com> as the account that will own the packages.
-2. Go to <https://www.npmjs.com/org/create> and create the organisation
-   `maplekit`. The free tier covers unlimited public packages.
-3. Under the organisation's **Members**, add anyone who will publish.
-4. Under **Settings**, require two-factor authentication for all members.
+Two things remain, both under the npm organisation's settings:
 
-Verify: `npm view @maple-kit/core` reports a 404 with your scope existing, and
-<https://www.npmjs.com/org/maplekit> loads while you are signed in.
+- **Members**: add anyone who will publish.
+- **Require two-factor authentication** for all members.
+
+Publishing needs `registry.npmjs.org`, so it cannot be done from a network that
+blocks or proxies it.
 
 ## 2. Configure the GitHub organisation
 
@@ -30,14 +30,19 @@ Verify: `npm view @maple-kit/core` reports a 404 with your scope existing, and
 2. In **Settings → Actions → General**, set workflow permissions to
    _Read repository contents and packages permissions_. The workflows here ask
    for anything more per job.
-3. In **Settings → Code security**, enable:
-   - **Secret scanning** and **Push protection** — this is the backstop for the
-     gitleaks hook, which a contributor can skip with `--no-verify`.
-   - **Dependabot alerts** and **Dependabot security updates**.
-   - **Private vulnerability reporting**, so a reporter has somewhere to go that
-     is not a public issue.
-4. In **Settings → Member privileges**, turn off _Allow members to create public
-   repositories_ until the flip to public is deliberate.
+3. **Dependabot alerts** and **Dependabot security updates** are already enabled
+   on all three repositories.
+4. **Secret scanning and push protection are not available yet.** On a Free
+   organisation they need GitHub Advanced Security for private repositories; the
+   API refuses them with _"Secret scanning is not available for this
+   repository."_ They cost nothing on a public repository, so enable them as
+   part of the flip — see section 6. Until then the gitleaks hook and the
+   gitleaks CI job are the only secret controls, and a contributor can skip the
+   hook with `--no-verify`.
+5. **Private vulnerability reporting** is likewise public-repository only.
+   `SECURITY.md` links to it, so turn it on at the flip or that link is dead.
+6. _Allow members to create public repositories_ cannot be turned off on a Free
+   organisation; GitHub refuses a private-only creation policy. Nothing to do.
 
 ## 3. Enable Socket.dev
 
@@ -45,12 +50,21 @@ Socket reviews every dependency change for install scripts, obfuscated code and
 sudden maintainer changes. It is the control that catches a compromised release
 that a version bump alone would hide.
 
+Installing a third-party GitHub App needs a person to authorise it in a browser.
+There is no API for it, which is the only reason this section is manual.
+
 1. Install the GitHub app from <https://github.com/apps/socket-security> onto
    the `maple-kit` organisation.
 2. Grant it access to all repositories, including future ones.
 3. Confirm whether the free tier covers private repositories on your plan. If it
    does not, note it and enable Socket at the point the repositories go public;
    do not leave it half-configured.
+4. **Start it in report-only mode, not as a required check.** Socket's
+   `Obfuscated code` rule fires on minified and generated files, so it flags
+   mainstream packages: `highlight.js`, every `@mswjs/interceptors@0.41.x`, and
+   every version of `better-sqlite3` were all refused by a registry mirror
+   running this engine during Phase 0. As a merge gate that would block real
+   work. Watch what it reports for a few weeks before making it blocking.
 
 Verify: open a pull request that adds a dependency and confirm Socket comments.
 
@@ -59,12 +73,21 @@ Verify: open a pull request that adds a dependency and confirm Socket comments.
 One app serves both the comment posting in US1 and the merge gate in US2. Create
 it now so the app id and key exist before the code needs them.
 
+The quickest route is an **app manifest**: POST one to
+`https://github.com/organizations/maple-kit/settings/apps/new` from a local page,
+review GitHub's confirmation screen, and the app is created with every permission
+below already set. A manifest cannot enable Device Flow or generate the key, so
+4a and step 7 apply either way.
+
+Filling the form by hand instead:
+
 1. Go to **Organisation settings → Developer settings → GitHub Apps → New**.
 2. Name it `Maple`. Homepage: `https://github.com/maple-kit/maple`.
 3. **Uncheck Webhook → Active** for now. US2 turns it on with a real URL.
 4. Under **Identifying and authorising users**:
-   - Enable **Device Flow**. This is what lets a reviewer sign in from a preview
-     host without a redirect URI per deployment.
+   - **(4a) Enable Device Flow.** This is what lets a reviewer sign in from a
+     preview host without a redirect URI per deployment, and it is the one
+     setting a manifest cannot carry. Maple's login story depends on it.
    - Enable **Expire user authorisation tokens**.
    - Leave **Request user authorisation (OAuth) during installation** off.
 5. Permissions — **Repository**:
@@ -105,4 +128,7 @@ with push access can post a passing status under that name.
   to be publishable, so this should find nothing.
 - Run `gitleaks detect --source . --log-opts="--all"` over the full history.
 - Publish `SECURITY.md`'s reporting address and confirm it is monitored.
-- Turn on Socket if step 3 deferred it.
+- Turn on Socket if section 3 deferred it.
+- **Enable secret scanning, push protection and private vulnerability
+  reporting.** All three are free on a public repository and were unavailable
+  while these were private.

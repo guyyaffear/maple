@@ -10,7 +10,7 @@
 
 import { stableStringify } from "../lib/stable-stringify.js";
 
-import type { Comment, CommentAnchor, CommentContext, TextQuote } from "../types.js";
+import type { Comment, CommentAnchor, CommentContext, RegionContext, TextQuote } from "../types.js";
 
 /** The fence's schema version. A reader seeing a higher one must stop, not guess. */
 export const FENCE_VERSION = 1;
@@ -19,9 +19,19 @@ export const FENCE_VERSION = 1;
 export const FENCE_BUDGET = 8192;
 
 /** Detail the exporter will shed, in the order it sheds it. */
-export type Reduction = "quote-context" | "selector" | "context" | "quote";
+export type Reduction = "quote-context" | "regions" | "selector" | "context" | "quote";
 
-const REDUCTIONS: readonly Reduction[] = ["quote-context", "selector", "context", "quote"];
+/**
+ * Regions shed before the selector, being the least load-bearing thing in the
+ * fence. Content width never sheds: `essentialContext` keeps it.
+ */
+const REDUCTIONS: readonly Reduction[] = [
+  "quote-context",
+  "regions",
+  "selector",
+  "context",
+  "quote",
+];
 
 /** How the export is built. */
 export interface ExportOptions {
@@ -136,8 +146,17 @@ function reduce(comment: Comment, reduced: readonly Reduction[]): Comment {
   return {
     ...comment,
     anchor: reduceAnchor(comment.anchor, reduced),
-    ...(reduced.includes("context") ? { context: essentialContext(comment.context) } : {}),
+    context: reduceContext(comment.context, reduced),
   };
+}
+
+function reduceContext(context: CommentContext, reduced: readonly Reduction[]): CommentContext {
+  if (reduced.includes("context")) return essentialContext(context);
+  if (!reduced.includes("regions")) return context;
+
+  const copy: { regions?: readonly RegionContext[] } & CommentContext = { ...context };
+  delete copy.regions;
+  return copy;
 }
 
 function reduceAnchor(anchor: CommentAnchor, reduced: readonly Reduction[]): CommentAnchor {
@@ -165,6 +184,7 @@ function essentialContext(context: CommentContext): CommentContext {
     url: context.url,
     viewportWidth: context.viewportWidth,
     viewportHeight: context.viewportHeight,
+    contentWidth: context.contentWidth,
     devicePixelRatio: context.devicePixelRatio,
     colorScheme: context.colorScheme,
   };

@@ -35,15 +35,32 @@ export interface TextQuote {
   readonly offset?: number;
 }
 
+/** A layout region that was open when the comment was written. */
+export interface RegionContext {
+  /** `dialog`, `complementary`, `navigation`, or the element's tag name. */
+  readonly role: string;
+  /** Accessible name, when it has one a reviewer would recognise. */
+  readonly label?: string;
+  /** Rendered width, so "the sidebar was open" carries a number. */
+  readonly width: number;
+}
+
 /** Everything about the reviewer's environment that a fix might depend on. */
 export interface CommentContext {
   readonly url: string;
   readonly viewportWidth: number;
   readonly viewportHeight: number;
+  /**
+   * `documentElement.clientWidth`: what the layout actually had, which the
+   * window width does not say once a scrollbar or a panel takes space.
+   */
+  readonly contentWidth: number;
   readonly devicePixelRatio: number;
   readonly colorScheme: "light" | "dark";
   readonly locale?: string;
   readonly breakpoint?: string;
+  /** Regions open at capture time, so "the sidebar was open" survives storage. */
+  readonly regions?: readonly RegionContext[];
 }
 
 /** The person who wrote a comment, as far as the identity connector could tell. */

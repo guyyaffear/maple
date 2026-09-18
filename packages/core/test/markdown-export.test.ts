@@ -6,7 +6,7 @@ import {
   parseFence,
   UnsupportedFenceError,
 } from "../src/export/index.js";
-import { storedComment } from "../src/testing/fixtures.js";
+import { SAMPLE_CONTEXT, storedComment } from "../src/testing/fixtures.js";
 
 import type { Comment } from "../src/types.js";
 
@@ -179,7 +179,7 @@ describe("the byte budget", () => {
 
   it("sheds in a fixed order as the set grows", () => {
     const result = exportMarkdown(many(40), { branch: BRANCH });
-    expect(result.reduced).toEqual(["quote-context", "selector", "context", "quote"]);
+    expect(result.reduced).toEqual(["quote-context", "regions", "selector", "context", "quote"]);
   });
 
   it("never drops a comment, and says so when it cannot fit", () => {
@@ -193,8 +193,40 @@ describe("the byte budget", () => {
     const [first] = parseFence(result.markdown)!.comments;
 
     expect(first?.context.viewportWidth).toBe(1440);
+    expect(first?.context.contentWidth).toBe(1020);
     expect(first?.context.colorScheme).toBe("light");
     expect(first?.body).toContain("word");
     expect(first?.anchor.component).toBe("DashboardHeader");
+  });
+
+  it("sheds regions before it touches the selector", () => {
+    const regions = Array.from({ length: 30 }, (_, index) => ({
+      role: "complementary",
+      label: `Panel ${index}`,
+      width: 420,
+    }));
+    const fat = Array.from({ length: 4 }, (_, index) =>
+      storedComment({
+        id: `c_${index}`,
+        anchor: { component: "DashboardHeader", selector: "main > header > h1" },
+        context: { ...SAMPLE_CONTEXT, regions },
+      }),
+    );
+
+    const result = exportMarkdown(fat, { branch: BRANCH });
+    const [first] = parseFence(result.markdown)!.comments;
+
+    expect(result.reduced).toContain("regions");
+    expect(result.reduced).not.toContain("selector");
+    expect(first?.context.regions).toBeUndefined();
+    expect(first?.anchor.selector).toBe("main > header > h1");
+  });
+
+  it("never sheds the content width, even at the smallest size", () => {
+    const result = exportMarkdown(many(400), { branch: BRANCH });
+    const [first] = parseFence(result.markdown)!.comments;
+
+    expect(result.reduced).toContain("context");
+    expect(first?.context.contentWidth).toBe(1020);
   });
 });

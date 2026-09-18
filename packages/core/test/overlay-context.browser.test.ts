@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { captureContext, formatContext } from "../src/overlay/index.js";
+import { captureContext, formatContext, toCommentContext } from "../src/overlay/index.js";
 
 let mounted: HTMLElement | undefined;
 
@@ -89,5 +89,28 @@ describe("the badge", () => {
   it("leaves out what was not captured", () => {
     const badge = formatContext(captureContext());
     expect(badge.split(" · ")).toHaveLength(3);
+  });
+});
+
+describe("what a comment keeps", () => {
+  it("carries the content width and the open regions into the stored shape", () => {
+    mount(`<div role="dialog" aria-label="Copilot" style="width: 420px">x</div>`);
+    const stored = toCommentContext(captureContext({ breakpoints: [["lg", "(min-width: 0px)"]] }));
+
+    expect(stored.contentWidth).toBe(document.documentElement.clientWidth);
+    expect(stored.viewportWidth).toBe(window.innerWidth);
+    expect(stored.breakpoint).toBe("lg");
+    expect(stored.regions?.[0]?.label).toBe("Copilot");
+  });
+
+  it("leaves regions off entirely when none were open", () => {
+    expect(toCommentContext(captureContext()).regions).toBeUndefined();
+  });
+
+  it("renders the same badge from a captured page and from a stored comment", () => {
+    mount(`<div role="dialog" aria-label="Copilot" style="width: 420px">x</div>`);
+    const page = captureContext({ breakpoints: [["lg", "(min-width: 0px)"]] });
+
+    expect(formatContext(toCommentContext(page))).toBe(formatContext(page));
   });
 });

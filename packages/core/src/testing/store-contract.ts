@@ -120,6 +120,16 @@ export function runStoreContract(options: StoreContractOptions): void {
       });
     });
 
+    it("keeps parentId, which is reserved for replies and never set by Maple", async () => {
+      await withSubject(async (connector, branch) => {
+        const stored = await connector.append(sampleComment({ branch, parentId: "c_parent" }));
+        expect(stored.parentId).toBe("c_parent");
+
+        const comments = await listUntil(connector, branch, 1);
+        expect(comments.find((comment) => comment.id === stored.id)?.parentId).toBe("c_parent");
+      });
+    });
+
     it("honours the limit and keeps paging until the cursor runs out", async () => {
       await withSubject(async (connector, branch) => {
         for (let index = 0; index < 3; index += 1) {

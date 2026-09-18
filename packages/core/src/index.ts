@@ -50,5 +50,6 @@ export type {
   MediaBlob,
   MediaRef,
   NewComment,
+  RegionContext,
   TextQuote,
 } from "./types.js";

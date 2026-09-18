@@ -7,6 +7,15 @@
  * complaints without reopening anything.
  */
 
+import type { CommentContext, RegionContext } from "../types.js";
+
+/**
+ * `RegionContext` lives in `../types.js` so a server-side consumer reading a
+ * stored comment never has to import from `/overlay`. Re-exported here because
+ * it was part of this module's public surface first.
+ */
+export type { RegionContext };
+
 /** Sizes, in CSS pixels unless stated. */
 export interface ViewportContext {
   /** `innerWidth`: the window, including any scrollbar. */
@@ -18,16 +27,6 @@ export interface ViewportContext {
   readonly dpr: number;
   /** The visual viewport's scale, when the browser exposes one. */
   readonly scale?: number;
-}
-
-/** A layout region that was open, found without the application's help. */
-export interface RegionContext {
-  /** `dialog`, `complementary`, `navigation`, or the element's tag name. */
-  readonly role: string;
-  /** Accessible name, when it has one a reviewer would recognise. */
-  readonly label?: string;
-  /** Rendered width, so "the sidebar was open" carries a number. */
-  readonly width: number;
 }
 
 /** Everything the badge on a comment is built from. */
@@ -81,18 +80,58 @@ export function captureContext(options: CaptureOptions = {}): PageContext {
 }
 
 /**
- * The badge a reviewer reads, for example
- * `1440 window · 1020 content · dark · lg · dialog open`.
+ * A stored comment's context, from what the page reported. The badge then
+ * renders identically in the composer and in the inventory, because both read
+ * this shape through one formatter.
  */
-export function formatContext(context: PageContext): string {
+export function toCommentContext(page: PageContext): CommentContext {
+  return {
+    url: page.url,
+    viewportWidth: page.viewport.width,
+    viewportHeight: page.viewport.height,
+    contentWidth: page.viewport.contentWidth,
+    devicePixelRatio: page.viewport.dpr,
+    colorScheme: page.scheme,
+    locale: page.locale,
+    ...(page.breakpoint === undefined ? {} : { breakpoint: page.breakpoint }),
+    ...(page.regions.length === 0 ? {} : { regions: page.regions }),
+  };
+}
+
+/**
+ * The badge a reviewer reads, for example
+ * `1440 window · 1020 content · dark · lg · dialog open`. One formatter, two
+ * inputs: a freshly captured page and a comment that was stored months ago.
+ */
+export function formatContext(context: PageContext | CommentContext): string {
+  const { width, contentWidth, scheme, breakpoint, regions } = badgeFields(context);
   const parts = [
-    `${context.viewport.width} window`,
-    `${context.viewport.contentWidth} content`,
-    context.scheme,
-    ...(context.breakpoint ? [context.breakpoint] : []),
-    ...context.regions.map((region) => `${region.label ?? region.role} open`),
+    `${width} window`,
+    `${contentWidth} content`,
+    scheme,
+    ...(breakpoint ? [breakpoint] : []),
+    ...regions.map((region) => `${region.label ?? region.role} open`),
   ];
   return parts.join(" · ");
+}
+
+interface BadgeFields {
+  readonly width: number;
+  readonly contentWidth: number;
+  readonly scheme: "light" | "dark";
+  readonly breakpoint: string | undefined;
+  readonly regions: readonly RegionContext[];
+}
+
+function badgeFields(context: PageContext | CommentContext): BadgeFields {
+  const page = "viewport" in context ? context : undefined;
+  return {
+    width: page ? page.viewport.width : (context as CommentContext).viewportWidth,
+    contentWidth: page ? page.viewport.contentWidth : (context as CommentContext).contentWidth,
+    scheme: page ? page.scheme : (context as CommentContext).colorScheme,
+    breakpoint: context.breakpoint,
+    regions: context.regions ?? [],
+  };
 }
 
 function viewport(): ViewportContext {

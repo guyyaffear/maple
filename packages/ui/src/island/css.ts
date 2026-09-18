@@ -12,9 +12,18 @@ import { STAGGER_ROWS } from "./stagger.js";
 
 /** Every rule the island needs, and nothing another part owns. */
 export function islandCss(): string {
-  return [shell(), header(), filters(), list(), row(), rowDetail(), newComment(), keyframes()].join(
-    "\n\n",
-  );
+  return [
+    shell(),
+    corners(),
+    header(),
+    filters(),
+    list(),
+    row(),
+    rowDetail(),
+    developer(),
+    newComment(),
+    keyframes(),
+  ].join("\n\n");
 }
 
 function shell(): string {
@@ -102,6 +111,64 @@ function shell(): string {
 
 .mk-card[data-mk-phase="closing"] {
   animation: mk-island-out var(--mk-dur-island-close) var(--mk-ease-surface) forwards;
+}
+`.trim();
+}
+
+/**
+ * The island sits in one of four corners and snaps between them, so a drag
+ * ends somewhere a second island would also land rather than a pixel off it.
+ */
+function corners(): string {
+  return `
+.mk-island[data-mk-corner="bottom-left"],
+.mk-island[data-mk-corner="top-left"] {
+  right: auto;
+  left: 12px;
+}
+
+.mk-island[data-mk-corner="top-left"],
+.mk-island[data-mk-corner="top-right"] {
+  bottom: auto;
+  top: 12px;
+  align-items: flex-start;
+}
+
+.mk-island[data-mk-corner="bottom-left"] .mk-card,
+.mk-island[data-mk-corner="top-left"] .mk-card {
+  right: auto;
+  left: 0;
+}
+
+.mk-island[data-mk-corner="top-left"] .mk-card,
+.mk-island[data-mk-corner="top-right"] .mk-card {
+  bottom: auto;
+  top: 0;
+}
+
+.mk-island[data-mk-corner="top-left"] .mk-card {
+  transform-origin: top left;
+}
+
+.mk-island[data-mk-corner="top-right"] .mk-card {
+  transform-origin: top right;
+}
+
+.mk-island[data-mk-corner="bottom-left"] .mk-card {
+  transform-origin: bottom left;
+}
+
+/* No transition on the offset: the island is under the pointer while it is
+   dragged, and a transition would leave it trailing the hand that moved it. */
+.mk-island[data-mk-dragging="true"] {
+  transform: translate(var(--mk-x), var(--mk-y));
+  will-change: transform;
+}
+
+.mk-island[data-mk-dragging="true"] .mk-pill {
+  transform: none;
+  cursor: grabbing;
+  box-shadow: var(--mk-sh3);
 }
 `.trim();
 }
@@ -571,6 +638,73 @@ function rowDelay(position: number): string {
   return `.mk-row:nth-child(${String(position)}) {
   animation-delay: calc(var(--mk-stagger-step) * ${String(position - 1)});
 }`;
+}
+
+/**
+ * Developer detail: the chip carries the number and the tooltip carries the
+ * sentence, because a sentence in a scanned row is skipped along with its row.
+ */
+function developer(): string {
+  return `
+.mk-tipped {
+  position: relative;
+  cursor: help;
+}
+
+.mk-tip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 2;
+  width: max-content;
+  max-width: 228px;
+  padding: 6px 8px;
+  border: 1px solid var(--mk-line-firm);
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-bg);
+  box-shadow: var(--mk-sh2);
+  color: var(--mk-muted);
+  font-size: 11px;
+  font-weight: 450;
+  line-height: 1.4;
+  letter-spacing: normal;
+  white-space: normal;
+  text-wrap: pretty;
+  opacity: 0;
+  transform: scale(var(--mk-scale-tooltip));
+  transform-origin: bottom left;
+  pointer-events: none;
+  transition:
+    opacity var(--mk-dur-tooltip) var(--mk-ease-tooltip),
+    transform var(--mk-dur-tooltip) var(--mk-ease-tooltip);
+}
+
+/* The delay is on the way in only. A hover-out is a dismissal, and a
+   dismissal that waits reads as a surface that did not hear the pointer. */
+.mk-tipped:hover > .mk-tip,
+.mk-tipped:focus-visible > .mk-tip {
+  opacity: 1;
+  transform: scale(1);
+  transition-delay: var(--mk-delay-tooltip);
+}
+
+.mk-chip-dev {
+  border-style: dashed;
+  border-color: var(--mk-line-firm);
+  background: transparent;
+}
+
+.mk-path {
+  display: inline-block;
+  max-width: 124px;
+  overflow: hidden;
+  vertical-align: bottom;
+  font-family: var(--mk-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+`.trim();
 }
 
 function newComment(): string {

@@ -13,7 +13,7 @@ import { matchesFilter } from "@maple-kit/core/client";
 import { ORPHAN_ORDER } from "./language.js";
 
 import type { Comment } from "@maple-kit/core";
-import type { Anchor, OrphanReason } from "@maple-kit/core/anchor";
+import type { Anchor, OrphanReason, Resolution } from "@maple-kit/core/anchor";
 import type { CommentFilter, PickKind } from "@maple-kit/core/client";
 
 /** The count beside one filter's pill. */
@@ -58,6 +58,23 @@ export function kindOf(anchor: Anchor): PickKind {
 export function orphanReason(anchor: Anchor, root: ParentNode): OrphanReason | undefined {
   const resolution = resolveAnchor(anchor, { root });
   return resolution.status === "orphaned" ? resolution.reason : undefined;
+}
+
+/**
+ * What the cascade says about every anchor, in one pass. In default detail
+ * only the unpinned are asked: nothing else on the row depends on the answer.
+ */
+export function resolutionsFor(
+  comments: readonly Comment[],
+  root: ParentNode,
+  developer: boolean,
+): ReadonlyMap<string, Resolution> {
+  const found = new Map<string, Resolution>();
+  for (const comment of comments) {
+    if (!developer && comment.status !== "orphaned") continue;
+    found.set(comment.id, resolveAnchor(comment.anchor, { root }));
+  }
+  return found;
 }
 
 /**

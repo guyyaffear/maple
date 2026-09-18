@@ -3,7 +3,9 @@
  *
  * One number, and it is the open one — everything not resolved, unpinned
  * included. Splitting it into "open · lost" was tried and read as noise:
- * whether a comment is dealt with is the question a count answers.
+ * whether a comment is dealt with is the question a count answers. It is also
+ * the island's handle: dragging it moves the island out of the way of the
+ * thing under review, and lets go into the nearest corner.
  */
 
 import { useMaple } from "@maple-kit/react";
@@ -43,7 +45,12 @@ export const IslandTrigger = /** @__PURE__ */ forwardRef<HTMLButtonElement, Isla
         "aria-expanded": island.phase !== "closed",
         "aria-label": triggerLabel(openCount),
         className: cx("mk-pill mk-hit", className),
-        onClick: () => island.setOpen(island.phase === "closed"),
+        onClick: () => {
+          if (!island.drag.moved()) island.setOpen(island.phase === "closed");
+        },
+        onPointerDown: island.drag.onPointerDown,
+        onPointerMove: island.drag.onPointerMove,
+        onPointerUp: island.drag.onPointerUp,
         ref,
       },
       children ?? [

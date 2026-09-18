@@ -164,7 +164,19 @@ describe("the island's rules", () => {
     expect(closing).toContain("var(--mk-dur-island-close)");
     expect(closing).toContain("var(--mk-ease-surface)");
     expect(closing).not.toContain("--mk-ease-entrance");
-    expect(css).not.toMatch(/transition-delay|animation-delay:\s*var\(--mk-dur/);
+    expect(css).not.toMatch(/animation-delay:\s*var\(--mk-dur/);
+  });
+
+  /**
+   * The one delay on this surface is the tooltip's intent, and it is on the
+   * way in only: a hover-out that waits reads as a surface that missed it.
+   */
+  it("delays nothing but a tooltip appearing", () => {
+    const delayed = css.split("}").filter((rule) => rule.includes("transition-delay"));
+
+    expect(delayed).toHaveLength(1);
+    expect(delayed[0]).toContain("transition-delay: var(--mk-delay-tooltip)");
+    expect(delayed[0]).toContain(":hover");
   });
 
   it("presses at the one press scale and never below it", () => {

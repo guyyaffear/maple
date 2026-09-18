@@ -91,6 +91,35 @@ function Panel(props: PanelProps): ReactNode {
       copy: SETTINGS_COPY.developer,
       onChange: island.setDeveloper,
     }),
+    createElement(Dismiss, { onHide: () => client.setHidden(true) }),
+  );
+}
+
+interface DismissProps {
+  readonly onHide: () => void;
+}
+
+/**
+ * Hidden for the session, the way a dev indicator hides. A button and not a
+ * switch: nothing here turns it back on — a comment arriving does.
+ */
+function Dismiss(props: DismissProps): ReactNode {
+  const copy = SETTINGS_COPY.hidden;
+
+  return createElement(
+    "div",
+    { className: "mk-setting" },
+    createElement(
+      "span",
+      null,
+      createElement("span", { className: "mk-setting-name" }, copy.name),
+      createElement("span", { className: "mk-setting-hint" }, copy.hint),
+    ),
+    createElement(
+      "button",
+      { type: "button", className: "mk-more", onClick: props.onHide },
+      ISLAND_COPY.hide,
+    ),
   );
 }
 

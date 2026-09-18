@@ -3,11 +3,13 @@
  *
  * It mounts the overlay host in an effect, adopts the stylesheet, owns the
  * controller through `MapleProvider` and puts the shadow root in scope for
- * every part below it. Nothing here takes a comment list: parts read the
- * controller. Nothing here reaches `document` while React is rendering, which
- * is what lets an application server-render the tree it sits in.
+ * every part below it. Parts read the controller rather than props, and
+ * nothing here reaches `document` while React is rendering. The props are
+ * resolved once against the query string and the viewer's stored preference
+ * by `readMapleConfig`: `enabled: false`, or a link, mounts nothing at all.
  */
 
+import { readMapleConfig } from "@maple-kit/core/client";
 import { createOverlayHost } from "@maple-kit/core/overlay";
 import { MapleProvider } from "@maple-kit/react";
 import { createElement, forwardRef, useEffect, useLayoutEffect, useMemo, useState } from "react";
@@ -17,7 +19,7 @@ import { MapleUiContext } from "./context.js";
 import { OVERLAY_CSS, SCHEME_ATTRIBUTE } from "./stylesheet.js";
 import { useOverlayScheme } from "./theme.js";
 
-import type { MapleClient, MapleClientOptions, Scheme } from "@maple-kit/core/client";
+import type { MapleClient, MapleClientOptions, MapleProps, Scheme } from "@maple-kit/core/client";
 import type { OverlayHost } from "@maple-kit/core/overlay";
 import type { ReactElement, ReactNode } from "react";
 
@@ -25,7 +27,7 @@ import type { ReactElement, ReactNode } from "react";
 export type ThemePreference = "auto" | Scheme;
 
 /** How the overlay is mounted, and what it is pointed at. */
-export interface MapleRootProps {
+export interface MapleRootProps extends MapleProps {
   /** The branch the comments belong to. */
   readonly branch: string;
   readonly children?: ReactNode;
@@ -46,13 +48,14 @@ export interface MapleRootProps {
 /** Mounts the overlay and puts its shadow root and controller in scope. */
 export const MapleRoot = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleRootProps>(
   function MapleRoot(props, ref) {
-    const host = useOverlayHost(props.nonce, props.parent);
+    const [config] = useState(() => readMapleConfig(props));
+    const host = useOverlayHost(config.enabled, props.nonce, props.parent);
     const options = useMemo(
-      () => ({ ...props.options, branch: props.branch }),
-      [props.options, props.branch],
+      () => ({ ...props.options, branch: props.branch, config }),
+      [props.options, props.branch, config],
     );
 
-    if (!host) return null;
+    if (!host || !config.enabled) return null;
 
     const className = props.className ? `mk-layer ${props.className}` : "mk-layer";
     const layer = createElement("div", { className, ref }, props.children);
@@ -70,10 +73,11 @@ export const MapleRoot = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleRootPr
  * Mounted in an effect, so nothing reaches `document` during render — which
  * costs one extra commit and is what a portal target costs.
  */
-function useOverlayHost(nonce: string | undefined, parent: Element | undefined) {
+function useOverlayHost(enabled: boolean, nonce: string | undefined, parent: Element | undefined) {
   const [host, setHost] = useState<OverlayHost>();
 
   useEffect(() => {
+    if (!enabled) return;
     const mounted = createOverlayHost({
       ...(nonce === undefined ? {} : { nonce }),
       ...(parent === undefined ? {} : { parent }),
@@ -82,7 +86,7 @@ function useOverlayHost(nonce: string | undefined, parent: Element | undefined) 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a portal target cannot be built during render.
     setHost(mounted);
     return () => mounted.destroy();
-  }, [nonce, parent]);
+  }, [enabled, nonce, parent]);
 
   return host;
 }

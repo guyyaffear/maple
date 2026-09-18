@@ -275,8 +275,21 @@ describe("the context badge", () => {
     const fresh = root().querySelector(".probe-page")?.textContent;
     const stored = root().querySelector(".probe-stored")?.textContent;
 
-    expect(fresh).toBe("1440 window · 1020 content · dark · lg · Copilot open");
+    expect(fresh).toBe("1440px wide · dark · 420px covered · Copilot open");
     expect(stored).toBe(fresh);
+  });
+
+  it("names the layout width, the breakpoint, the ratio and the locale in developer detail", async () => {
+    started();
+    await open();
+    client.setDetail("developer");
+
+    await vi.waitFor(() =>
+      expect(root().querySelector(".probe-page")?.textContent).toContain("window"),
+    );
+    expect(root().querySelector(".probe-page")?.textContent).toBe(
+      "1440 window · 1020 content · dark · lg · 2× · en-GB · Copilot open",
+    );
   });
 
   it("sets every width in tabular figures, because they change in place", async () => {

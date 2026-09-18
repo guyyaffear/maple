@@ -87,8 +87,27 @@ describe("the badge", () => {
   });
 
   it("leaves out what was not captured", () => {
-    const badge = formatContext(captureContext());
-    expect(badge.split(" · ")).toHaveLength(3);
+    expect(formatContext(captureContext()).split(" · ")).toHaveLength(5);
+    expect(formatContext(captureContext(), "default").split(" · ")).toHaveLength(2);
+  });
+
+  it("keeps the breakpoint, the ratio and the locale for developer detail", () => {
+    const page = captureContext({ breakpoints: [["lg", "(min-width: 0px)"]] });
+    const badge = formatContext(page, "developer");
+
+    expect(badge).toContain(`${String(page.viewport.dpr)}×`);
+    expect(badge).toContain(page.locale);
+    expect(badge).toContain("lg");
+  });
+
+  it("names neither the ratio nor the locale in default detail", () => {
+    const page = captureContext({ breakpoints: [["lg", "(min-width: 0px)"]] });
+    const badge = formatContext(page, "default");
+
+    expect(badge).toContain("px wide");
+    expect(badge).not.toContain("×");
+    expect(badge).not.toContain(page.locale);
+    expect(badge).not.toContain("lg");
   });
 });
 

@@ -1,12 +1,12 @@
 # Status
 
-**US1 is most of the way there.** Every mechanism a comment passes through
-exists and is tested: it can be anchored, written, exported, stored on a pull
-request, and read and resolved by an agent. What is missing is the interface a
-reviewer touches.
+**US1 is there.** Every mechanism a comment passes through exists and is
+tested, and so does the surface a reviewer touches: a comment can be picked,
+written, anchored, exported, stored on a pull request, and read and resolved
+by an agent, and a person can now do the first half of that with their hands.
 
-The loop is buildable end to end today by a caller that supplies its own UI.
-It is not yet demonstrable to a person, and that is the honest gap.
+The loop runs end to end. What is left is what stands between the loop and a
+pull request enforcing it: identity through the route, and the gate.
 
 ## The path a comment takes, and what is built
 
@@ -17,7 +17,7 @@ It is not yet demonstrable to a person, and that is the honest gap.
 | The pick becomes an anchor      | `core/anchor`                             | ✅ five rungs, four orphan reasons             |
 | The page's shape is recorded    | `core/overlay`                            | ✅ badge, regions, breakpoint                  |
 | A screenshot is attached        | `core/screenshot`                         | ✅ paste, drop, file, capture                  |
-| The reviewer writes it          | —                                         | ❌ **no composer, no sidebar, no pins**        |
+| The reviewer writes it          | `@maple-kit/ui`, `@maple-kit/react`       | ✅ marks, ring, island, composer, detail       |
 | It is posted as them            | `core/auth`                               | 🟡 Device Flow works; not wired to the route   |
 | It is stored                    | `core/connectors/github`                  | ✅ default store, contract-clean               |
 | It reaches the pull request     | `core/export`                             | ✅ table over a visible fence                  |
@@ -27,14 +27,16 @@ It is not yet demonstrable to a person, and that is the honest gap.
 
 ### `@maple-kit/core`
 
-Nine new entrypoints on top of Phase 0's four.
+Ten new entrypoints on top of Phase 0's four.
 
 - **`/tagger`, `/vite`, `/loader`** — the build-time JSX tagger and its two
   emitters. One Babel plugin behind both, so they cannot drift. Not an SWC
   plugin: that is a Rust crate compiled to WebAssembly, for a transform that
   already exists in TypeScript.
 - **`/anchor`** — the cascade, `data-maple-key` → source → component → quote →
-  selector, with four orphan reasons and no silent ancestor snap. The fuzzy
+  selector, with four orphan reasons and no silent ancestor snap. A human name
+  comes from `data-maple-label`, falling back to the component's own name with
+  the camel case unpicked, so a reviewer reads "the Yield card". The fuzzy
   quote matcher is ported from Hypothesis; the approximate search under it is
   Sellers with Ukkonen's cutoff rather than a port of Myers' bit-parallel
   algorithm, because it can be checked against a brute-force reference, and 400
@@ -44,11 +46,44 @@ Nine new entrypoints on top of Phase 0's four.
 - **`/export`** — the human table over a visible ` ```maple ` fence, with a
   byte budget that sheds detail in a fixed order and never drops a comment.
 - **`/route`** — one web-standard handler, plus a Node adapter. The author of a
-  comment comes from the identity connector and never from the request body.
+  comment comes from the identity connector and never from the request body,
+  and carries a stable colour slot derived from their id.
+- **`/client`** — the framework-free reviewer controller: comments and filters,
+  the composer, picking, drafts, the navigation guard, theme detection, and the
+  preference model behind the query string. No React anywhere in it.
 - **`/auth`** — GitHub Device Flow, including `slow_down` back-off.
 - **`/screenshot`** — paste and drop first, capture second.
 - **`/connectors`** — `githubStore`, the default store, passing the shared
   contract.
+
+A comment also keeps what came of it. `CommentResolution` records the commit an
+agent believes addressed it, with its note and the time the write happened, so
+`resolve_comment` no longer has to throw that away; a draft is comment-shaped,
+carrying its anchor, its context and its attachments; and `parentId` is
+reserved and documented in `docs/replies.md` as reserved, not built.
+
+### `@maple-kit/react` and `@maple-kit/ui`
+
+Two packages, not one. `@maple-kit/react` is headless and stops at hooks —
+`MapleProvider` plus six `useSyncExternalStore` bindings over the controller,
+and nothing deeper. `@maple-kit/ui` is the composed parts: the marks and the
+ring, the island, the composer, and one default composition over them. An
+application rendering comments in its own design system depends on the first
+and pulls in none of the second, which is also what keeps a later Svelte or
+Astro binding a binding rather than a rewrite.
+
+State reaches the stylesheet as `data-*` rather than as props, every part takes
+`asChild`, and there is no visual variant anywhere: the sheet under 640px **is**
+the composer panel. One shadow root, one adopted stylesheet built from a token
+table, no hardcoded duration or easing, and `prefers-reduced-motion` handled by
+redefining the tokens rather than switching rules off. Marks, the island and
+the icons are 24.1 KB gzipped against a 25 KB budget, the composer 4.9 KB
+against 8 KB, asserted by `packages/ui/scripts/size.js` on every build.
+
+Developer detail, the query string, dismissal and the island's corner are
+presentation over all of it. Default detail is the default and nothing is
+recorded differently in either, because the export fence carries every field
+whichever one is on.
 
 ### `@maple-kit/mcp`
 
@@ -68,30 +103,32 @@ happened.
 
 ### Numbers
 
-**317 tests** — 242 in Node, 75 in Chromium, up from 101. Thirteen changesets.
+**866 tests** — 635 in Node, 231 in real Chromium, up from 101. Twenty-nine
+changesets.
 `lint typecheck format test test:browser build publint attw gitleaks lockfile
 dco` all green, and `main` is protected by a ruleset requiring the eight CI
 jobs, one approval and signed commits.
 
 ## What is deliberately absent
 
-- **The overlay's interface.** The composer, the pin markers and the sidebar,
-  including the orphan list. These are visual design decisions rather than
-  mechanics, and guessing at them would be the expensive kind of wrong — the
-  orphan list in particular is meant to be a first-class tab, not a footnote.
 - **Device Flow wired into the route.** The flow works and the route works;
   joining them needs a decision about where a token lives and how the session
   is signed, which is a security design rather than plumbing.
 - **The Next codemod.** `app/api/maple/[...maple]/route.ts` is three lines a
   person can write today; the codemod that writes it is convenience, and the
   example does not have one checked in yet.
+- **The CI gate and the check run.** Nothing stops a pull request merging with
+  comments still open. The `GateConnector` kind has to be defined before the
+  GitHub one is written, or the check-run API ends up inside core.
 - **The CLI's comment commands.** `maple connectors` is all that exists.
   `list|inspect|reply|resolve|open` come with the TUI decision.
+- **Replies.** Decided, not deferred: one body per comment. `parentId` is
+  reserved and `docs/replies.md` says what revisiting it would cost.
 - **Eval cases.** Still no AI path to score.
 
 ## What is now known that was not
 
-Four things cost time once and would cost it again.
+Six things cost time once and would cost it again.
 
 1. **`as: "*.tsx"` on a Turbopack rule renames the module.** Turbopack's `*`
    captures the filename including its extension, so `page.tsx` becomes
@@ -104,18 +141,21 @@ Four things cost time once and would cost it again.
    failure the paste path exists to hedge against.
 4. **`localStorage` throws on _access_, not only on use**, in a private window
    and wherever site data is blocked. Reaching it has to be guarded too.
+5. **A backtick inside a CSS template literal ends the literal.** The
+   stylesheet modules are template strings, so a comment that quotes a class
+   name in backticks terminates the sheet. It cost a build once.
+6. **Rebuilding a surface to change one thing inside it reads as a flicker.**
+   Re-rendering the island to toggle a filter re-ran its entrance and
+   re-measured its height. The rows swap; the card stays.
 
 ## What US2 needs next
 
 In dependency order:
 
-1. **The overlay's interface** — composer, pins, sidebar, orphan tab. Everything
-   underneath it is built and tested; this is the last thing between the
-   mechanisms and a person using them.
-2. **Device Flow through the route**, with a decided session shape.
-3. **A `GateConnector` kind.** The store is vendor-agnostic and the gate is not:
+1. **Device Flow through the route**, with a decided session shape.
+2. **A `GateConnector` kind.** The store is vendor-agnostic and the gate is not:
    `maple/visual-review` is a GitHub check run, GitLab uses external status
    checks, and Bitbucket's enforcement is Premium-only. Defining the kind before
    writing the GitHub one keeps the check-run API out of core.
-4. **The check run itself**, held at `in_progress` while comments are open, with
+3. **The check run itself**, held at `in_progress` while comments are open, with
    `merge_group` auto-passing and `integration_id` pinned.

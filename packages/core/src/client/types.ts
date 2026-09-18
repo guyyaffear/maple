@@ -21,6 +21,22 @@ export type CommentFilter = (typeof COMMENT_FILTERS)[number];
 /** The three ways a reviewer says what a comment is about. */
 export type PickKind = "element" | "region" | "text";
 
+/** The four corners the island may sit in, nearest-first is not a thing here. */
+export const CORNERS = ["bottom-right", "bottom-left", "top-right", "top-left"] as const;
+
+/** One of {@link CORNERS}. The island snaps to these and to nothing between. */
+export type Corner = (typeof CORNERS)[number];
+
+/** The two amounts of detail a surface shows. Neither changes what is recorded. */
+export const DETAILS = ["default", "developer"] as const;
+
+/**
+ * One of {@link DETAILS}. `default` names what a comment is on; `developer`
+ * adds the rung, the confidence, the paths and the page's numbers. The export
+ * fence carries every field either way, which is what makes `default` safe.
+ */
+export type Detail = (typeof DETAILS)[number];
+
 /** Light or dark, for the host page and for the overlay drawn over it. */
 export type Scheme = "dark" | "light";
 
@@ -73,6 +89,14 @@ export interface ClientState {
   /** The comments the current filter shows, in the order to render them. */
   readonly visible: readonly Comment[];
   readonly filter: CommentFilter;
+  /** Presentation only. Nothing is recorded differently in either. */
+  readonly detail: Detail;
+  /** Which corner the island sits in, after a drag or a query string. */
+  readonly position: Corner;
+  /** Hidden for this session. Not gone: anything arriving brings it back. */
+  readonly hidden: boolean;
+  /** The comment a link asked for, or a mark answered to. Null when none. */
+  readonly selected: string | null;
   /** Off by default: resolved comments are hidden until someone asks for them. */
   readonly showResolved: boolean;
   /** The pill's number: everything not resolved, unpinned included. */

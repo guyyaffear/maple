@@ -7,7 +7,8 @@
  * tooltip, because a list of comments is scanned rather than read.
  */
 
-import type { OrphanReason } from "@maple-kit/core/anchor";
+import type { PartConfidence } from "../data.js";
+import type { OrphanReason, Rung } from "@maple-kit/core/anchor";
 import type { CommentFilter, PickKind } from "@maple-kit/core/client";
 
 /** The five filters, in the words the pills show. `unpinned` is `orphaned`. */
@@ -39,6 +40,18 @@ export const ORPHAN_SENTENCES: Readonly<Record<OrphanReason, string>> = {
     "The passage is still on the page, but edited past the point where the match can be trusted.",
 };
 
+/**
+ * How a rung reads inside a sentence. It is never shown as a field name: the
+ * chip carries the number and this is what the tooltip says about it.
+ */
+export const RUNG_LABELS: Readonly<Record<Rung, string>> = {
+  key: "the app's own key",
+  source: "the source line",
+  component: "the component name",
+  quote: "the quoted text",
+  selector: "a CSS path",
+};
+
 /** The order the unpinned tab groups its rows in. */
 export const ORPHAN_ORDER: readonly OrphanReason[] = ["missing", "changed", "ambiguous", "empty"];
 
@@ -62,6 +75,10 @@ export const SETTINGS_COPY = {
     name: "Developer mode",
     hint: "Shows how each comment is re-found after a deploy, its source line and its CSS path.",
   },
+  hidden: {
+    name: "Hide the island",
+    hint: "It goes until you reload. A comment arriving, or a link to one, brings it straight back.",
+  },
 } as const;
 
 /** Copy with no better home than a name. */
@@ -74,6 +91,7 @@ export const ISLAND_COPY = {
   empty: "Nothing here under this filter.",
   showAll: "Show all",
   showLess: "Show less",
+  hide: "Hide",
   attachment: "shot",
 } as const;
 
@@ -93,9 +111,48 @@ export function pickTitle(kind: PickKind): string {
 }
 
 /** The chip's full tooltip: the two words, then the sentence. */
-export function orphanTitle(reason: OrphanReason): string {
-  return `${ORPHAN_LABELS[reason]}. ${ORPHAN_SENTENCES[reason]}`;
+export function orphanTitle(reason: OrphanReason, tried: readonly Rung[] = []): string {
+  const ladder = tried.length === 0 ? "" : ` Tried: ${tried.map(rungWord).join(" → ")}.`;
+  return `${ORPHAN_LABELS[reason]}. ${ORPHAN_SENTENCES[reason]}${ladder}`;
 }
+
+/** One rung, as it appears in a list of the ones that were tried. */
+function rungWord(rung: Rung): string {
+  return RUNG_LABELS[rung];
+}
+
+/**
+ * The rung chip's sentence. The number is on the chip; this says what the
+ * number is worth, which is the part a field name never manages to.
+ */
+export function rungTitle(rung: Rung, confidence: PartConfidence): string {
+  return (
+    `Found again by ${RUNG_LABELS[rung]} — ${confidence}. ` +
+    "After a redeploy Maple re-finds this element that way, and a lower rung " +
+    "is worth less even when it matched exactly."
+  );
+}
+
+/** What a percentage on a chip is called, for anyone not looking at it. */
+export function rungLabel(percent: number): string {
+  return `${String(percent)}%`;
+}
+
+/** The two developer chips that carry a path rather than a number. */
+export const PATH_COPY = {
+  source: {
+    word: "source",
+    sentence:
+      "Where this element is written, recorded by the build's tagger. It is the " +
+      "second rung, and the one an agent opens the file from.",
+  },
+  selector: {
+    word: "CSS path",
+    sentence:
+      "The last rung tried, and the least durable: a rebuild that changes a class " +
+      "name changes this, which is why it is never the only thing recorded.",
+  },
+} as const;
 
 /**
  * What a comment is on, in the words a reviewer would use. A passage is in

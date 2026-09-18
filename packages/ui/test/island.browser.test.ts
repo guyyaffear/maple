@@ -201,7 +201,9 @@ describe("the unpinned tab", () => {
     filterNamed("Unpinned").click();
 
     await vi.waitFor(() => expect(all(".mk-row")).toHaveLength(4));
-    const labels = all(".mk-row .mk-chip-lost:last-child").map((chip) => chip.textContent);
+    const labels = all(".mk-row .mk-meta .mk-chip-lost").map(
+      (chip) => chip.childNodes[0]?.textContent,
+    );
     expect(labels).toEqual(["Nothing matches", "Text changed", "Several matches", "No anchor"]);
   });
 
@@ -210,8 +212,12 @@ describe("the unpinned tab", () => {
     filterNamed("Unpinned").click();
 
     await vi.waitFor(() => expect(all(".mk-row")).toHaveLength(4));
-    const chip = find(".mk-row .mk-chip-lost:last-child");
-    expect(chip.getAttribute("title")).toMatch(/^Nothing matches\. Every rung was tried\./);
+    const chip = find(".mk-row .mk-meta .mk-chip-lost");
+    const tip = chip.querySelector(".mk-tip");
+
+    expect(chip.childNodes[0]?.textContent).toBe("Nothing matches");
+    expect(tip?.textContent).toMatch(/^Nothing matches\. Every rung was tried\./);
+    expect(getComputedStyle(tip as Element).opacity).toBe("0");
   });
 });
 

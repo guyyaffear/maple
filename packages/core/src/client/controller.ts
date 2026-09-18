@@ -12,6 +12,7 @@ import { labelFor } from "../anchor/label.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
 import { openCount, visibleComments } from "./filters.js";
 import { createNavigationGuard } from "./navigation.js";
+import { readMapleConfig, writePreferences } from "./preferences.js";
 import { opensComposer } from "./shortcut.js";
 import { themeFrom, watchTheme } from "./theme.js";
 import { createTransport } from "./transport.js";
@@ -29,6 +30,7 @@ import type {
   NavigationGuard,
   NavigationView,
 } from "./navigation.js";
+import type { MapleConfig, MapleProps } from "./preferences.js";
 import type { ThemeView, ThemeWatch } from "./theme.js";
 import type { Transport } from "./transport.js";
 import type {
@@ -36,6 +38,8 @@ import type {
   CommentFilter,
   ComposerState,
   ComposerTarget,
+  Corner,
+  Detail,
   PickKind,
   PickState,
   PostedComment,
@@ -46,7 +50,7 @@ import type {
 export type ClientView = NavigationView & ThemeView;
 
 /** How the controller is built. Every field has a working default. */
-export interface MapleClientOptions {
+export interface MapleClientOptions extends MapleProps {
   readonly branch: string;
   /** Where the SDK route is mounted. Defaults to `/api/maple`. */
   readonly basePath?: string;
@@ -65,6 +69,13 @@ export interface MapleClientOptions {
   readonly view?: ClientView;
   /** Let the browser ask before a hard exit. Off: the draft is already safe. */
   readonly confirmOnUnload?: boolean;
+  /**
+   * Already resolved by `readMapleConfig`, so the query string, the viewer's
+   * stored preference and the props are read once rather than once per surface.
+   */
+  readonly config?: MapleConfig;
+  /** Which origin a preference belongs to. Defaults to the page's own. */
+  readonly origin?: string;
   /** Called after a draft was saved on the way out of the page. */
   onLeave?(reason: LeaveReason): void;
   /**
@@ -87,6 +98,14 @@ export interface MapleClient {
   load(): Promise<void>;
   setFilter(filter: CommentFilter): void;
   setShowResolved(show: boolean): void;
+  /** Presentation only, and remembered per origin. Nothing is recorded by it. */
+  setDetail(detail: Detail): void;
+  /** Snapped to a corner by the surface; remembered per origin. */
+  setPosition(position: Corner): void;
+  /** Hidden for the session. Anything arriving takes it back off again. */
+  setHidden(hidden: boolean): void;
+  /** What a link, a mark or a row asked to be looked at. Null clears it. */
+  select(id: string | null): void;
 
   arm(kind: PickKind): void;
   disarm(): void;
@@ -117,6 +136,7 @@ const UNARMED: PickState = { armed: false };
 
 interface Runtime {
   readonly options: MapleClientOptions;
+  readonly config: MapleConfig;
   readonly transport: Transport;
   readonly drafts: DraftKeeper;
   readonly listeners: Set<(state: ClientState) => void>;
@@ -143,8 +163,12 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
     load: () => load(runtime),
     setFilter: (filter) => patch(runtime, { filter }),
     setShowResolved: (showResolved) => patch(runtime, { showResolved }),
+    setDetail: (detail) => remember(runtime, { detail }),
+    setPosition: (position) => remember(runtime, { position }),
+    setHidden: (hidden) => patch(runtime, { hidden }),
+    select: (id) => patch(runtime, { selected: id, hidden: id === null && runtime.state.hidden }),
 
-    arm: (kind) => patch(runtime, { pick: { armed: true, kind } }),
+    arm: (kind) => patch(runtime, { pick: { armed: true, kind }, hidden: false }),
     disarm: () => patch(runtime, { pick: UNARMED }),
 
     openComposer: (target) => openComposer(runtime, target),
@@ -164,6 +188,7 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
 }
 
 function runtimeFor(options: MapleClientOptions): Runtime {
+  const config = options.config ?? readMapleConfig(options, storageOf(options));
   const drafts = createDraftKeeper({
     branch: options.branch,
     ...(options.storage === undefined ? {} : { storage: options.storage }),
@@ -174,6 +199,7 @@ function runtimeFor(options: MapleClientOptions): Runtime {
 
   return {
     options,
+    config,
     transport: createTransport(options),
     drafts,
     listeners: new Set(),
@@ -186,16 +212,41 @@ function runtimeFor(options: MapleClientOptions): Runtime {
       comments: [],
       visible: [],
       filter: "all",
-      showResolved: false,
+      showResolved: !config.hideResolved,
+      detail: config.detail,
+      position: config.position,
+      hidden: false,
+      selected: config.comment ?? null,
       openCount: 0,
       drafts: drafts.list(),
       composer: CLOSED,
-      pick: UNARMED,
+      pick: config.pick === undefined ? UNARMED : { armed: true, kind: config.pick },
       theme: themeFrom({}),
       user: null,
       error: null,
     }),
   };
+}
+
+/** Where a preference is kept, which is where a draft is kept. */
+function storageOf(options: MapleClientOptions) {
+  return {
+    ...(options.storage === undefined ? {} : { storage: options.storage }),
+    ...(options.origin === undefined ? {} : { origin: options.origin }),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
+  };
+}
+
+/**
+ * A preference the viewer set, in the state and in storage. Both switches are
+ * presentation: the export fence carries every field whichever one is on.
+ */
+function remember(runtime: Runtime, change: Partial<ClientState>): void {
+  patch(runtime, change);
+  writePreferences(
+    { detail: runtime.state.detail, position: runtime.state.position },
+    storageOf(runtime.options),
+  );
 }
 
 /** Recomputes everything derived, so no caller can forget to. */
@@ -296,8 +347,9 @@ function destroy(runtime: Runtime): void {
 
 /** `c` arms element picking; `Ctrl`+`C` is copy and must not reach this. */
 function onKeydown(runtime: Runtime, event: Event): void {
-  if (runtime.state.composer.open || !opensComposer(event as KeyboardEvent)) return;
-  patch(runtime, { pick: { armed: true, kind: "element" } });
+  if (runtime.state.composer.open) return;
+  if (!opensComposer(event as KeyboardEvent, runtime.config.shortcut)) return;
+  patch(runtime, { pick: { armed: true, kind: "element" }, hidden: false });
 }
 
 /** Another tab wrote. Re-read rather than trusting what is in memory here. */
@@ -314,6 +366,7 @@ async function load(runtime: Runtime): Promise<void> {
     patch(runtime, {
       phase: "ready",
       comments,
+      hidden: runtime.state.hidden && comments.length <= runtime.state.comments.length,
       drafts: runtime.drafts.list(),
       user: await whoAmI(runtime),
       error: null,
@@ -341,6 +394,7 @@ function openComposer(runtime: Runtime, target: ComposerTarget): void {
 
   patch(runtime, {
     pick: UNARMED,
+    hidden: false,
     composer: {
       open: true,
       target: named(target),
@@ -429,6 +483,7 @@ async function send(runtime: Runtime): Promise<Comment> {
       comments: [comment, ...runtime.state.comments],
       composer: CLOSED,
       drafts: runtime.drafts.list(),
+      hidden: false,
       error: null,
     });
     runtime.guard?.setDirty(false);
@@ -461,6 +516,7 @@ async function setStatus(
   const updated = await runtime.transport.setStatus(id, status, resolution);
   patch(runtime, {
     comments: runtime.state.comments.map((comment) => (comment.id === id ? updated : comment)),
+    hidden: false,
   });
   return updated;
 }

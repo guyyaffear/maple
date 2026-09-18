@@ -7,6 +7,7 @@
  * complaints without reopening anything.
  */
 
+import type { Detail } from "../client/types.js";
 import type { CommentContext, RegionContext } from "../types.js";
 
 /**
@@ -103,16 +104,41 @@ export function toCommentContext(page: PageContext): CommentContext {
  * `1440 window · 1020 content · dark · lg · dialog open`. One formatter, two
  * inputs: a freshly captured page and a comment that was stored months ago.
  */
-export function formatContext(context: PageContext | CommentContext): string {
-  const { width, contentWidth, scheme, breakpoint, regions } = badgeFields(context);
-  const parts = [
-    `${width} window`,
-    `${contentWidth} content`,
-    scheme,
-    ...(breakpoint ? [breakpoint] : []),
-    ...regions.map((region) => `${region.label ?? region.role} open`),
-  ];
+export function formatContext(
+  context: PageContext | CommentContext,
+  detail: Detail = "developer",
+): string {
+  const fields = badgeFields(context);
+  const parts = detail === "developer" ? developerBadge(fields) : defaultBadge(fields);
   return parts.join(" · ");
+}
+
+/**
+ * What a reviewer can act on. The ratio, the locale, the breakpoint and the
+ * layout width say how to reproduce it rather than what to look at.
+ */
+function defaultBadge(fields: BadgeFields): readonly string[] {
+  return [
+    `${fields.width}px wide`,
+    fields.scheme,
+    ...fields.regions.flatMap((region) => [
+      `${region.width}px covered`,
+      `${region.label ?? region.role} open`,
+    ]),
+  ];
+}
+
+/** The same page, with everything a fix might depend on left in. */
+function developerBadge(fields: BadgeFields): readonly string[] {
+  return [
+    `${fields.width} window`,
+    `${fields.contentWidth} content`,
+    fields.scheme,
+    ...(fields.breakpoint === undefined ? [] : [fields.breakpoint]),
+    `${fields.dpr}×`,
+    ...(fields.locale === undefined ? [] : [fields.locale]),
+    ...fields.regions.map((region) => `${region.label ?? region.role} open`),
+  ];
 }
 
 interface BadgeFields {
@@ -120,16 +146,21 @@ interface BadgeFields {
   readonly contentWidth: number;
   readonly scheme: "light" | "dark";
   readonly breakpoint: string | undefined;
+  readonly dpr: number;
+  readonly locale: string | undefined;
   readonly regions: readonly RegionContext[];
 }
 
 function badgeFields(context: PageContext | CommentContext): BadgeFields {
   const page = "viewport" in context ? context : undefined;
+  const stored = context as CommentContext;
   return {
-    width: page ? page.viewport.width : (context as CommentContext).viewportWidth,
-    contentWidth: page ? page.viewport.contentWidth : (context as CommentContext).contentWidth,
-    scheme: page ? page.scheme : (context as CommentContext).colorScheme,
+    width: page ? page.viewport.width : stored.viewportWidth,
+    contentWidth: page ? page.viewport.contentWidth : stored.contentWidth,
+    scheme: page ? page.scheme : stored.colorScheme,
     breakpoint: context.breakpoint,
+    dpr: page ? page.viewport.dpr : stored.devicePixelRatio,
+    locale: page ? page.locale : stored.locale,
     regions: context.regions ?? [],
   };
 }

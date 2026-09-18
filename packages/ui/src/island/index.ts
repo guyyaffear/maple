@@ -7,13 +7,14 @@
  * dealt with is the question and where it sits is a detail of one of its states.
  */
 
-export { countsFor, kindOf, numbersFor, orphanReason } from "./comments.js";
+export { countsFor, kindOf, numbersFor, orphanReason, resolutionsFor } from "./comments.js";
 export type { FilterCounts } from "./comments.js";
 export { IslandContent } from "./content.js";
 export type { IslandContentProps } from "./content.js";
-export { IslandContextError, useIsland } from "./context.js";
-export type { IslandContextValue, IslandPhase } from "./context.js";
+export { IslandContextError, reasonOf, useIsland } from "./context.js";
+export type { DragHandlers, IslandContextValue, IslandPhase, PointerEventLike } from "./context.js";
 export { islandCss } from "./css.js";
+export { DRAG_THRESHOLD_PX, DRAGGING_ATTRIBUTE, useDrag } from "./drag.js";
 export { Filters } from "./filters.js";
 export type { FiltersProps } from "./filters.js";
 export { Branch, Header, Logo } from "./header.js";
@@ -30,6 +31,10 @@ export {
   ORPHAN_LABELS,
   ORPHAN_SENTENCES,
   orphanTitle,
+  PATH_COPY,
+  RUNG_LABELS,
+  rungLabel,
+  rungTitle,
   SETTINGS_COPY,
 } from "./language.js";
 export { List } from "./list.js";
@@ -40,5 +45,7 @@ export { Settings } from "./settings.js";
 export type { SettingsProps } from "./settings.js";
 export { STAGGER_ROWS } from "./stagger.js";
 export { relativeTime } from "./time.js";
+export { Tip } from "./tip.js";
+export type { TipProps } from "./tip.js";
 export { IslandTrigger } from "./trigger.js";
 export type { IslandTriggerProps } from "./trigger.js";

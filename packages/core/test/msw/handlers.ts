@@ -10,6 +10,8 @@ import type { RequestHandler } from "msw";
 
 export { createGitHubFake, pullFor } from "./github.js";
 export type { GitHubFake } from "./github.js";
+export { createMapleFake, MAPLE_BASE, MAPLE_ORIGIN, mapleUnavailable } from "./maple.js";
+export type { MapleFake, MapleFakeOptions } from "./maple.js";
 
 /** Handlers loaded by default. Suites add their own on top. */
 export const handlers: RequestHandler[] = [];

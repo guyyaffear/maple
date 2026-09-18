@@ -5,6 +5,7 @@ export default defineConfig({
     "src/index.ts",
     "src/anchor/index.ts",
     "src/auth/index.ts",
+    "src/client/index.ts",
     "src/connectors/index.ts",
     "src/export/index.ts",
     "src/loader/index.ts",

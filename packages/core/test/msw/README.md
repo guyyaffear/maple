@@ -11,6 +11,7 @@ One file per upstream, named after it:
 ```
 msw/
   github.ts       handlers for the GitHub REST and GraphQL calls
+  maple.ts        handlers for Maple's own route, as the client calls it
   handlers.ts     the array every test server starts from
   server.ts       setupServer() for Node tests
 ```
@@ -32,6 +33,11 @@ always answers with the same page cannot express read-your-writes — which is
 exactly the property the GitHub connector claims. `createGitHubFake()` keeps
 comments in a map, assigns ids, and emits GitHub's `Link` header when a page is
 not the last, so pagination is exercised rather than asserted.
+
+`maple.ts` is a fake for the same reason: `@maple-kit/core/client` posts a
+comment and expects to see it in the next listing, and patches a status and
+expects it to stay patched. It pages when a suite asks it to, so the client's
+cursor following is exercised rather than assumed.
 
 Each suite creates its own fake and resets it between tests. A shared one leaks
 state and turns a real failure into a flake.

@@ -1,0 +1,305 @@
+import { http, HttpResponse } from "msw";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { createMapleClient } from "../src/client/index.js";
+import { storedComment } from "../src/testing/fixtures.js";
+import { createMapleFake, MAPLE_BASE } from "./msw/maple.js";
+import { createTestServer, useTestServer } from "./msw/server.js";
+
+import type { ComposerTarget, MapleClient, MapleClientOptions } from "../src/client/index.js";
+import type { MapleFake } from "./msw/maple.js";
+
+const NOW = Date.parse("2026-09-18T10:00:00.000Z");
+const TARGET: ComposerTarget = {
+  kind: "element",
+  anchor: { component: "YieldCard" },
+  label: "the Yield card",
+};
+
+const server = createTestServer();
+useTestServer(server, { beforeAll, afterEach, afterAll });
+
+let fake: MapleFake;
+
+function memoryStorage(): Storage {
+  const held = new Map<string, string>();
+  return {
+    get length() {
+      return held.size;
+    },
+    clear: () => held.clear(),
+    getItem: (key: string) => held.get(key) ?? null,
+    key: (index: number) => [...held.keys()][index] ?? null,
+    removeItem: (key: string) => {
+      held.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      held.set(key, value);
+    },
+  };
+}
+
+function client(overrides: Partial<MapleClientOptions> = {}): MapleClient {
+  return createMapleClient({
+    branch: "feat/x",
+    basePath: MAPLE_BASE,
+    storage: memoryStorage(),
+    now: () => NOW,
+    debounceMs: 0,
+    ...overrides,
+  });
+}
+
+beforeEach(() => {
+  fake = createMapleFake();
+  server.use(...fake.handlers);
+});
+
+describe("loading a branch", () => {
+  it("ends ready, with the comments and the reviewer the route named", async () => {
+    fake.seed(storedComment({ id: "c_1" }), storedComment({ id: "c_2", status: "resolved" }));
+    const maple = client();
+    await maple.load();
+
+    expect(maple.getState().phase).toBe("ready");
+    expect(maple.getState().comments).toHaveLength(2);
+    expect(maple.getState().user).toMatchObject({ id: "u_7" });
+  });
+
+  it("offers the guest flow when the route has no session for this request", async () => {
+    server.use(http.get(`${MAPLE_BASE}/me`, () => HttpResponse.json({ user: null })));
+    const maple = client();
+    await maple.load();
+
+    expect(maple.getState().user).toBeNull();
+    expect(maple.getState().phase).toBe("ready");
+  });
+
+  it("stays loadable when only the identity call fails", async () => {
+    server.use(http.get(`${MAPLE_BASE}/me`, () => HttpResponse.json({}, { status: 500 })));
+    const maple = client();
+    await maple.load();
+
+    expect(maple.getState().phase).toBe("ready");
+    expect(maple.getState().user).toBeNull();
+  });
+
+  it("reports a failure in words rather than throwing at the binding", async () => {
+    server.use(
+      http.get(`${MAPLE_BASE}/comments`, () =>
+        HttpResponse.json({ error: "Something went wrong" }, { status: 500 }),
+      ),
+    );
+    const maple = client();
+    await maple.load();
+
+    expect(maple.getState().phase).toBe("error");
+    expect(maple.getState().error).toBe("Something went wrong");
+  });
+
+  it("tells every subscriber, and stops telling one that unsubscribed", async () => {
+    const maple = client();
+    const seen = vi.fn();
+    maple.subscribe(seen)();
+    const kept = vi.fn();
+    maple.subscribe(kept);
+
+    await maple.load();
+    expect(seen).not.toHaveBeenCalled();
+    expect(kept).toHaveBeenCalled();
+  });
+});
+
+describe("the filters and the count", () => {
+  beforeEach(() => {
+    fake.seed(
+      storedComment({ id: "c_1", status: "open" }),
+      storedComment({ id: "c_2", status: "orphaned" }),
+      storedComment({ id: "c_3", status: "resolved" }),
+    );
+  });
+
+  it("counts everything not resolved, unpinned included", async () => {
+    const maple = client();
+    await maple.load();
+
+    expect(maple.getState().openCount).toBe(2);
+  });
+
+  it("hides resolved until the setting is turned on", async () => {
+    const maple = client();
+    await maple.load();
+    expect(maple.getState().visible.map((found) => found.id)).toEqual(["c_1", "c_2"]);
+
+    maple.setShowResolved(true);
+    expect(maple.getState().visible).toHaveLength(3);
+  });
+
+  it("recomputes what is visible the moment the filter changes", async () => {
+    const maple = client();
+    await maple.load();
+    maple.setFilter("unpinned");
+
+    expect(maple.getState().visible.map((found) => found.id)).toEqual(["c_2"]);
+  });
+});
+
+describe("arming a pick", () => {
+  it("remembers which of the three is armed, and forgets it on disarm", () => {
+    const maple = client();
+    maple.arm("region");
+    expect(maple.getState().pick).toEqual({ armed: true, kind: "region" });
+
+    maple.disarm();
+    expect(maple.getState().pick).toEqual({ armed: false });
+  });
+
+  it("disarms when a composer opens, so nothing stays armed behind it", () => {
+    const maple = client();
+    maple.arm("element");
+    maple.openComposer(TARGET);
+
+    expect(maple.getState().pick.armed).toBe(false);
+  });
+});
+
+describe("the composer", () => {
+  it("opens clean on a target it has no draft for", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+
+    expect(maple.getState().composer).toMatchObject({ open: true, body: "", dirty: false });
+    expect(maple.getState().composer.target?.label).toBe("the Yield card");
+  });
+
+  it("names the target through the one labelling rule when nobody passed a name", () => {
+    const maple = client();
+    maple.openComposer({ kind: "element", anchor: { component: "YieldCard" } });
+
+    expect(maple.getState().composer.target?.label).toBe("Yield card");
+  });
+
+  it("keeps a label the caller resolved from the element itself", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+
+    expect(maple.getState().composer.target?.label).toBe("the Yield card");
+  });
+
+  it("becomes dirty on the first keystroke and keeps the draft with it", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("The spacing is off.");
+
+    expect(maple.getState().composer.dirty).toBe(true);
+    expect(maple.getState().drafts.map((entry) => entry.body)).toEqual(["The spacing is off."]);
+  });
+
+  it("keeps the draft when it is closed, because only a send clears one", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("Half a thought");
+    maple.closeComposer();
+
+    expect(maple.getState().composer.open).toBe(false);
+    expect(maple.getState().drafts).toHaveLength(1);
+  });
+
+  it("comes back to the same draft when the same target is picked again", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("Half a thought");
+    maple.closeComposer();
+    maple.openComposer(TARGET);
+
+    expect(maple.getState().composer.body).toBe("Half a thought");
+    expect(maple.getState().drafts).toHaveLength(1);
+  });
+
+  it("resumes a draft the reviewer picked out of the list", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("Half a thought");
+    maple.closeComposer();
+
+    const [draft] = maple.getState().drafts;
+    maple.resumeDraft(draft!.id);
+    expect(maple.getState().composer).toMatchObject({ open: true, body: "Half a thought" });
+  });
+
+  it("carries attachments with the draft and lets one be taken off again", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.attach({ connector: "github", key: "k_1", contentType: "image/png" });
+    maple.attach({ connector: "github", key: "k_2", contentType: "image/png" });
+    maple.detach("k_1");
+
+    expect(maple.getState().composer.attachments.map((ref) => ref.key)).toEqual(["k_2"]);
+    expect(maple.getState().drafts[0]?.attachments).toHaveLength(1);
+  });
+
+  it("throws away a draft when the reviewer discards it", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("Never mind");
+    maple.discardDraft();
+
+    expect(maple.getState().drafts).toEqual([]);
+    expect(maple.getState().composer.dirty).toBe(false);
+  });
+});
+
+describe("sending", () => {
+  it("posts, keeps the comment, and clears the draft it came from", async () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("The spacing is off.");
+    const comment = await maple.send();
+
+    expect(comment.body).toBe("The spacing is off.");
+    expect(maple.getState().comments.map((found) => found.id)).toEqual([comment.id]);
+    expect(maple.getState().drafts).toEqual([]);
+    expect(maple.getState().composer).toMatchObject({ open: false, dirty: false });
+  });
+
+  it("refuses an empty body rather than posting a blank comment", async () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("   ");
+
+    await expect(maple.send()).rejects.toThrow("A comment needs a body");
+  });
+
+  it("refuses when there is no composer at all", async () => {
+    await expect(client().send()).rejects.toThrow("There is no composer");
+  });
+
+  it("keeps the draft and says what happened when the route refuses it", async () => {
+    server.use(
+      http.post(`${MAPLE_BASE}/comments`, () =>
+        HttpResponse.json({ error: "The request was not valid for this store" }, { status: 400 }),
+      ),
+    );
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("The spacing is off.");
+
+    await expect(maple.send()).rejects.toThrow("not valid for this store");
+    expect(maple.getState().drafts).toHaveLength(1);
+    expect(maple.getState().composer.sending).toBe(false);
+    expect(maple.getState().error).toBe("The request was not valid for this store");
+  });
+});
+
+describe("resolving", () => {
+  it("replaces the comment in place with what the route stored", async () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+    maple.setBody("The spacing is off.");
+    const comment = await maple.send();
+
+    await maple.setStatus(comment.id, "resolved", { sha: "abc123", note: "Fixed the gap." });
+    expect(maple.getState().comments[0]?.status).toBe("resolved");
+    expect(maple.getState().openCount).toBe(0);
+  });
+});

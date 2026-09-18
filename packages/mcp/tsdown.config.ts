@@ -8,4 +8,5 @@ export default defineConfig({
   unbundle: true,
   fixedExtension: false,
   target: "node24",
+  outputOptions: { comments: { annotation: true, jsdoc: false, legal: true } },
 });

@@ -1,4 +1,4 @@
-/**
+/** @preserve
  * Finding a quoted passage again in text that has since changed.
  *
  * Ported from the Hypothesis client's `match-quote.ts` (BSD-2-Clause), the

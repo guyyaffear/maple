@@ -14,4 +14,5 @@ export default defineConfig({
   unbundle: true,
   fixedExtension: false,
   target: "es2023",
+  outputOptions: { comments: { annotation: true, jsdoc: false, legal: true } },
 });

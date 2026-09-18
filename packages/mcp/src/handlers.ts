@@ -100,6 +100,10 @@ export function createToolHandlers(options: HandlerOptions): ToolHandlers {
       }
     },
 
+    /**
+     * The commit and the note travel with the status. A store that cannot keep
+     * them still records the status rather than refusing the call.
+     */
     async resolveComment(args): Promise<Comment> {
       const setStatus = options.store.setStatus?.bind(options.store);
       if (!setStatus) {
@@ -107,7 +111,11 @@ export function createToolHandlers(options: HandlerOptions): ToolHandlers {
           `The ${options.store.name} store cannot change a status; resolve the comment where it lives.`,
         );
       }
-      return setStatus(args.id, "resolved");
+      return setStatus(args.id, "resolved", {
+        sha: args.sha,
+        ...(args.note === undefined ? {} : { note: args.note }),
+        at: new Date(now()).toISOString(),
+      });
     },
 
     async getCommentContext(args): Promise<CommentContext> {

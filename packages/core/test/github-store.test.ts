@@ -7,7 +7,7 @@ import { sampleComment } from "../src/testing/fixtures.js";
 import { createGitHubFake, pullFor } from "./msw/github.js";
 import { createTestServer, useTestServer } from "./msw/server.js";
 
-import type { Comment, CommentStatus } from "../src/types.js";
+import type { Comment, CommentResolution, CommentStatus } from "../src/types.js";
 
 const API = "https://api.github.com";
 const github = createGitHubFake();
@@ -20,9 +20,13 @@ function store() {
 }
 
 /** `setStatus` is optional on the contract; this connector always has it. */
-function setStatus(id: string, status: CommentStatus): Promise<Comment> {
+function setStatus(
+  id: string,
+  status: CommentStatus,
+  resolution?: CommentResolution,
+): Promise<Comment> {
   const connector = store();
-  return connector.setStatus!(id, status);
+  return connector.setStatus!(id, status, resolution);
 }
 
 afterEach(() => github.reset());
@@ -134,6 +138,24 @@ describe("changing a status", () => {
     const [read] = (await store().list({ branch })).comments;
     expect(read?.status).toBe("resolved");
     expect(github.commentsOn(pullFor(branch))).toHaveLength(1);
+  });
+
+  it("writes the resolution into the fence, so a re-read still has the commit", async () => {
+    const branch = "feature/resolution";
+    const stored = await store().append(sampleComment({ branch }));
+    const resolution: CommentResolution = {
+      sha: "9f1c0de",
+      note: "Matched the card's padding.",
+      at: "2026-02-03T09:15:00.000Z",
+    };
+
+    expect((await setStatus(stored.id, "resolved", resolution)).resolution).toEqual(resolution);
+
+    const [posted] = github.commentsOn(pullFor(branch));
+    expect(parseFence(posted!.body)?.comments[0]?.resolution).toEqual(resolution);
+
+    const [read] = (await store().list({ branch })).comments;
+    expect(read?.resolution).toEqual(resolution);
   });
 
   it("rejects an id that is not one of its own", async () => {

@@ -9,7 +9,7 @@
 
 import { exportMarkdown, parseFence } from "../export/markdown.js";
 
-import type { Comment, CommentStatus, NewComment } from "../types.js";
+import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
 import type { CommentPage, ListQuery, StoreConnector } from "./types.js";
 
 /** Everything the connector needs to reach a repository. */
@@ -39,7 +39,7 @@ export function githubStore(options: GitHubStoreOptions): StoreConnector {
     name: "github",
     list: (query) => list(api, query),
     append: (comment) => append(api, comment),
-    setStatus: (id, status) => setStatus(api, id, status),
+    setStatus: (id, status, resolution) => setStatus(api, id, status, resolution),
   };
 }
 
@@ -171,7 +171,12 @@ async function append(api: Client, comment: NewComment): Promise<Comment> {
   return stored;
 }
 
-async function setStatus(api: Client, id: string, status: CommentStatus): Promise<Comment> {
+async function setStatus(
+  api: Client,
+  id: string,
+  status: CommentStatus,
+  resolution?: CommentResolution,
+): Promise<Comment> {
   const located = ID.exec(id);
   if (!located) throw new Error(`Not a GitHub comment id: ${id}`);
 
@@ -183,7 +188,7 @@ async function setStatus(api: Client, id: string, status: CommentStatus): Promis
   const stored = parseFence(body.body)?.comments[0];
   if (!stored) throw new Error(`Comment ${id} carries no Maple fence.`);
 
-  const updated: Comment = { ...stored, id, status };
+  const updated: Comment = { ...stored, id, status, ...(resolution ? { resolution } : {}) };
   await patch(api, issueId, bodyFor(updated));
   return updated;
 }

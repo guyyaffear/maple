@@ -87,10 +87,6 @@ jobs, one approval and signed commits.
   example does not have one checked in yet.
 - **The CLI's comment commands.** `maple connectors` is all that exists.
   `list|inspect|reply|resolve|open` come with the TUI decision.
-- **`resolve_comment` cannot record its commit.** The store contract has
-  nowhere to put a resolution's `sha` and `note`, so they are returned to the
-  agent and lost on write. Closing it means a field on `Comment` and a richer
-  `setStatus`, which belongs with the gate.
 - **Eval cases.** Still no AI path to score.
 
 ## What is now known that was not
@@ -123,5 +119,3 @@ In dependency order:
    writing the GitHub one keeps the check-run API out of core.
 4. **The check run itself**, held at `in_progress` while comments are open, with
    `merge_group` auto-passing and `integration_id` pinned.
-5. **A resolution record on `Comment`**, so `resolve_comment` can keep the
-   commit that addressed it.

@@ -150,6 +150,19 @@ describe("the byte budget", () => {
     expect(result.reduced).toEqual(["quote-context", "selector", "context", "quote"]);
   });
 
+  it("keeps a resolution at the smallest size, so the gate can still read it", () => {
+    const resolution = {
+      sha: "9f1c0de",
+      note: "Matched the padding.",
+      at: "2026-02-03T09:15:00.000Z",
+    };
+    const comments = many(400).map((comment) => ({ ...comment, resolution }));
+    const result = exportMarkdown(comments, { branch: BRANCH });
+
+    expect(result.reduced).toEqual(["quote-context", "selector", "context", "quote"]);
+    expect(parseFence(result.markdown)?.comments[0]?.resolution).toEqual(resolution);
+  });
+
   it("never drops a comment, and says so when it cannot fit", () => {
     const result = exportMarkdown(many(400), { branch: BRANCH });
     expect(result.overBudget).toBe(true);

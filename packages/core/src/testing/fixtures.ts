@@ -5,10 +5,12 @@ export const SAMPLE_CONTEXT: CommentContext = {
   url: "https://preview.example.com/dashboard",
   viewportWidth: 1440,
   viewportHeight: 900,
+  contentWidth: 1020,
   devicePixelRatio: 2,
   colorScheme: "light",
   locale: "en-GB",
   breakpoint: "lg",
+  regions: [{ role: "complementary", label: "Copilot", width: 420 }],
 };
 
 /** Builds a comment ready to append, with `overrides` merged over the defaults. */

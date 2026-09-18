@@ -8,6 +8,7 @@
  * `document` or reads storage; building a string does none of those.
  */
 
+import { composerCss } from "./composer/css.js";
 import {
   COLOR_TOKENS,
   MOTION_TOKENS,
@@ -206,6 +207,8 @@ h3 {
     --mk-composer-r: var(--mk-r) var(--mk-r) 0 0;
   }
 }
+
+${composerCss()}
 `.trim();
 }
 

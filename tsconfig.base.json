@@ -33,6 +33,12 @@
       "@maple-kit/core/tagger": ["./packages/core/src/tagger/index.ts"],
       "@maple-kit/core/testing": ["./packages/core/src/testing/index.ts"],
       "@maple-kit/core/vite": ["./packages/core/src/vite/index.ts"],
+      "@maple-kit/react": ["./packages/react/src/index.ts"],
+      "@maple-kit/ui": ["./packages/ui/src/index.ts"],
+      "@maple-kit/ui/composer": ["./packages/ui/src/composer/index.ts"],
+      "@maple-kit/ui/icons": ["./packages/ui/src/icons/index.ts"],
+      "@maple-kit/ui/island": ["./packages/ui/src/island/index.ts"],
+      "@maple-kit/ui/marks": ["./packages/ui/src/marks/index.ts"],
       "@maple-kit/cli": ["./packages/cli/src/index.ts"],
       "@maple-kit/mcp": ["./packages/mcp/src/index.ts"]
     }

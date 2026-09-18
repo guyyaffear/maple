@@ -15,6 +15,9 @@ function here(path: string): string {
 const alias = [
   { find: /^@maple-kit\/core$/, replacement: here("./packages/core/src/index.ts") },
   { find: /^@maple-kit\/core\/(.*)$/, replacement: here("./packages/core/src/$1/index.ts") },
+  { find: /^@maple-kit\/react$/, replacement: here("./packages/react/src/index.ts") },
+  { find: /^@maple-kit\/ui$/, replacement: here("./packages/ui/src/index.ts") },
+  { find: /^@maple-kit\/ui\/(.*)$/, replacement: here("./packages/ui/src/$1/index.ts") },
 ];
 
 export default defineConfig({

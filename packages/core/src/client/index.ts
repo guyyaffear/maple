@@ -17,6 +17,8 @@ export type {
   NavigationGuardOptions,
   NavigationView,
 } from "./navigation.js";
+export { COMMENT_SHORTCUT, isEditable, opensComposer } from "./shortcut.js";
+export type { ShortcutEvent } from "./shortcut.js";
 export { hostScheme, readThemeSignals, relativeLuminance, themeFrom, watchTheme } from "./theme.js";
 export type { ThemeSignals, ThemeView, ThemeWatch, ThemeWatchOptions } from "./theme.js";
 export { COMMENT_FILTERS } from "./types.js";

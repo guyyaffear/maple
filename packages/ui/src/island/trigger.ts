@@ -47,7 +47,7 @@ export const IslandTrigger = /** @__PURE__ */ forwardRef<HTMLButtonElement, Isla
         ref,
       },
       children ?? [
-        renderPart(Leaf, false, { key: "leaf", size: 15, className: "mk-leaf" }),
+        renderPart(Leaf, false, { key: "leaf", size: 15, className: "mk-logo-leaf" }),
         renderPart("span", false, { key: "count", className: "mk-num" }, openLabel(openCount)),
       ],
     );

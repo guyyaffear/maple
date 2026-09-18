@@ -210,9 +210,9 @@ h3 {
   }
 }
 
-${marksCss()}
 ${islandCss()}
 ${composerCss()}
+${marksCss()}
 `.trim();
 }
 

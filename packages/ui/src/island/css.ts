@@ -68,14 +68,16 @@ function shell(): string {
   color: var(--mk-accent);
 }
 
-.mk-leaf {
+.mk-logo-leaf {
   flex: none;
   display: block;
   color: var(--mk-accent);
   filter: saturate(0.9);
 }
 
-.mk-leaf path {
+/* The logo's leaf is decorative and monochrome. Styling the shared .mk-leaf
+   here would outrank the status colours a real mark paints on its own paths. */
+.mk-logo-leaf path {
   fill: currentColor;
   stroke: currentColor;
   stroke-width: 1.5;

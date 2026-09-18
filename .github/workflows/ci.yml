@@ -73,6 +73,31 @@ jobs:
             (cd "$pkg" && pnpm dlx @arethetypeswrong/cli --pack . --profile esm-only)
           done
 
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: No registry mirror URLs in the lockfile
+        # A contributor installing behind a corporate registry mirror can get
+        # that mirror's tarball URLs written into the lockfile. They resolve on
+        # that machine and nowhere else, and integrity hashes verify content
+        # regardless of host, so nothing else would catch it.
+        #
+        # pnpm records only integrity hashes for registry packages, so any URL
+        # here is either a deliberate git/tarball dependency or a leaked mirror.
+        # Both deserve a human deciding, which is why this fails rather than
+        # rewriting.
+        run: |
+          found=$(grep -noE 'https?://[^ "'"'"',}]+' pnpm-lock.yaml \
+                  | grep -vE 'https://registry\.npmjs\.org/' || true)
+          if [ -n "$found" ]; then
+            echo "::error::pnpm-lock.yaml contains non-registry URLs:"
+            echo "$found"
+            echo "Re-resolve against the public registry, or justify the dependency in the commit body."
+            exit 1
+          fi
+          echo "No URLs in pnpm-lock.yaml."
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

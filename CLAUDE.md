@@ -107,7 +107,13 @@ Conventional commits, one concern per commit, and the message explains **why**.
 Every commit is signed off (`git commit -s`); there is no CLA.
 
 Write every commit as though the repository were already public, because it will
-be, and the history is not rewritten before that happens.
+be, and the history is not rewritten before that happens. That includes the
+author address: this repository requires a local `user.email` so the identity is
+chosen rather than inherited from a global config.
+
+`pnpm-lock.yaml` should contain no URLs. A registry mirror can write its own
+tarball URLs into it, and they resolve on exactly one machine; a hook and a CI
+job both check.
 
 ## Before opening a pull request
 

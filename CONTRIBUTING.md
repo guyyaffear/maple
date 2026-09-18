@@ -23,6 +23,20 @@ pnpm test:browser
 
 ## Sign your commits
 
+### Your commit identity
+
+Set one for this repository before your first commit:
+
+```
+git config user.name "your-name"
+git config user.email "you@example.com"
+```
+
+A hook requires it. Git otherwise falls back to your global identity, which is
+how an address someone did not mean to publish ends up in a public history —
+and history here is not rewritten. GitHub's `@users.noreply.github.com` address
+works if you would rather not publish a real one.
+
 Every commit needs a Developer Certificate of Origin sign-off:
 
 ```
@@ -61,6 +75,17 @@ Maple takes very few, on purpose. Before adding one:
 
 `.npmrc` pins exact versions and refuses install scripts; `pnpm-workspace.yaml`
 refuses anything published in the last three days.
+
+### The lockfile
+
+`pnpm-lock.yaml` should contain no URLs at all — pnpm records integrity hashes,
+which verify content whatever host served it.
+
+If you install behind a corporate registry mirror, check the lockfile diff
+before committing. A mirror's tarball URLs resolve on your machine and nowhere
+else, and because the integrity hashes still validate, nothing downstream would
+notice until someone else's install failed. A hook and a CI job both check for
+this.
 
 ## Adding a connector
 

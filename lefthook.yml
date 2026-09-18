@@ -20,6 +20,25 @@ pre-commit:
       run: pnpm exec prettier --write {staged_files}
       stage_fixed: true
 
+    - name: lockfile-has-no-mirror-urls
+      glob: "pnpm-lock.yaml"
+      # Installing behind a registry mirror can write that mirror's URLs into
+      # the lockfile. They work on one machine and nowhere else.
+      run: |
+        grep -qoE 'https?://' pnpm-lock.yaml \
+          && { echo "pnpm-lock.yaml contains a URL. Re-resolve against the public registry."; exit 1; } \
+          || true
+
+    - name: commit-identity
+      # Git falls back to the global identity when a repository sets none, which
+      # is how a work address ends up in a history meant to be published. This
+      # asks only that the identity be chosen deliberately, not which one it is.
+      run: |
+        git config --local user.email >/dev/null 2>&1 \
+          || { echo "No repository-local commit identity is set. Choose the address you want published:"; \
+               echo "  git config user.name  '<name>'"; \
+               echo "  git config user.email '<email>'"; exit 1; }
+
 commit-msg:
   jobs:
     - name: conventional-commit

@@ -22,6 +22,9 @@ export const NAME_ATTRIBUTE = `${ATTRIBUTE_PREFIX}name`;
 /** Attribute an application sets itself to give a node a logical identity. */
 export const KEY_ATTRIBUTE = `${ATTRIBUTE_PREFIX}key`;
 
+/** Attribute an application sets itself to name a node in a reviewer's words. */
+export const LABEL_ATTRIBUTE = `${ATTRIBUTE_PREFIX}label`;
+
 /** Where a JSX element is written in the source that produced it. */
 export interface SourceLocation {
   /** Repository-relative, POSIX-separated path. */

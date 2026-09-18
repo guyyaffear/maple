@@ -21,6 +21,8 @@ export { COMMENT_SHORTCUT, isEditable, opensComposer } from "./shortcut.js";
 export type { ShortcutEvent } from "./shortcut.js";
 export { hostScheme, readThemeSignals, relativeLuminance, themeFrom, watchTheme } from "./theme.js";
 export type { ThemeSignals, ThemeView, ThemeWatch, ThemeWatchOptions } from "./theme.js";
+export { createTransport, DEFAULT_BASE_PATH, MapleRequestError } from "./transport.js";
+export type { Transport, TransportOptions } from "./transport.js";
 export { COMMENT_FILTERS } from "./types.js";
 export type {
   ClientState,

@@ -1,0 +1,94 @@
+/**
+ * The Maple route, faked.
+ *
+ * The client reads its own route back after writing to it — a comment it posts
+ * has to appear in the list, and a status it patches has to stay patched — so
+ * this keeps comments in an array rather than answering with a fixed page.
+ * Each suite creates its own; a shared one turns a real failure into a flake.
+ */
+
+import { http, HttpResponse } from "msw";
+
+import type { Comment, CommentStatus, MapleUser, NewComment } from "../../src/types.js";
+import type { RequestHandler } from "msw";
+
+/** The origin a test's route is mounted on. */
+export const MAPLE_ORIGIN = "https://preview.example.com";
+
+/** The base path the client is pointed at in a test. */
+export const MAPLE_BASE = `${MAPLE_ORIGIN}/api/maple`;
+
+/** A running fake of the route. */
+export interface MapleFake {
+  readonly handlers: RequestHandler[];
+  /** Everything posted so far, newest last. */
+  comments(): readonly Comment[];
+  seed(...comments: Comment[]): void;
+}
+
+/** How the fake answers `GET /me`. */
+export interface MapleFakeOptions {
+  /** Null answers with no session, which is the guest flow. */
+  readonly user?: MapleUser | null;
+  /** Hand back one page at a time, so cursor following is exercised. */
+  readonly pageSize?: number;
+}
+
+/** Builds the fake. */
+export function createMapleFake(options: MapleFakeOptions = {}): MapleFake {
+  const stored: Comment[] = [];
+  const user = options.user === undefined ? { id: "u_7", name: "Reviewer" } : options.user;
+  let next = 0;
+
+  return {
+    comments: () => stored,
+    seed: (...comments) => stored.push(...comments),
+    handlers: [
+      http.get(`${MAPLE_BASE}/comments`, ({ request }) => page(stored, request, options.pageSize)),
+      http.post(`${MAPLE_BASE}/comments`, async ({ request }) => {
+        const posted = (await request.json()) as NewComment;
+        next += 1;
+        const comment = stored[stored.push(appended(posted, next, user)) - 1]!;
+        return HttpResponse.json(comment, { status: 201 });
+      }),
+      http.patch(`${MAPLE_BASE}/comments/:id`, async ({ params, request }) => {
+        const change = (await request.json()) as { status: CommentStatus };
+        const found = stored.findIndex((comment) => comment.id === params["id"]);
+        if (found < 0) return HttpResponse.json({ error: "Not found" }, { status: 404 });
+
+        stored[found] = { ...stored[found]!, status: change.status };
+        return HttpResponse.json(stored[found]);
+      }),
+      http.get(`${MAPLE_BASE}/me`, () => HttpResponse.json({ user })),
+    ],
+  };
+}
+
+/** The route's own 500, which says nothing about the store behind it. */
+export function mapleUnavailable(): RequestHandler {
+  return http.get(`${MAPLE_BASE}/comments`, () =>
+    HttpResponse.json({ error: "Something went wrong" }, { status: 500 }),
+  );
+}
+
+/** The author is the route's to assign; a posted one is ignored here too. */
+function appended(posted: NewComment, id: number, user: MapleUser | null): Comment {
+  return {
+    ...posted,
+    id: `c_${id}`,
+    status: "open",
+    author: user
+      ? { id: user.id, name: user.name, provenance: "server", colorSlot: 3 }
+      : { id: "guest", name: "Guest", provenance: "guest" },
+  };
+}
+
+function page(stored: readonly Comment[], request: Request, size: number | undefined): Response {
+  const from = Number(new URL(request.url).searchParams.get("cursor") ?? "0");
+  const to = size === undefined ? stored.length : Math.min(from + size, stored.length);
+
+  return HttpResponse.json({
+    comments: stored.slice(from, to),
+    ...(to < stored.length ? { cursor: String(to) } : {}),
+  });
+}

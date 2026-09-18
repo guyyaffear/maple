@@ -33,6 +33,12 @@ CSSOM string APIs are not CSP-checked. Positions are pinned with
 `createOverlayStyleSheet` in `@maple-kit/core/overlay` is the only way styles
 enter the overlay, which keeps the rule enforceable by reading one function.
 
+The overlay's own styles are a string constant rather than a CSS file behind a
+loader: `buildOverlayCss` in `@maple-kit/ui` composes it from the token table
+and `Maple.Root` adopts it once. So the second half of the rule is enforceable
+by reading a second function, and `packages/ui` has a test that fails if
+anything in it reaches for `cssText`, a worker, storage or `document`.
+
 ### Blob workers die under `strict-dynamic`
 
 **No workers in v1.** Screenshots are compressed on the server.

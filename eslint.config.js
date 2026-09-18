@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import prettier from "eslint-config-prettier/flat";
 import maple from "eslint-plugin-maple";
 import perfectionist from "eslint-plugin-perfectionist";
+import reactHooks from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import unusedImports from "eslint-plugin-unused-imports";
 import globals from "globals";
@@ -86,6 +87,21 @@ export default tseslint.config(
         "error",
         { patterns: [{ group: ["effect", "effect/*", "@effect/*"], message: EFFECT_IS_INTERNAL }] },
       ],
+    },
+  },
+
+  {
+    // The two packages that render, and their source rather than their tests:
+    // a test probe reassigns a module variable on purpose to observe a render.
+    files: ["packages/react/src/**/*.{ts,tsx}", "packages/ui/src/**/*.{ts,tsx}"],
+    extends: [reactHooks.configs.flat.recommended],
+    rules: {
+      // A missing dependency ships as a stale closure, which is a bug a review
+      // does not catch. CI runs `eslint .`, where a warning is invisible.
+      "react-hooks/exhaustive-deps": "error",
+      // These packages call `createElement` rather than writing JSX, and the
+      // rule reads every call taking a `ref` key as a function reading it.
+      "react-hooks/refs": "off",
     },
   },
 

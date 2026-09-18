@@ -1,4 +1,4 @@
-/**
+/** @preserve
  * Approximate substring search: every place a pattern occurs in a text within
  * a budget of single-character edits.
  *

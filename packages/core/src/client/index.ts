@@ -10,6 +10,13 @@
 export { createDraftKeeper, DRAFT_DEBOUNCE_MS, DRAFT_LIFETIME_MS, draftIdFor } from "./drafts.js";
 export type { DraftKeeper, DraftKeeperOptions } from "./drafts.js";
 export { matchesFilter, openCount, visibleComments } from "./filters.js";
+export { createNavigationGuard } from "./navigation.js";
+export type {
+  LeaveReason,
+  NavigationGuard,
+  NavigationGuardOptions,
+  NavigationView,
+} from "./navigation.js";
 export { hostScheme, readThemeSignals, relativeLuminance, themeFrom, watchTheme } from "./theme.js";
 export type { ThemeSignals, ThemeView, ThemeWatch, ThemeWatchOptions } from "./theme.js";
 export { COMMENT_FILTERS } from "./types.js";

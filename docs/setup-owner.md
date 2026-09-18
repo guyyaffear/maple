@@ -91,12 +91,13 @@ Filling the form by hand instead:
    - Enable **Expire user authorisation tokens**.
    - Leave **Request user authorisation (OAuth) during installation** off.
 5. Permissions — **Repository**:
-   | Permission    | Access         | Why                                                    |
-   | ------------- | -------------- | ------------------------------------------------------ |
-   | Checks        | Read and write | The `maple/visual-review` check run is the merge gate. |
-   | Pull requests | Read and write | Posting and updating the sticky comment.               |
-   | Contents      | Read-only      | Reading the commit a comment was anchored against.     |
-   | Metadata      | Read-only      | Mandatory.                                             |
+   | Permission    | Access         | Why                                                                                                                             |
+   | ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+   | Checks        | Read and write | The `maple/visual-review` check run is the merge gate.                                                                          |
+   | Pull requests | Read and write | Posting and updating the sticky comment.                                                                                        |
+   | Contents      | Read-only      | Reading the commit a comment was anchored against.                                                                              |
+   | Merge queues  | Read-only      | Required to subscribe to `merge_group` at all. Without it GitHub rejects the event and a queued merge hangs instead of passing. |
+   | Metadata      | Read-only      | Mandatory.                                                                                                                      |
 6. **Where can this app be installed?** Any account, so other organisations can
    use the gate.
 7. Create the app, then:

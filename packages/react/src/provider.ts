@@ -65,6 +65,7 @@ function useClient(props: MapleProviderProps): MapleClient {
     return () => built.destroy();
     // Only the controller: everything else here is read once, on mount, so
     // that a changed prop never tears down a started controller.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the omission above is the point.
   }, [built]);
 
   return props.client ?? asBuilt(built);

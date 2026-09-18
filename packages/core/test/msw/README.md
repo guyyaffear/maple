@@ -26,5 +26,7 @@ msw/
 
 ## Status
 
-Empty. Maple makes no network calls yet, so msw is not a dependency: it is
-added with the first handler, not before.
+The harness is in place and `msw-harness.test.ts` asserts its two guarantees: a
+declared handler answers, and an unmocked request fails the test. `handlers.ts`
+is empty because Maple makes no network calls yet; the first connector adds its
+upstream there.

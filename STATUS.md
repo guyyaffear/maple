@@ -92,8 +92,9 @@ Knowing what was skipped on purpose is worth as much as knowing what landed.
 
 - **The overlay.** `@maplekit/core/overlay` is an entrypoint, two constraints
   and one function. There is no UI.
-- **msw.** Maple makes no network calls yet. `test/msw/README.md` fixes the
-  conventions; the dependency arrives with the first handler.
+- **msw handlers.** The harness is wired and tested — `createTestServer` fails
+  any request nobody mocked — but `handlers.ts` is empty, because Maple makes no
+  network calls yet. The first connector fills it.
 - **evalite.** No AI code means no eval cases. `evals/` holds the config and the
   conventions. Note for whoever adds it: evalite pulls `better-sqlite3`, which
   builds at install time, so it needs an entry in `onlyBuiltDependencies`.

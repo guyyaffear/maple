@@ -51,6 +51,7 @@
     "eslint-plugin-unused-imports": "4.4.1",
     "globals": "17.12.0",
     "lefthook": "2.1.14",
+    "msw": "2.15.0",
     "playwright": "1.63.0",
     "prettier": "3.9.6",
     "publint": "0.3.24",

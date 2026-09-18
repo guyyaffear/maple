@@ -1,10 +1,27 @@
+import { fileURLToPath } from "node:url";
+
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
+
+/** Absolute path to a file in this repository. */
+function here(path: string): string {
+  return fileURLToPath(new URL(path, import.meta.url));
+}
+
+/**
+ * Workspace packages resolve to source, not the dist their "exports" name, so
+ * a test run never depends on a prior build or tests stale output.
+ */
+const alias = [
+  { find: /^@maplekit\/core$/, replacement: here("./packages/core/src/index.ts") },
+  { find: /^@maplekit\/core\/(.*)$/, replacement: here("./packages/core/src/$1/index.ts") },
+];
 
 export default defineConfig({
   test: {
     projects: [
       {
+        resolve: { alias },
         test: {
           name: "node",
           environment: "node",
@@ -13,6 +30,7 @@ export default defineConfig({
         },
       },
       {
+        resolve: { alias },
         test: {
           name: "browser",
           include: ["packages/*/test/**/*.browser.test.{ts,tsx}"],

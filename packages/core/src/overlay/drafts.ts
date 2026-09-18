@@ -10,14 +10,20 @@
 
 import type { Anchor } from "../anchor/types.js";
 import type { Logger } from "../logger/types.js";
-import type { PageContext } from "./context.js";
+import type { CommentContext, MediaRef } from "../types.js";
 
 /** An unsent comment. */
 export interface Draft {
   readonly id: string;
   readonly body: string;
   readonly anchor: Anchor;
-  readonly context?: PageContext;
+  /**
+   * The shape a sent comment keeps, via `toCommentContext`, so the badge has
+   * one implementation across a draft and a stored comment.
+   */
+  readonly context?: CommentContext;
+  /** So a pasted screenshot comes back with the draft it belongs to. */
+  readonly attachments?: readonly MediaRef[];
   /** ISO 8601, UTC. */
   readonly updatedAt: string;
 }

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addresses,
   COLLISION_GAP_PX,
   COLLISION_MAX_TRIES,
   COLLISION_STEP_PX,
+  culled,
   initialsOf,
+  kindOf,
   kindPhrase,
   LEAF_OUTLINE,
   LEAF_ROTATION,
@@ -14,8 +17,13 @@ import {
   MARK_SIZE_PX,
   markLabel,
   marksCss,
+  markSpot,
   markTitle,
   NOTHING_NAMED,
+  placeMark,
+  ringBox,
+  runBox,
+  startFrameLoop,
   waterline,
 } from "../src/marks/index.js";
 import {
@@ -28,6 +36,7 @@ import {
   TYPE_TOKENS,
 } from "../src/tokens.js";
 
+import type { Comment } from "@maple-kit/core";
 import type { PickKind } from "@maple-kit/core/client";
 
 /** True for a token the base sheet already declares on `:host`. */
@@ -85,6 +94,109 @@ describe("the collision resolver's numbers", () => {
   });
 });
 
+describe("the collision resolver", () => {
+  it("leaves a mark where it wants to be when nothing is in the way", () => {
+    expect(placeMark({ x: 100, y: 100, width: 34, height: 34 }, [])).toEqual({
+      x: 100,
+      y: 100,
+      width: 34,
+      height: 34,
+    });
+  });
+
+  it.each([
+    ["one neighbour", 1],
+    ["two neighbours", 2],
+    ["three neighbours", 3],
+  ])("steps sideways past %s", (_what, count) => {
+    const taken = Array.from({ length: count }, (_, index) => ({
+      x: 100 + index * COLLISION_STEP_PX,
+      y: 100,
+      width: 34,
+      height: 34,
+    }));
+
+    const spot = placeMark({ x: 100, y: 100, width: 34, height: 34 }, taken);
+    expect(spot.x).toBe(100 + count * COLLISION_STEP_PX);
+    expect(spot.y).toBe(100);
+  });
+
+  it("clears every hit area it stepped past by a whole hit area", () => {
+    const taken = [{ x: 100, y: 100, width: 34, height: 34 }];
+    const spot = placeMark({ x: 110, y: 104, width: 34, height: 34 }, taken);
+
+    expect(Math.abs(spot.x - 100)).toBeGreaterThanOrEqual(MARK_HIT_PX);
+  });
+
+  it("ignores a neighbour a row away, which no hit area reaches", () => {
+    const taken = [{ x: 100, y: 100 + MARK_HIT_PX, width: 34, height: 34 }];
+    expect(placeMark({ x: 100, y: 100, width: 34, height: 34 }, taken).x).toBe(100);
+  });
+
+  it("gives up rather than walking a mark away from what it names", () => {
+    const wall = Array.from({ length: 9 }, (_, index) => ({
+      x: 100 + index * COLLISION_STEP_PX,
+      y: 100,
+      width: 34,
+      height: 34,
+    }));
+
+    const spot = placeMark({ x: 100, y: 100, width: 34, height: 34 }, wall);
+    expect(spot.x).toBe(100 + COLLISION_MAX_TRIES * COLLISION_STEP_PX);
+  });
+});
+
+describe("where a mark and a ring go", () => {
+  it("stands a mark just outside the anchor's top-left corner", () => {
+    expect(markSpot({ x: 220, y: 140, width: 300, height: 90 })).toMatchObject({ x: 204, y: 124 });
+  });
+
+  it("keeps a mark on the page when its anchor is at the very top", () => {
+    expect(markSpot({ x: 0, y: 0, width: 10, height: 10 })).toMatchObject({ x: 2, y: 2 });
+  });
+
+  it("sits the ring three pixels outside what it names", () => {
+    expect(ringBox({ x: 10, y: 20, width: 100, height: 40 })).toEqual({
+      x: 7,
+      y: 17,
+      width: 106,
+      height: 46,
+    });
+  });
+
+  it("places a quote run inside the ring rather than against the viewport", () => {
+    const rect = { x: 10, y: 20, width: 100, height: 40 };
+    expect(runBox({ x: 30, y: 24, width: 50, height: 16 }, rect)).toEqual({
+      x: 23,
+      y: 7,
+      width: 50,
+      height: 16,
+    });
+  });
+
+  it.each([
+    ["far above", { x: 0, y: -400, width: 10, height: 10 }, true],
+    ["just above", { x: 0, y: -40, width: 10, height: 10 }, false],
+    ["on screen", { x: 0, y: 300, width: 10, height: 10 }, false],
+    ["far below", { x: 0, y: 900, width: 10, height: 10 }, true],
+  ])("culls what is %s", (_where, rect, expected) => {
+    expect(culled(rect, 800)).toBe(expected);
+  });
+});
+
+/** The address is the same number the list and the export table show. */
+describe("addresses", () => {
+  const comments = ["c1", "c2", "c3"].map((id) => ({ id }) as Comment);
+
+  it("counts from one, in the branch's own order", () => {
+    expect([...addresses(comments)]).toEqual([
+      ["c1", 1],
+      ["c2", 2],
+      ["c3", 3],
+    ]);
+  });
+});
+
 describe("the words", () => {
   it.each([
     ["element", "the Yield card", "the Yield card"],
@@ -96,6 +208,11 @@ describe("the words", () => {
 
   it.each(["element", "text", "region"])("falls back to the page for a %s", (kind) => {
     expect(kindPhrase(kind as PickKind, undefined)).toBe(NOTHING_NAMED);
+  });
+
+  it("reads a passage as a passage rather than as a quote", () => {
+    expect(kindOf({ quote: { exact: "churn" } })).toBe("text");
+    expect(kindOf({ key: "kpi-mrr" })).toBe("element");
   });
 
   it("names the mark without a stray separator when nobody is known", () => {
@@ -159,5 +276,100 @@ describe("the marks' stylesheet", () => {
       (name) => !declared.has(name) && !RUNTIME_TOKENS.includes(name) && !inTokens(name),
     );
     expect(missing).toEqual([]);
+  });
+});
+
+/** A window that only does what the loop asks of it, so a frame is a call. */
+function fakeView() {
+  const listeners = new Map<string, Set<EventListener>>();
+  let pending: FrameRequestCallback[] = [];
+
+  const view = {
+    innerHeight: 800,
+    requestAnimationFrame(callback: FrameRequestCallback) {
+      pending.push(callback);
+      return pending.length;
+    },
+    cancelAnimationFrame() {
+      pending = [];
+    },
+    addEventListener(type: string, listener: EventListener) {
+      const set = listeners.get(type) ?? new Set<EventListener>();
+      set.add(listener);
+      listeners.set(type, set);
+    },
+    removeEventListener(type: string, listener: EventListener) {
+      listeners.get(type)?.delete(listener);
+    },
+  };
+
+  return {
+    view: view as unknown as Window,
+    fire(type: string) {
+      for (const listener of listeners.get(type) ?? []) listener(new Event(type));
+    },
+    flush() {
+      const due = pending;
+      pending = [];
+      for (const callback of due) callback(0);
+    },
+    frames: () => pending.length,
+    listening: () => [...listeners].filter(([, set]) => set.size > 0).map(([type]) => type),
+  };
+}
+
+/** One frame per scrolled frame, and a layer asked for only while moving. */
+describe("the scroll loop", () => {
+  it("coalesces a burst of scrolls into one repaint", () => {
+    const painted: boolean[] = [];
+    const page = fakeView();
+    startFrameLoop(page.view, (moving) => painted.push(moving));
+
+    page.fire("scroll");
+    page.fire("scroll");
+    page.fire("scroll");
+    expect(page.frames()).toBe(1);
+
+    page.flush();
+    expect(painted).toEqual([true]);
+  });
+
+  it("stops saying it is moving once the page has settled", () => {
+    const painted: boolean[] = [];
+    const page = fakeView();
+    startFrameLoop(page.view, (moving) => painted.push(moving));
+
+    page.fire("scroll");
+    page.flush();
+    page.fire("scrollend");
+    page.flush();
+
+    expect(painted).toEqual([true, false]);
+  });
+
+  it("repaints on a resize, which moves everything without scrolling it", () => {
+    const painted: boolean[] = [];
+    const page = fakeView();
+    startFrameLoop(page.view, (moving) => painted.push(moving));
+
+    page.fire("resize");
+    page.flush();
+    expect(painted).toEqual([false]);
+  });
+
+  it("lets go of the page when the part it belongs to goes away", () => {
+    const page = fakeView();
+    const stop = startFrameLoop(page.view, () => undefined);
+    expect(page.listening().sort((a, b) => a.localeCompare(b))).toEqual([
+      "resize",
+      "scroll",
+      "scrollend",
+    ]);
+
+    page.fire("scroll");
+    stop();
+
+    expect(page.listening()).toEqual([]);
+    expect(page.frames()).toBe(0);
   });
 });

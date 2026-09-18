@@ -11,6 +11,7 @@ export {
   ATTRIBUTE_PREFIX,
   formatSourceLocation,
   KEY_ATTRIBUTE,
+  LABEL_ATTRIBUTE,
   NAME_ATTRIBUTE,
   parseSourceLocation,
   SOURCE_ATTRIBUTE,

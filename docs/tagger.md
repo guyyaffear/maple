@@ -116,6 +116,31 @@ does not recognise is worse than no name at all.
 Columns are 1-based, the way an editor addresses them. Babel counts them from
 zero, so the tagger adds one.
 
+## `data-maple-label`, which the tagger does not emit
+
+A reviewer's surface says "the Yield card", not "YieldCard". That name comes
+from `data-maple-label`, which an **application** writes by hand, on the element
+or on any ancestor of it, so one attribute on a card names everything inside it:
+
+```html
+<article data-maple-label="the Yield card">…</article>
+```
+
+`labelFor` in `@maple-kit/core/anchor` reads it: the nearest `data-maple-label`
+at or above the element, then the component name — from the anchor, or from
+`data-maple-name` on the page — with its camel case unpicked into a noun phrase.
+`YieldCard` becomes "Yield card" and `APIKeyCard` becomes "API key card", since
+an acronym is left as it was written and every other word after the first is
+lower-cased. When nothing names the element, the surface says nothing rather
+than inventing a name.
+
+**The tagger never writes this attribute**, although it knows the component
+name. Writing it would only restate the fallback, on every intrinsic element in
+the file — and that is the harm: a `data-maple-label` on an inner `<span>` ends
+the upward walk, so a label the application wrote on the card above it would
+never be found. A label is a sentence about a region, and the tagger has no
+source for one that the reader cannot derive itself.
+
 ## Stripping
 
 Production correctness matters more than the feature. The attributes are removed
@@ -125,9 +150,9 @@ by the framework's own dead-attribute pass, not by a Maple step:
 - **Vite** — the plugin does not run the transform outside preview mode, so
   there is nothing to strip.
 
-Both are regex-based removals over the whole property name space, so a stray
-`data-maple-key` set by the application is removed too. That is correct:
-`data-maple-key` is an anchoring hint for reviewers, and production has none.
+Both are regex-based removals over the whole property name space, so a
+`data-maple-key` or `data-maple-label` set by the application is removed too.
+That is correct: both are hints for reviewers, and production has none.
 
 ## What the tagger must not do
 

@@ -8,6 +8,7 @@
  * guard — be tested without a browser.
  */
 
+import { labelFor } from "../anchor/label.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
 import { openCount, visibleComments } from "./filters.js";
 import { createNavigationGuard } from "./navigation.js";
@@ -310,7 +311,7 @@ function openComposer(runtime: Runtime, target: ComposerTarget): void {
     pick: UNARMED,
     composer: {
       open: true,
-      target,
+      target: named(target),
       draftId,
       body: existing?.body ?? "",
       attachments: existing?.attachments ?? [],
@@ -319,6 +320,16 @@ function openComposer(runtime: Runtime, target: ComposerTarget): void {
     },
   });
   runtime.guard?.setDirty(runtime.state.composer.dirty);
+}
+
+/**
+ * The ring's label, through the one rule that resolves it. A caller that
+ * already has the element passes a better one; nobody has to invent a second.
+ */
+function named(target: ComposerTarget): ComposerTarget {
+  if (target.label !== undefined) return target;
+  const label = labelFor({ anchor: target.anchor });
+  return label === undefined ? target : { ...target, label };
 }
 
 function resumeDraft(runtime: Runtime, id: string): void {

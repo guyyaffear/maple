@@ -172,6 +172,20 @@ describe("the composer", () => {
     expect(maple.getState().composer.target?.label).toBe("the Yield card");
   });
 
+  it("names the target through the one labelling rule when nobody passed a name", () => {
+    const maple = client();
+    maple.openComposer({ kind: "element", anchor: { component: "YieldCard" } });
+
+    expect(maple.getState().composer.target?.label).toBe("Yield card");
+  });
+
+  it("keeps a label the caller resolved from the element itself", () => {
+    const maple = client();
+    maple.openComposer(TARGET);
+
+    expect(maple.getState().composer.target?.label).toBe("the Yield card");
+  });
+
   it("becomes dirty on the first keystroke and keeps the draft with it", () => {
     const maple = client();
     maple.openComposer(TARGET);

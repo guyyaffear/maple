@@ -14,7 +14,11 @@ export type { DraftKeeper, DraftKeeperOptions } from "./drafts.js";
 export { matchesFilter, openCount, visibleComments } from "./filters.js";
 export { createNavigationGuard } from "./navigation.js";
 export type {
+  LeaveAnswer,
+  LeavePrompt,
+  LeaveQuestion,
   LeaveReason,
+  LeaveSubject,
   NavigationGuard,
   NavigationGuardOptions,
   NavigationView,

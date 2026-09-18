@@ -20,7 +20,15 @@ import type { Logger } from "../logger/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentStatus, MediaRef } from "../types.js";
 import type { DraftKeeper } from "./drafts.js";
-import type { LeaveReason, NavigationGuard, NavigationView } from "./navigation.js";
+import type {
+  LeaveAnswer,
+  LeavePrompt,
+  LeaveQuestion,
+  LeaveReason,
+  LeaveSubject,
+  NavigationGuard,
+  NavigationView,
+} from "./navigation.js";
 import type { ThemeView, ThemeWatch } from "./theme.js";
 import type { Transport } from "./transport.js";
 import type {
@@ -59,6 +67,11 @@ export interface MapleClientOptions {
   readonly confirmOnUnload?: boolean;
   /** Called after a draft was saved on the way out of the page. */
   onLeave?(reason: LeaveReason): void;
+  /**
+   * Asked once per draft before a link takes the page away, so the surface can
+   * offer Keep writing / Discard. Left out, the guard saves and lets it go.
+   */
+  askToLeave?(question: LeaveQuestion): LeaveAnswer | Promise<LeaveAnswer>;
 }
 
 /** The controller. A binding reads `subscribe` and calls the rest. */
@@ -237,18 +250,37 @@ function start(runtime: Runtime): void {
 }
 
 function navigationFor(runtime: Runtime, view: ClientView): NavigationGuard {
+  const { options } = runtime;
   return createNavigationGuard({
     view,
     save: () => runtime.drafts.flush(),
     isDirty: () => runtime.state.composer.dirty,
-    ...(runtime.options.confirmOnUnload === undefined
-      ? {}
-      : { confirmOnUnload: runtime.options.confirmOnUnload }),
+    ...(options.confirmOnUnload === undefined ? {} : { confirmOnUnload: options.confirmOnUnload }),
+    ...(options.askToLeave === undefined ? {} : { prompt: promptFor(runtime) }),
     onLeave: (reason) => {
-      runtime.options.onLeave?.(reason);
+      options.onLeave?.(reason);
       patch(runtime, { drafts: runtime.drafts.list() });
     },
   });
+}
+
+/**
+ * The guard has no words and no DOM; the controller only says what is at stake
+ * and what a `discard` answer means. Every word of the copy is the surface's.
+ */
+function promptFor(runtime: Runtime): LeavePrompt {
+  return {
+    subject: () => subjectOf(runtime.state.composer),
+    ask: (question) => runtime.options.askToLeave?.(question) ?? "keep",
+    discard: () => discardDraft(runtime),
+  };
+}
+
+/** What the reviewer would lose, named the way the ring names it. */
+function subjectOf(composer: ComposerState): LeaveSubject | undefined {
+  const { draftId, target } = composer;
+  if (!composer.dirty || draftId === undefined) return undefined;
+  return target?.label === undefined ? { id: draftId } : { id: draftId, label: target.label };
 }
 
 function destroy(runtime: Runtime): void {

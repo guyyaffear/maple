@@ -1,15 +1,33 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createLogger, memorySink } from "../src/logger/index.js";
-import { createDraftStore } from "../src/overlay/index.js";
+import { captureContext, createDraftStore, toCommentContext } from "../src/overlay/index.js";
 
-import type { Draft } from "../src/overlay/index.js";
+import type { Draft, DraftStore } from "../src/overlay/index.js";
+import type { MediaRef } from "../src/types.js";
 
 function draft(id: string, body: string, updatedAt = "2026-09-18T10:00:00.000Z"): Draft {
   return { id, body, anchor: { key: `msg:${id}` }, updatedAt };
 }
 
+/**
+ * A reload keeps nothing but `Storage`. An `about:blank` iframe is this origin
+ * in a fresh realm, so what it reads came out of storage, not out of memory.
+ */
+function reopen(branch: string): DraftStore {
+  const frame = document.createElement("iframe");
+  frame.src = "about:blank";
+  document.body.append(frame);
+
+  const storage = frame.contentWindow?.localStorage;
+  if (!storage) throw new Error("The reloaded realm has no storage.");
+  return createDraftStore({ branch, storage });
+}
+
 beforeEach(() => localStorage.clear());
+afterEach(() => {
+  for (const frame of document.querySelectorAll("iframe")) frame.remove();
+});
 
 describe("drafts", () => {
   it("keeps a draft across two opens of the same branch", () => {
@@ -91,5 +109,42 @@ describe("drafts, when storage misbehaves", () => {
     store.save(draft("1", "a"));
     expect(store.list()).toHaveLength(1);
     expect(sink.records.some((record) => record.level === "warn")).toBe(true);
+  });
+});
+
+describe("a draft that is comment-shaped", () => {
+  const attachments: readonly MediaRef[] = [
+    { connector: "github", key: "pasted-screenshot.png", contentType: "image/png" },
+  ];
+
+  it("comes back whole after a reload, attachments and context included", () => {
+    const unsent: Draft = {
+      ...draft("1", "the yield card wraps at this width"),
+      context: toCommentContext(captureContext()),
+      attachments,
+    };
+    createDraftStore({ branch: "feat/x" }).save(unsent);
+
+    const restored = reopen("feat/x").list();
+    expect(restored).toEqual([unsent]);
+  });
+
+  it("restores the content width the badge is built from", () => {
+    createDraftStore({ branch: "feat/x" }).save({
+      ...draft("1", "a"),
+      context: toCommentContext(captureContext()),
+    });
+
+    const restored = reopen("feat/x").list()[0];
+    expect(restored?.context?.contentWidth).toBe(document.documentElement.clientWidth);
+    expect(restored?.context?.viewportWidth).toBe(window.innerWidth);
+  });
+
+  it("leaves a draft with nothing attached alone", () => {
+    createDraftStore({ branch: "feat/x" }).save(draft("1", "a"));
+
+    const restored = reopen("feat/x").list()[0];
+    expect(restored?.attachments).toBeUndefined();
+    expect(restored?.context).toBeUndefined();
   });
 });

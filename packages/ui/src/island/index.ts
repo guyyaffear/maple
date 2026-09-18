@@ -1,26 +1,44 @@
 /**
  * The island. One object on a page at rest, and this is it.
  *
- * The parts land in a later change. What is decided here is the vocabulary the
- * filters render and the stagger's shape, because swapping a filter must
- * replace the rows and never the card: rebuilding the island re-runs its
- * entrance and re-measures its height, and reads as a flicker.
+ * A collapsed pill reading `8 open`, which expands into a card carrying both
+ * halves of the job: what has been said here, and how to say something. The
+ * count is open comments only, unpinned included, because whether a comment is
+ * dealt with is the question and where it sits is a detail of one of its states.
  */
 
-import type { CommentFilter } from "@maple-kit/core/client";
-
-/** The five filters, in the words the pills show. `unpinned` is `orphaned`. */
-export const FILTER_LABELS: Readonly<Record<CommentFilter, string>> = {
-  all: "All",
-  open: "Open",
-  needs_reverify: "Re-verify",
-  resolved: "Resolved",
-  unpinned: "Unpinned",
-};
-
-/**
- * How many rows stagger before the rest arrive together. The step and the cap
- * are `--mk-stagger-step` and `--mk-stagger-cap`; this is the cap divided by
- * the step, so thirty comments do not take a second to appear.
- */
-export const STAGGER_ROWS = 6;
+export { countsFor, kindOf, numbersFor, orphanReason } from "./comments.js";
+export type { FilterCounts } from "./comments.js";
+export { IslandContent } from "./content.js";
+export type { IslandContentProps } from "./content.js";
+export { IslandContextError, useIsland } from "./context.js";
+export type { IslandContextValue, IslandPhase } from "./context.js";
+export { islandCss } from "./css.js";
+export { Filters } from "./filters.js";
+export type { FiltersProps } from "./filters.js";
+export { Branch, Header, Logo } from "./header.js";
+export type { BranchProps, HeaderProps, LogoProps } from "./header.js";
+export { Island } from "./island.js";
+export type { IslandProps } from "./island.js";
+export { Item } from "./item.js";
+export type { ItemProps } from "./item.js";
+export {
+  FILTER_LABELS,
+  ISLAND_COPY,
+  kindPhrase,
+  openLabel,
+  ORPHAN_LABELS,
+  ORPHAN_SENTENCES,
+  orphanTitle,
+  SETTINGS_COPY,
+} from "./language.js";
+export { List } from "./list.js";
+export type { ListProps } from "./list.js";
+export { NewComment, PickButton } from "./new-comment.js";
+export type { NewCommentProps, PickButtonProps } from "./new-comment.js";
+export { Settings } from "./settings.js";
+export type { SettingsProps } from "./settings.js";
+export { STAGGER_ROWS } from "./stagger.js";
+export { relativeTime } from "./time.js";
+export { IslandTrigger } from "./trigger.js";
+export type { IslandTriggerProps } from "./trigger.js";

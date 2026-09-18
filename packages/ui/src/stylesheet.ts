@@ -9,6 +9,7 @@
  */
 
 import { composerCss } from "./composer/css.js";
+import { islandCss } from "./island/css.js";
 import {
   COLOR_TOKENS,
   MOTION_TOKENS,
@@ -208,6 +209,7 @@ h3 {
   }
 }
 
+${islandCss()}
 ${composerCss()}
 `.trim();
 }

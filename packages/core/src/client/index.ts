@@ -7,6 +7,8 @@
  * and `Error` subclasses, never Effect.
  */
 
+export { createMapleClient } from "./controller.js";
+export type { ClientView, MapleClient, MapleClientOptions } from "./controller.js";
 export { createDraftKeeper, DRAFT_DEBOUNCE_MS, DRAFT_LIFETIME_MS, draftIdFor } from "./drafts.js";
 export type { DraftKeeper, DraftKeeperOptions } from "./drafts.js";
 export { matchesFilter, openCount, visibleComments } from "./filters.js";

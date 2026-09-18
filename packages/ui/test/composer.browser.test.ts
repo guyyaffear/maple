@@ -275,7 +275,7 @@ describe("the context badge", () => {
     const fresh = root().querySelector(".probe-page")?.textContent;
     const stored = root().querySelector(".probe-stored")?.textContent;
 
-    expect(fresh).toBe("1440 window · 1020 content · dark · lg · Copilot open");
+    expect(fresh).toBe("1440 window · 1020 content · dark · lg · 2× · en-GB · Copilot open");
     expect(stored).toBe(fresh);
   });
 

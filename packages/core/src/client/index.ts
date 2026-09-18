@@ -23,18 +23,39 @@ export type {
   NavigationGuardOptions,
   NavigationView,
 } from "./navigation.js";
+export {
+  MAPLE_DEFAULTS,
+  nearestCorner,
+  parseMapleQuery,
+  readMapleConfig,
+  readPreferences,
+  resolveConfig,
+  writePreferences,
+} from "./preferences.js";
+export type {
+  ConfigInput,
+  Frame,
+  MapleConfig,
+  MapleProps,
+  MapleQuery,
+  Point,
+  PreferencesOptions,
+  StoredPreferences,
+} from "./preferences.js";
 export { COMMENT_SHORTCUT, isEditable, opensComposer } from "./shortcut.js";
 export type { ShortcutEvent } from "./shortcut.js";
 export { hostScheme, readThemeSignals, relativeLuminance, themeFrom, watchTheme } from "./theme.js";
 export type { ThemeSignals, ThemeView, ThemeWatch, ThemeWatchOptions } from "./theme.js";
 export { createTransport, DEFAULT_BASE_PATH, MapleRequestError } from "./transport.js";
 export type { Transport, TransportOptions } from "./transport.js";
-export { COMMENT_FILTERS } from "./types.js";
+export { COMMENT_FILTERS, CORNERS, DETAILS } from "./types.js";
 export type {
   ClientState,
   CommentFilter,
   ComposerState,
   ComposerTarget,
+  Corner,
+  Detail,
   PickKind,
   PickState,
   PostedComment,

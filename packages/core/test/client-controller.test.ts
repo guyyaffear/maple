@@ -303,3 +303,105 @@ describe("resolving", () => {
     expect(maple.getState().openCount).toBe(0);
   });
 });
+
+describe("what a link asked for", () => {
+  it("starts on the comment, the corner and the detail the config carries", () => {
+    const maple = client({
+      config: {
+        enabled: true,
+        position: "top-left",
+        detail: "developer",
+        hideResolved: false,
+        shortcut: "c",
+        allowUrlOverride: true,
+        comment: "c_9",
+        pick: "region",
+      },
+    });
+
+    const state = maple.getState();
+    expect(state.position).toBe("top-left");
+    expect(state.detail).toBe("developer");
+    expect(state.selected).toBe("c_9");
+    expect(state.showResolved).toBe(true);
+    expect(state.pick).toEqual({ armed: true, kind: "region" });
+  });
+
+  it("hides resolved comments by default, because the filter is one click away", () => {
+    expect(client().getState().showResolved).toBe(false);
+  });
+});
+
+describe("a preference the viewer set", () => {
+  it("remembers the corner and the detail across a second controller", () => {
+    const storage = memoryStorage();
+    const first = client({ storage, origin: "https://preview.example" });
+    first.setPosition("top-right");
+    first.setDetail("developer");
+
+    const second = client({ storage, origin: "https://preview.example" });
+    expect(second.getState().position).toBe("top-right");
+    expect(second.getState().detail).toBe("developer");
+  });
+
+  it("stays presentation only: the detail changes no comment", async () => {
+    fake.seed(storedComment({ id: "c_1" }));
+    const maple = client();
+    await maple.load();
+    const before = maple.getState().comments;
+
+    maple.setDetail("developer");
+    expect(maple.getState().comments).toBe(before);
+  });
+});
+
+describe("hidden, which is not gone", () => {
+  it("comes back when a comment arrives", async () => {
+    const maple = client();
+    maple.setHidden(true);
+    maple.openComposer(TARGET);
+    expect(maple.getState().hidden).toBe(false);
+
+    maple.setHidden(true);
+    maple.setBody("The spacing is off.");
+    await maple.send();
+    expect(maple.getState().hidden).toBe(false);
+  });
+
+  it("comes back when a link selects a comment", () => {
+    const maple = client();
+    maple.setHidden(true);
+    maple.select("c_9");
+
+    expect(maple.getState().hidden).toBe(false);
+    expect(maple.getState().selected).toBe("c_9");
+  });
+
+  it("comes back when a pick is armed, so nothing is armed out of sight", () => {
+    const maple = client();
+    maple.setHidden(true);
+    maple.arm("text");
+
+    expect(maple.getState().hidden).toBe(false);
+    expect(maple.getState().pick).toEqual({ armed: true, kind: "text" });
+  });
+
+  it("stays hidden when a load brings back what was already there", async () => {
+    fake.seed(storedComment({ id: "c_1" }));
+    const maple = client();
+    await maple.load();
+    maple.setHidden(true);
+
+    await maple.load();
+    expect(maple.getState().hidden).toBe(true);
+  });
+
+  it("clearing the selection leaves it where it was", () => {
+    const maple = client();
+    maple.setHidden(true);
+    maple.select(null);
+
+    expect(maple.getState().hidden).toBe(true);
+    expect(maple.getState().selected).toBeNull();
+  });
+});

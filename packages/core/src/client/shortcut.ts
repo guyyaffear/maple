@@ -23,8 +23,8 @@ export interface ShortcutEvent {
 const TYPING_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 
 /** True when this keystroke means "start a comment" and nothing else. */
-export function opensComposer(event: ShortcutEvent): boolean {
-  if (event.key.toLowerCase() !== COMMENT_SHORTCUT) return false;
+export function opensComposer(event: ShortcutEvent, key: string = COMMENT_SHORTCUT): boolean {
+  if (event.key.toLowerCase() !== key.toLowerCase()) return false;
   if (event.metaKey || event.ctrlKey || event.altKey) return false;
   if (event.defaultPrevented) return false;
   return !isEditable(event.target);

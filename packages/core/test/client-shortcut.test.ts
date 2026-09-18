@@ -48,3 +48,14 @@ describe("where a person could be typing", () => {
     expect(isEditable(globalThis)).toBe(false);
   });
 });
+
+describe("an application that chose another key", () => {
+  it.each([
+    ["k", { key: "k" }, true],
+    ["k", { key: "K" }, true],
+    ["k", { key: "c" }, false],
+    ["k", { key: "k", ctrlKey: true }, false],
+  ])("answers to %s and to nothing else", (key, event, expected) => {
+    expect(opensComposer(event, key)).toBe(expected);
+  });
+});

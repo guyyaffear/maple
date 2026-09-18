@@ -12,7 +12,7 @@ import { fnv1a32 } from "../lib/fnv1a.js";
 
 import type { IdentityConnector, ListQuery, StoreConnector } from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
-import type { Comment, CommentStatus, NewComment } from "../types.js";
+import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
 
 /** What the route is wired to. */
 export interface RouteOptions {
@@ -95,8 +95,10 @@ function queryFrom(url: URL, branch: string): ListQuery {
  * client that can choose its own author can choose someone else's.
  */
 async function appendComment(options: RouteOptions, request: Request): Promise<Response> {
-  const draft = await readJson(request);
-  if (!isDraft(draft)) return json({ error: "A branch and a body are required" }, 400);
+  const posted = await readJson(request);
+  if (!isDraft(posted)) return json({ error: "A branch and a body are required" }, 400);
+
+  const draft = withoutResolution(posted);
 
   const user = await options.identity?.resolveUser(identityRequest(request));
   const comment: NewComment = {
@@ -118,16 +120,46 @@ function colorSlotFor(id: string): number {
 }
 
 async function setStatus(options: RouteOptions, request: Request, id: string): Promise<Response> {
-  const change = await readJson(request);
-  const status = (change as { status?: unknown } | undefined)?.status;
+  const change = (await readJson(request)) as
+    { status?: unknown; resolution?: unknown } | undefined;
+  const status = change?.status;
   if (typeof status !== "string" || !STATUSES.has(status)) {
     return json({ error: "An known status is required" }, 400);
+  }
+
+  const claimed = change?.resolution;
+  if (claimed !== undefined && !isResolutionClaim(claimed)) {
+    return json({ error: "A resolution needs a sha" }, 400);
   }
 
   const update = options.store.setStatus?.bind(options.store);
   if (!update) return json({ error: "This store cannot change a status" }, 501);
 
-  return json(await update(id, status as CommentStatus), 200);
+  const resolution = claimed === undefined ? undefined : stamp(claimed);
+  return json(await update(id, status as CommentStatus, resolution), 200);
+}
+
+/** What a client may claim about a resolution: the commit, and optionally why. */
+function isResolutionClaim(value: unknown): value is { sha: string; note?: string } {
+  if (typeof value !== "object" || value === null) return false;
+  const claim = value as { sha?: unknown; note?: unknown };
+  return (
+    typeof claim.sha === "string" &&
+    claim.sha.length > 0 &&
+    (claim.note === undefined || typeof claim.note === "string")
+  );
+}
+
+/**
+ * `at` is stamped here, never taken from the body, for the same reason the
+ * author is: a client that can date its own resolution can backdate one.
+ */
+function stamp(claim: { sha: string; note?: string }): CommentResolution {
+  return {
+    sha: claim.sha,
+    ...(claim.note === undefined ? {} : { note: claim.note }),
+    at: new Date().toISOString(),
+  };
 }
 
 async function whoAmI(options: RouteOptions, request: Request): Promise<Response> {
@@ -146,6 +178,16 @@ async function readJson(request: Request): Promise<unknown> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * A comment cannot arrive already resolved, and dropping it here beats widening
+ * `NewComment`'s `Omit`, which would hide the field from stores too.
+ */
+function withoutResolution<T extends { resolution?: unknown }>(draft: T): Omit<T, "resolution"> {
+  const copy = { ...draft };
+  delete copy.resolution;
+  return copy;
 }
 
 function isDraft(value: unknown): value is Omit<NewComment, "author"> & { author?: never } {

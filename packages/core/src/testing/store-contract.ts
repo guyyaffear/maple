@@ -183,6 +183,29 @@ export function runStoreContract(options: StoreContractOptions): void {
         });
       });
 
+      it("keeps the resolution it was given, when supported", async () => {
+        await withSubject(async (connector, branch) => {
+          const setStatus = connector.setStatus?.bind(connector);
+          if (!setStatus) return;
+
+          const stored = await connector.append(sampleComment({ branch }));
+          const resolution = {
+            sha: "9f1c0de",
+            note: "Matched the card's padding.",
+            at: "2026-02-03T09:15:00.000Z",
+          };
+          const resolved = await setStatus(stored.id, "resolved", resolution);
+          expect(resolved.resolution).toEqual(resolution);
+
+          const comments = await eventually(
+            () => connector.list({ branch }).then((page) => page.comments),
+            (list) => list.find((c) => c.id === stored.id)?.resolution !== undefined,
+            budget,
+          );
+          expect(comments.find((c) => c.id === stored.id)?.resolution).toEqual(resolution);
+        });
+      });
+
       it("rejects an unknown id rather than resolving silently, when supported", async () => {
         await withSubject(async (connector) => {
           const setStatus = connector.setStatus?.bind(connector);

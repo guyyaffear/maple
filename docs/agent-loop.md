@@ -64,11 +64,6 @@ tool call, where a client would show it as a tool error and bury it.
 
 ## What is not here yet
 
-- **`resolve_comment` records the commit in its result, not in the store.** The
-  store contract has nowhere to put a resolution's `sha` and `note`, so they are
-  returned to the agent and lost on write. Closing that needs a field on the
-  comment and a richer `setStatus`, which belongs with US2's gate rather than
-  being half-added here.
 - **Claude Code Channels**, which would let the server wake an idle session
   instead of the agent polling. It is a research preview; the Stop hook and
   `wait_for_comments` work everywhere today.

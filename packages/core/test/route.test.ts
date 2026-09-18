@@ -122,6 +122,19 @@ describe("writing a comment", () => {
     expect(stored.author.provenance).toBe("server");
   });
 
+  it("drops a resolution posted with a new comment, which cannot arrive resolved", async () => {
+    const store = memoryStore();
+    const draft = {
+      ...sampleComment({ branch: "main" }),
+      resolution: { sha: "deadbee", at: "2020-01-01T00:00:00.000Z" },
+    };
+
+    const response = await handler({ store })(request("POST", "/api/maple/comments", draft));
+    const stored = (await response.json()) as { resolution?: unknown };
+    expect(response.status).toBe(201);
+    expect(stored.resolution).toBeUndefined();
+  });
+
   it("marks a comment written without a session as a guest's", async () => {
     const response = await handler({ identity: reviewer })(
       request("POST", "/api/maple/comments", sampleComment({ branch: "main" })),
@@ -191,6 +204,40 @@ describe("changing a status", () => {
       request("PATCH", `/api/maple/comments/${stored.id}`, { status: "resolved" }),
     );
     expect(((await response.json()) as { status: string }).status).toBe("resolved");
+  });
+
+  it("records a resolution and stamps the time itself", async () => {
+    const store = memoryStore();
+    const stored = await store.append(sampleComment({ branch: "main" }));
+
+    const response = await handler({ store })(
+      request("PATCH", `/api/maple/comments/${stored.id}`, {
+        status: "resolved",
+        resolution: {
+          sha: "9f1c0de",
+          note: "Matched the padding.",
+          at: "1999-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+
+    const updated = (await response.json()) as { resolution?: { sha: string; at: string } };
+    expect(updated.resolution?.sha).toBe("9f1c0de");
+    expect(updated.resolution?.at).not.toBe("1999-01-01T00:00:00.000Z");
+    expect(Date.parse(updated.resolution?.at ?? "")).toBeGreaterThan(Date.now() - 60_000);
+  });
+
+  it("rejects a resolution with no sha rather than storing an empty claim", async () => {
+    const store = memoryStore();
+    const stored = await store.append(sampleComment({ branch: "main" }));
+
+    const response = await handler({ store })(
+      request("PATCH", `/api/maple/comments/${stored.id}`, {
+        status: "resolved",
+        resolution: { note: "Trust me." },
+      }),
+    );
+    expect(response.status).toBe(400);
   });
 
   it("rejects a status that is not one", async () => {

@@ -36,6 +36,11 @@ Maple degrades around a missing optional method rather than failing. A store
 without `setStatus` keeps status client-side, and the CI gate reports `neutral`
 instead of blocking.
 
+`setStatus` takes an optional third argument, a `CommentResolution` — the commit
+an agent says addressed the comment, an optional note, and the time the write
+happened. A store that cannot keep it records the status alone; it never refuses
+the call, because the status is the part the gate reads.
+
 Omitting a **required** method is an error, raised at construction time by
 `createCommentStore` rather than on the first request.
 

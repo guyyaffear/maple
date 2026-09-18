@@ -8,7 +8,7 @@
  */
 
 import type { CommentPage, ListQuery, StoreConnector } from "../connectors/types.js";
-import type { Comment, CommentStatus, NewComment } from "../types.js";
+import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
 
 /** Options for {@link memoryStore}. */
 export interface MemoryStoreOptions {
@@ -63,11 +63,15 @@ export function memoryStore(options: MemoryStoreOptions = {}): StoreConnector {
     return Promise.resolve(stored);
   }
 
-  function setStatus(id: string, status: CommentStatus): Promise<Comment> {
+  function setStatus(
+    id: string,
+    status: CommentStatus,
+    resolution?: CommentResolution,
+  ): Promise<Comment> {
     const existing = comments.get(id);
     if (!existing) return Promise.reject(new Error(`No comment with id ${id}`));
 
-    const updated: Comment = { ...existing, status };
+    const updated: Comment = { ...existing, status, ...(resolution ? { resolution } : {}) };
     comments.set(id, updated);
     return Promise.resolve(updated);
   }

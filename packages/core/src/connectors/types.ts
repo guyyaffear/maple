@@ -10,6 +10,7 @@
 
 import type {
   Comment,
+  CommentResolution,
   CommentStatus,
   MapleUser,
   MediaBlob,
@@ -50,11 +51,13 @@ export interface CommentPage {
  *
  * `setStatus` is optional because append-only backends exist; where it is
  * missing, Maple keeps status client-side and the CI gate degrades to neutral.
+ * Its `resolution` records what claimed to address the comment; a store that
+ * cannot keep it stores the status alone rather than refusing the call.
  */
 export interface StoreConnector extends ConnectorMeta {
   list(query: ListQuery): Promise<CommentPage>;
   append(comment: NewComment): Promise<Comment>;
-  setStatus?(id: string, status: CommentStatus): Promise<Comment>;
+  setStatus?(id: string, status: CommentStatus, resolution?: CommentResolution): Promise<Comment>;
   /** Long-poll for comments newer than `cursor`. Resolves empty on timeout. */
   watch?(query: ListQuery, signal: AbortSignal): Promise<CommentPage>;
 }

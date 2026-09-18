@@ -76,6 +76,16 @@ export interface CommentAuthor {
   readonly colorSlot?: number;
 }
 
+/** What an agent claims it did about a comment, kept with the comment itself. */
+export interface CommentResolution {
+  /** Commit the agent believes addresses the comment. */
+  readonly sha: string;
+  /** What changed, in the agent's words, for the reviewer re-checking it. */
+  readonly note?: string;
+  /** ISO 8601, always UTC. Stamped where the write happens, never by a client. */
+  readonly at: string;
+}
+
 /** A stored comment, as a store connector hands it back. */
 export interface Comment {
   readonly id: string;
@@ -93,6 +103,8 @@ export interface Comment {
   readonly context: CommentContext;
   /** Media references resolved through a media connector. */
   readonly attachments?: readonly MediaRef[];
+  /** Present once something claimed to resolve it; absent means never resolved. */
+  readonly resolution?: CommentResolution;
   /**
    * Reserved for replies, which Maple does not ship: nothing sets it and
    * nothing reads it. `docs/replies.md` says what building them would cost.

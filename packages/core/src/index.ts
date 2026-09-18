@@ -43,6 +43,7 @@ export type {
   CommentAnchor,
   CommentAuthor,
   CommentContext,
+  CommentResolution,
   CommentStatus,
   IdentityProvenance,
   MapleUser,

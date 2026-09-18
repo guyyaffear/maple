@@ -121,6 +121,31 @@ describe("resolve_comment", () => {
     expect(resolved.status).toBe("resolved");
   });
 
+  it("keeps the commit and the note the agent gave, rather than dropping them", async () => {
+    const store = await seeded();
+    const stored = await store.append(sampleComment({ branch: BRANCH }));
+    const handlers = createToolHandlers({ store });
+
+    const resolved = await handlers.resolveComment({
+      id: stored.id,
+      sha: "9f1c0de",
+      note: "Matched the card's padding.",
+    });
+
+    expect(resolved.resolution?.sha).toBe("9f1c0de");
+    expect(resolved.resolution?.note).toBe("Matched the card's padding.");
+    expect(resolved.resolution?.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("leaves the note out when the agent gave none", async () => {
+    const store = await seeded();
+    const stored = await store.append(sampleComment({ branch: BRANCH }));
+    const handlers = createToolHandlers({ store });
+
+    const resolved = await handlers.resolveComment({ id: stored.id, sha: "9f1c0de" });
+    expect(resolved.resolution?.note).toBeUndefined();
+  });
+
   it("says where to go when the store cannot change a status", async () => {
     const handlers = createToolHandlers({ store: memoryStore({ appendOnly: true }) });
 

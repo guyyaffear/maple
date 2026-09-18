@@ -30,8 +30,8 @@ export class MapleProviderError extends Error {
 export interface MapleProviderProps {
   readonly children?: ReactNode;
   /**
-   * Read once, on the first render; pass a new `key` to rebuild. Everything
-   * the controller takes belongs here, options it grows later included.
+   * Read once, on the first render; pass a new `key` to rebuild. `askToLeave`
+   * belongs here, and a surface above this provider may answer it later.
    */
   readonly options?: MapleClientOptions;
   /** A controller the caller built and owns. Started and destroyed by them. */

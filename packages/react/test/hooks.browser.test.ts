@@ -1,11 +1,17 @@
 import { createMapleClient } from "@maple-kit/core/client";
 import { createElement, useState } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { MapleProvider, useMaple, useMapleClient, usePicker } from "../src/index.js";
 
-import type { MapleClient } from "@maple-kit/core/client";
+import type {
+  ClientView,
+  LeaveAnswer,
+  LeaveQuestion,
+  MapleClient,
+  MapleClientOptions,
+} from "@maple-kit/core/client";
 import type { ReactElement } from "react";
 
 const BRANCH = "feat/x";
@@ -194,5 +200,94 @@ describe("the controller the provider built", () => {
     );
     await expect.element(loud.getByTestId("state")).toHaveTextContent("all");
     await expect.poll(() => calls).toBeGreaterThan(0);
+  });
+});
+
+/** The real page, with only `location.assign` spied, so Discard takes nothing away. */
+function viewWith(assign: (url: string) => void): ClientView {
+  return {
+    document,
+    history: window.history,
+    location: { href: location.href, origin: location.origin, assign },
+    addEventListener: (type, listener, options) => window.addEventListener(type, listener, options),
+    removeEventListener: (type, listener, options) =>
+      window.removeEventListener(type, listener, options),
+    matchMedia: (query) => window.matchMedia(query),
+    getComputedStyle: (element) => window.getComputedStyle(element),
+  };
+}
+
+interface Pending {
+  readonly question: LeaveQuestion;
+  readonly answer: (given: LeaveAnswer) => void;
+}
+
+/**
+ * The seam the ask-once guard needs: the host supplies `askToLeave`, a React
+ * surface above the provider renders the question and resolves it later.
+ */
+function Asking({ assign }: { assign: (url: string) => void }): ReactElement {
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [options] = useState<MapleClientOptions>(() => ({
+    branch: BRANCH,
+    debounceMs: 5000,
+    view: viewWith(assign),
+    askToLeave: (question) =>
+      new Promise<LeaveAnswer>((resolve) => setPending({ question, answer: resolve })),
+  }));
+
+  return createElement(
+    MapleProvider,
+    { autoLoad: false, options },
+    createElement(Handle),
+    pending === null
+      ? null
+      : createElement(
+          "div",
+          null,
+          createElement(
+            "span",
+            { "data-testid": "asked" },
+            `You have an unsent comment on the ${pending.question.subject.label ?? "page"}`,
+          ),
+          createElement(
+            "button",
+            {
+              "data-testid": "keep",
+              onClick: () => {
+                pending.answer("keep");
+                setPending(null);
+              },
+            },
+            "Keep writing",
+          ),
+        ),
+  );
+}
+
+describe("a question the controller cannot word", () => {
+  it("reaches a React surface and is answered from it, later", async () => {
+    const assign = vi.fn();
+    const screen = await render(createElement(Asking, { assign }));
+
+    client.openComposer({ kind: "element", anchor: { component: "YieldCard" } });
+    client.setBody("The spacing under the heading is off.");
+
+    const link = document.createElement("a");
+    link.href = "#elsewhere";
+    link.dataset["test"] = "";
+    document.body.append(link);
+    link.click();
+
+    await expect
+      .element(screen.getByTestId("asked"))
+      .toHaveTextContent("You have an unsent comment on the Yield card");
+
+    await screen.getByTestId("keep").click();
+    expect(assign).not.toHaveBeenCalled();
+    expect(client.getState().composer.dirty).toBe(true);
+
+    link.remove();
+    await screen.unmount();
   });
 });

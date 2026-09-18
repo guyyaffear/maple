@@ -115,6 +115,38 @@ describe("the fence", () => {
   });
 });
 
+describe("replies, which are reserved rather than built", () => {
+  it("carries parentId through the fence unchanged", () => {
+    const comment = storedComment({ parentId: "c_0" });
+    expect(fenceOf(exported([comment]))?.comments).toEqual([comment]);
+  });
+
+  it("never sheds parentId, so a reply could not be orphaned by the budget", () => {
+    const long = "word ".repeat(60);
+    const comments = Array.from({ length: 400 }, (_, index) =>
+      storedComment({ id: `c_${index}`, body: long, parentId: "c_0" }),
+    );
+    const result = exportMarkdown(comments, { branch: BRANCH });
+
+    expect(result.overBudget).toBe(true);
+    expect(parseFence(result.markdown)?.comments.every((c) => c.parentId === "c_0")).toBe(true);
+  });
+
+  it("keeps the caller's order rather than inferring one from createdAt", () => {
+    const older = storedComment({ id: "b", createdAt: "2026-01-01T00:00:00.000Z" });
+    const newer = storedComment({ id: "a", createdAt: "2026-06-01T00:00:00.000Z" });
+
+    expect(fenceOf(exported([newer, older]))?.comments.map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  it("writes exactly one row per comment", () => {
+    const markdown = exported([storedComment({ id: "a" }), storedComment({ id: "b" })]);
+    const rows = markdown.split("\n").filter((line) => /^\| \d+ \|/.test(line));
+
+    expect(rows).toHaveLength(2);
+  });
+});
+
 describe("the byte budget", () => {
   const long = "word ".repeat(60);
 

@@ -71,6 +71,11 @@ export interface Comment {
   readonly context: CommentContext;
   /** Media references resolved through a media connector. */
   readonly attachments?: readonly MediaRef[];
+  /**
+   * Reserved for replies, which Maple does not ship: nothing sets it and
+   * nothing reads it. `docs/replies.md` says what building them would cost.
+   */
+  readonly parentId?: string;
 }
 
 /** A comment on its way into a store, before the store assigns an id. */

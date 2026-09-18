@@ -8,6 +8,7 @@
  */
 
 import { MapleStoreError } from "../errors.js";
+import { fnv1a32 } from "../lib/fnv1a.js";
 
 import type { IdentityConnector, ListQuery, StoreConnector } from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
@@ -29,6 +30,9 @@ export interface RouteOptions {
 export const DEFAULT_BASE_PATH = "/api/maple";
 
 const STATUSES = new Set<string>(["open", "resolved", "needs_reverify", "orphaned"]);
+
+/** The ten OKLCH reviewer hues a mark can be drawn in. */
+const COLOR_SLOTS = 10;
 
 /** Creates the request handler. Web-standard in, web-standard out. */
 export function createMapleHandler(options: RouteOptions): (request: Request) => Promise<Response> {
@@ -87,8 +91,8 @@ function queryFrom(url: URL, branch: string): ListQuery {
 }
 
 /**
- * The author comes from the identity connector, never from the request body.
- * A client that could name its own author could name someone else's.
+ * The author and their colour slot are built here, never read off the body: a
+ * client that can choose its own author can choose someone else's.
  */
 async function appendComment(options: RouteOptions, request: Request): Promise<Response> {
   const draft = await readJson(request);
@@ -98,11 +102,19 @@ async function appendComment(options: RouteOptions, request: Request): Promise<R
   const comment: NewComment = {
     ...draft,
     author: user
-      ? { id: user.id, name: user.name, provenance: "server" }
+      ? { id: user.id, name: user.name, provenance: "server", colorSlot: colorSlotFor(user.id) }
       : { id: "guest", name: "Guest", provenance: "guest" },
   };
 
   return json(await options.store.append(comment), 201);
+}
+
+/**
+ * A hash of the id rather than a per-page counter: two reviewers on two
+ * machines would otherwise be handed the same hue and read as one person.
+ */
+function colorSlotFor(id: string): number {
+  return fnv1a32(id) % COLOR_SLOTS;
 }
 
 async function setStatus(options: RouteOptions, request: Request, id: string): Promise<Response> {

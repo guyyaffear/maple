@@ -132,6 +132,56 @@ describe("writing a comment", () => {
   });
 });
 
+describe("a reviewer's colour slot", () => {
+  function signedInAs(id: string): IdentityConnector {
+    return { name: "test-identity", resolveUser: () => Promise.resolve({ id, name: "Reviewer" }) };
+  }
+
+  async function slotFor(id: string, body: unknown = sampleComment({ branch: "main" })) {
+    const response = await handler({ identity: signedInAs(id) })(
+      request("POST", "/api/maple/comments", body),
+    );
+    const stored = (await response.json()) as { author: { colorSlot?: number } };
+    return stored.author.colorSlot;
+  }
+
+  it.each(["u_7", "u_1", "reviewer@example.com", "\u00fcn\u00efc\u00f8d\u00e9"])(
+    "gives %s one of the ten slots, and the same one every time",
+    async (id) => {
+      const first = await slotFor(id);
+      const second = await slotFor(id);
+
+      expect(first).toBe(second);
+      expect(Number.isInteger(first)).toBe(true);
+      expect(first).toBeGreaterThanOrEqual(0);
+      expect(first).toBeLessThan(10);
+    },
+  );
+
+  it("derives it from the id alone, so two machines agree without talking", async () => {
+    expect(await slotFor("u_7")).toBe(8);
+    expect(await slotFor("u_1")).toBe(6);
+  });
+
+  it("ignores a slot the client asked for, the way it ignores an author", async () => {
+    const draft = {
+      ...sampleComment({ branch: "main" }),
+      author: { id: "u_666", name: "Somebody Else", provenance: "server", colorSlot: 3 },
+    };
+
+    expect(await slotFor("u_7", draft)).toBe(8);
+  });
+
+  it("leaves a guest without one, because the page assigns theirs", async () => {
+    const response = await handler({ identity: reviewer })(
+      request("POST", "/api/maple/comments", sampleComment({ branch: "main" })),
+    );
+    const stored = (await response.json()) as { author: { colorSlot?: number } };
+
+    expect(stored.author.colorSlot).toBeUndefined();
+  });
+});
+
 describe("changing a status", () => {
   it("changes it", async () => {
     const store = memoryStore();

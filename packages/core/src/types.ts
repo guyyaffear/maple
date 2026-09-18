@@ -69,6 +69,11 @@ export interface CommentAuthor {
   readonly name: string;
   readonly avatarUrl?: string;
   readonly provenance: IdentityProvenance;
+  /**
+   * Which of the ten OKLCH reviewer hues to draw this author in, 0 to 9. The
+   * route derives it from the id; absent for a guest, whose page assigns one.
+   */
+  readonly colorSlot?: number;
 }
 
 /** A stored comment, as a store connector hands it back. */

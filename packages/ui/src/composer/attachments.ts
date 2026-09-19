@@ -46,6 +46,7 @@ export const ATTACH_WORDS = {
   kept: "A screenshot was attached when this was sent",
   failed: "That image could not be attached.",
   nowhere: "This deployment keeps no screenshots, so one cannot be attached.",
+  notKept: "This deployment keeps no screenshots, so this one will not be sent.",
   uncaptured: "Maple could not take a screenshot. Paste or drop one instead.",
 } as const;
 
@@ -67,9 +68,10 @@ export const MapleAttachments = /** @__PURE__ */ forwardRef<HTMLElement, MapleAt
     }
 
     const captured = scope.pending?.source === "capture";
+    const keeps = media || phase !== "ready";
     const children = scope.pending
-      ? filled(scope, failed, captured)
-      : [said(resting(media || phase !== "ready", claimed), false, "said")];
+      ? filled(scope, { failed, captured, keeps })
+      : [said(resting(keeps, claimed), false, "said")];
 
     return createElement(
       Element,
@@ -129,8 +131,17 @@ function kept(props: KeptProps, ref: React.ForwardedRef<HTMLElement>): ReactElem
   );
 }
 
+/** What the strip is saying about the one image it is holding. */
+interface Held {
+  readonly failed: boolean;
+  readonly captured: boolean;
+  /** False and the thumbnail is a picture of something about to be dropped. */
+  readonly keeps: boolean;
+}
+
 /** The thumbnail, where it came from, and the control that takes it off. */
-function filled(scope: ComposerScopeValue, failed: boolean, captured: boolean): ReactNode[] {
+function filled(scope: ComposerScopeValue, held: Held): ReactNode[] {
+  const { captured, failed, keeps } = held;
   return [
     createElement("img", {
       key: "shot",
@@ -138,7 +149,7 @@ function filled(scope: ComposerScopeValue, failed: boolean, captured: boolean): 
       src: scope.pending?.preview.url,
       alt: ATTACH_WORDS.alt,
     }),
-    said(captured ? ATTACH_WORDS.taken : ATTACH_WORDS.hint, captured, "said"),
+    said(taking(held), captured && keeps, "said"),
     createElement(
       "button",
       {
@@ -166,6 +177,13 @@ function said(words: string, byMaple: boolean, key: string): ReactElement {
     byMaple ? createElement(SparkleIcon, { key: "spark", size: 12 }) : null,
     words,
   );
+}
+
+/** A thumbnail over a deployment that keeps none is a picture of something
+ * about to be dropped, and used to say "taken of the page when you picked". */
+function taking(held: Held): string {
+  if (!held.keeps) return ATTACH_WORDS.notKept;
+  return held.captured ? ATTACH_WORDS.taken : ATTACH_WORDS.hint;
 }
 
 /** Nothing claimed yet, an image claimed, or a capture that did not work. */

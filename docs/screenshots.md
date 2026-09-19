@@ -64,6 +64,11 @@ a tool that never took screenshots at all.
 3. **Nothing has happened yet.** The ordinary resting state, and the only one
    that asks for a paste.
 
+A fourth, which is the same lie in a different place: a deployment that keeps
+none can still _capture_, so the strip would show a thumbnail and say "taken of
+the page when you picked" about an image that goes nowhere. It says that one
+will not be sent instead.
+
 ## snapdom is optional, and that is a real choice
 
 `captureElement` imports [`@zumer/snapdom`](https://github.com/zumerlab/snapdom)

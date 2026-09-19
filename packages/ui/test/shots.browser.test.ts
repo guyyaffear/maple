@@ -202,6 +202,15 @@ describe("the default upload", () => {
     await vi.waitFor(() => expect(strip()?.querySelector("img")).not.toBeNull());
     expect(client?.getState().composer.attachments).toHaveLength(0);
   });
+
+  it("says the one it is showing will not be sent, rather than claiming it was taken", async () => {
+    await writing(false);
+    shotsOf().put(taken());
+
+    await vi.waitFor(() => expect(strip()?.querySelector("img")).not.toBeNull());
+    expect(strip()?.textContent).toContain("will not be sent");
+    expect(strip()?.textContent).not.toContain("Taken of the page");
+  });
 });
 
 /** A paste carrying one image, as the panel's own handler reads it. */

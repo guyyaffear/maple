@@ -52,3 +52,4 @@ export type {
   RegionPickingOptions,
   TextPickingOptions,
 } from "./pick.js";
+export { pageIsTagged } from "./tagged.js";

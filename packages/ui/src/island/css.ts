@@ -377,6 +377,12 @@ function settingsPanel(): string {
   color: var(--mk-fg);
 }
 
+/* The one row here that is not a preference: something is wrong with the
+   build, in the warm colour the overlay uses for what Maple noticed itself. */
+.mk-setting[data-mk-maple] .mk-setting-name {
+  color: var(--mk-maple);
+}
+
 .mk-setting-hint {
   display: block;
   margin-top: 2px;

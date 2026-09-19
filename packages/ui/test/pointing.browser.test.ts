@@ -235,8 +235,12 @@ describe("clicking a mark", () => {
 
     point(await mark(2), true);
 
-    await vi.waitFor(() => expect(find(".mk-ring").getAttribute("data-mk-state")).toBe("hovered"));
-    expect(find(".mk-ring-name").textContent).toBe("a passage in the gate notice");
+    // Both inside the retry: the ring reaches `hovered` a frame before its
+    // label catches up, so reading the name after the wait reads the old one.
+    await vi.waitFor(() => {
+      expect(find(".mk-ring").getAttribute("data-mk-state")).toBe("hovered");
+      expect(find(".mk-ring-name").textContent).toBe("a passage in the gate notice");
+    });
   });
 });
 

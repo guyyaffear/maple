@@ -74,21 +74,55 @@ stripping is the part that must be right in production.
 ### Next
 
 ```ts
-const isPreview = process.env["MAPLE_PREVIEW"] === "1";
+import { withMaple } from "@maple-kit/core/next";
 
-export default {
-  turbopack: {
-    rules: isPreview ? { "*.tsx": { loaders: ["@maple-kit/core/loader"] } } : {},
-  },
-  compiler: { reactRemoveProperties: isPreview ? false : { properties: ["^data-maple-"] } },
-};
+export default withMaple(config, { preview: process.env["MAPLE_PREVIEW"] === "1" });
 ```
 
-**Do not add `as: "*.tsx"` to that rule.** It reads as the right thing to write
-— the loader does return TSX — but Turbopack's `*` captures the whole filename
-including its extension, so the module is renamed `page.tsx.tsx` and every
-relative import in the project fails to resolve. Omitting `as` keeps the
-original type, which is what is wanted.
+One flag, because tagging a Next build takes **two** settings that have to
+agree — a Turbopack rule that adds the attributes, and a dead-attribute pass
+that must not remove them on the same build — and wired by hand they disagree
+silently. Nothing throws, the page renders, and every comment anchors to "this
+page" with no component name and no file. `withMaple` owns both, and a webpack
+hook as well, so `next dev --webpack` is not a quiet downgrade.
+
+`@maple-kit/core/next` is deliberately **not** in the repository's `paths`
+mapping, unlike every other subpath: Next's own config transpiler rewrites a
+mapped specifier into a relative path that resolves nowhere at build time. The
+example's config therefore resolves it through the exports map, exactly as a
+consumer would — which is why `pnpm typecheck` builds core before typechecking
+the examples.
+
+It **throws** when the config already sets `compiler.reactRemoveProperties`.
+Two owners for the field that decides whether the tagger's work survives is the
+bug it exists to prevent; extra patterns go through `removeProperties`.
+
+#### The two ways it goes wrong by hand
+
+Both have happened in a real integration, and neither produces an error.
+
+1. **`reactRemoveProperties` left on for the preview build.** The rule tags and
+   the pass immediately untags, so the build does the work twice and ships
+   nothing. It has to be `false` on exactly the builds the tagger runs on.
+2. **A path glob as the rule key.** `"src/**/*.tsx"` never matches: Turbopack
+   matches a key containing a separator against the whole path. The key is a
+   **filename** glob, `"*.tsx"`, and a key that does not match is not an error —
+   it is a rule that does nothing.
+
+And a third that does produce an error, eventually: **do not add `as: "*.tsx"`
+to that rule.** It reads as the right thing to write — the loader does return
+TSX — but Turbopack's `*` captures the whole filename including its extension,
+so the module is renamed `page.tsx.tsx` and every relative import in the project
+fails to resolve. Omitting `as` keeps the original type.
+
+#### When it did not run
+
+A build cannot report this, because from the build's side nothing happened. The
+page can: the controller asks it, on start and on every pick, whether anything
+carries `data-maple-src` (`pageIsTagged` in `@maple-kit/core/overlay`).
+`ClientState.tagged` is the answer, the logger gets a warning the first time it
+turns false, and the island's settings panel says so in a row naming
+`withMaple`. It is the only signal there is, so it is worth the `querySelector`.
 
 ### Vite
 
@@ -146,7 +180,8 @@ source for one that the reader cannot derive itself.
 Production correctness matters more than the feature. The attributes are removed
 by the framework's own dead-attribute pass, not by a Maple step:
 
-- **Next** — `compiler.reactRemoveProperties: { properties: ["^data-maple-"] }`.
+- **Next** — `compiler.reactRemoveProperties: { properties: ["^data-maple-"] }`,
+  which is what `withMaple` sets on every build that is not a preview.
 - **Vite** — the plugin does not run the transform outside preview mode, so
   there is nothing to strip.
 

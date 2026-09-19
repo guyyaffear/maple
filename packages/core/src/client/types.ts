@@ -139,6 +139,11 @@ export interface ClientState {
    * A message alone cannot tell "sign in" from "the store is down".
    */
   readonly error: MapleFailure | null;
+  /**
+   * Whether the page carries the tagger's attributes. False means no comment
+   * can name a component or a file, which is a build to fix.
+   */
+  readonly tagged: boolean;
 }
 
 /**

@@ -99,6 +99,13 @@ export const SETTINGS_COPY = {
     name: "Developer mode",
     hint: "Shows how each comment is re-found after a deploy, its source line and its CSS path.",
   },
+  untagged: {
+    name: "This build is not tagged",
+    hint:
+      "Comments still work, but none of them can name a component or the file it is written " +
+      "in. Wrap the Next config in withMaple from @maple-kit/core/next, or the Vite config " +
+      "in the maple plugin with tagger on.",
+  },
   hidden: {
     name: "Hide the island",
     hint: "It goes until you reload. A comment arriving, or a link to one, brings it straight back.",

@@ -26,6 +26,7 @@
     "./export": "./dist/export/index.js",
     "./logger": "./dist/logger/index.js",
     "./loader": "./dist/loader/index.js",
+    "./next": "./dist/next/index.js",
     "./config": "./dist/config/index.js",
     "./overlay": "./dist/overlay/index.js",
     "./route": "./dist/route/index.js",

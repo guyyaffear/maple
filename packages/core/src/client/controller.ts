@@ -10,6 +10,7 @@
 
 import { kindOf } from "../anchor/kind.js";
 import { labelFor } from "../anchor/label.js";
+import { pageIsTagged } from "../overlay/tagged.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
 import { detailOf, failureFrom } from "./failure.js";
 import { openCount, visibleComments } from "./filters.js";
@@ -170,6 +171,11 @@ const CLOSED: ComposerState = {
 
 const UNARMED: PickState = { armed: false };
 
+/** Said to the log when nothing on the page carries a tagger attribute. */
+export const UNTAGGED =
+  "Maple found no data-maple-src on this page, so a comment cannot name a component or a " +
+  "file. The tagger is not running on this build — see @maple-kit/core/next.";
+
 interface Runtime {
   readonly options: MapleClientOptions;
   readonly config: MapleConfig;
@@ -208,7 +214,7 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
     select: (id) => patch(runtime, { selected: id, hidden: id === null && runtime.state.hidden }),
     peek: (id) => patch(runtime, { peeked: id }),
 
-    arm: (kind) => patch(runtime, { pick: { armed: true, kind }, hidden: false }),
+    arm: (kind) => arm(runtime, kind),
     disarm: () => patch(runtime, { pick: UNARMED }),
 
     openComposer: (target) => openComposer(runtime, target),
@@ -272,6 +278,7 @@ function runtimeFor(options: MapleClientOptions): Runtime {
       user: null,
       github: { state: "unsupported" },
       error: null,
+      tagged: true,
     }),
   };
 }
@@ -337,6 +344,7 @@ function start(runtime: Runtime): void {
     onChange: (theme) => patch(runtime, { theme }),
   });
   patch(runtime, { theme: runtime.theme.current() });
+  checkTagged(runtime, view.document);
 
   const abort = new AbortController();
   const { signal } = abort;
@@ -651,6 +659,23 @@ async function setStatus(
     fail(runtime, error, "status");
     throw error;
   }
+}
+
+/** Asked again on every arm: a client-routed page can navigate from a tagged
+ * view into one rendered by something the loader never saw. */
+function arm(runtime: Runtime, kind: PickKind): void {
+  const view = runtime.options.view ?? (globalThis as { window?: ClientView }).window;
+  if (view) checkTagged(runtime, view.document);
+  patch(runtime, { pick: { armed: true, kind }, hidden: false });
+}
+
+/** Said once to the log, because it is a build to fix rather than a page. */
+function checkTagged(runtime: Runtime, page: Document): void {
+  const tagged = pageIsTagged(page);
+  if (tagged === runtime.state.tagged) return;
+
+  patch(runtime, { tagged });
+  if (!tagged) runtime.options.logger?.warn(UNTAGGED);
 }
 
 /** The failure a surface reads; the route's own words go to the log instead,

@@ -11,6 +11,8 @@ export { createMapleClient } from "./controller.js";
 export type { ClientView, MapleClient, MapleClientOptions } from "./controller.js";
 export { createDraftKeeper, DRAFT_DEBOUNCE_MS, DRAFT_LIFETIME_MS, draftIdFor } from "./drafts.js";
 export type { DraftKeeper, DraftKeeperOptions } from "./drafts.js";
+export { detailOf, failureFrom } from "./failure.js";
+export type { FailedCall, FailureKind, MapleFailure } from "./failure.js";
 export { matchesFilter, openCount, visibleComments } from "./filters.js";
 export { startLink } from "./link.js";
 export type { LinkOptions, LinkRun } from "./link.js";

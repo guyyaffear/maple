@@ -34,13 +34,19 @@ import {
 } from "./island/index.js";
 import { PICK_ORDER } from "./island/language.js";
 import { MapleMarkLayer } from "./marks/index.js";
+import { MapleNotice } from "./notice/index.js";
 import { MaplePicker } from "./picker/index.js";
 import { MapleRoot } from "./root.js";
 
 import type { LeaveAsk, MapleAttachmentsProps } from "./composer/index.js";
 import type { MapleRootProps } from "./root.js";
 import type { Comment } from "@maple-kit/core";
+import type { FailedCall } from "@maple-kit/core/client";
 import type { ReactElement } from "react";
+
+/** The island answers for the calls it makes; the panel answers for the send. */
+const LOAD_CALLS: readonly FailedCall[] = ["load", "status", "link"];
+const SEND_CALLS: readonly FailedCall[] = ["send"];
 
 /** Everything the root takes, plus the few choices the composition itself has. */
 export interface MapleProps extends MapleRootProps {
@@ -93,6 +99,7 @@ function inventory(branch: string, label: string | undefined, defaultOpen: boole
         createElement(Branch, { branch, ...(label === undefined ? {} : { label }) }),
         createElement(Settings),
       ),
+      createElement(MapleNotice, { during: LOAD_CALLS }),
       createElement(Filters),
       createElement(List, { children: (comment: Comment) => createElement(Item, { comment }) }),
       createElement(
@@ -114,6 +121,7 @@ function composer(leave: LeaveAsk | undefined, shots: MapleProps["attachments"])
     createElement(MapleDetail, { key: "detail" }),
     createElement(MapleContextBadge, { key: "context" }),
     createElement(MapleAttachments, { key: "attachments", ...shots }),
+    createElement(MapleNotice, { key: "notice", during: SEND_CALLS }),
     createElement(MapleActions, { key: "actions" }),
   );
 }

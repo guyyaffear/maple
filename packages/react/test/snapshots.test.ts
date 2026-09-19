@@ -184,7 +184,7 @@ describe("reading what the route returned", () => {
     await maple.load();
 
     expect(reads.state().phase).toBe("error");
-    expect(reads.state().error).toBe("Something went wrong");
+    expect(reads.state().error).toMatchObject({ during: "load", kind: "store", status: 500 });
     expect(reads.comments()).toEqual([]);
   });
 });

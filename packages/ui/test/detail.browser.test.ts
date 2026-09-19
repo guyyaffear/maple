@@ -168,6 +168,24 @@ describe("default detail", () => {
   });
 });
 
+/** An outline follows the control's own corners, so nothing may force one. */
+describe("the focus ring", () => {
+  it("keeps a pill round when it takes focus", async () => {
+    await open();
+    const pill = find<HTMLButtonElement>(".mk-pill");
+    pill.focus();
+
+    expect(getComputedStyle(pill).borderTopLeftRadius).toBe("999px");
+    expect(getComputedStyle(pill).outlineWidth).toBe("2px");
+  });
+
+  it("gives the two controls with no corners of their own a radius", async () => {
+    await open();
+
+    expect(getComputedStyle(find(".mk-when")).borderTopLeftRadius).not.toBe("0px");
+  });
+});
+
 describe("developer detail", () => {
   /**
    * A row is the same object in both detentes. A box per fact made a row in

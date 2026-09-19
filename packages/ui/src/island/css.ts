@@ -752,6 +752,7 @@ function rowDetail(): string {
   margin-top: 4px;
   padding: 0;
   border: 0;
+  border-radius: var(--mk-r-xs);
   background: none;
   color: var(--mk-accent);
   font: inherit;
@@ -836,6 +837,7 @@ function developer(): string {
   return `
 .mk-tipped {
   position: relative;
+  border-radius: var(--mk-r-xs);
   cursor: help;
 }
 

@@ -13,6 +13,8 @@ export interface OfflineOptions {
   readonly github?: { readonly linked: boolean; readonly login?: string };
   /** Whether it keeps screenshots. True unless a suite is about the case where it does not. */
   readonly media?: boolean;
+  /** Refuse the comment calls with this status, so the load fails and `/me` does not. */
+  readonly refuse?: number;
 }
 
 /** Answers `/comments` with an empty branch and `/me` with no session. */
@@ -26,10 +28,12 @@ export function offlineFetch(options: OfflineOptions = {}): typeof globalThis.fe
       media: options.media !== false,
       ...(options.github === undefined ? {} : { github: options.github }),
     };
+    const failing = options.refuse !== undefined && !url.includes("/me");
     const body = url.includes("/me") ? me : { comments: [] };
+
     return Promise.resolve(
-      new Response(JSON.stringify(body), {
-        status: 200,
+      new Response(JSON.stringify(failing ? { error: "no" } : body), {
+        status: failing ? options.refuse : 200,
         headers: { "content-type": "application/json" },
       }),
     );

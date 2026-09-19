@@ -33,7 +33,9 @@ export type { Draft, DraftStore, DraftStoreOptions } from "./drafts.js";
 export { createOverlayHost, createOverlayStyleSheet } from "./host.js";
 export type { OverlayHost, OverlayHostOptions } from "./host.js";
 export {
+  containerFor,
   elementAt,
+  holds,
   MINIMUM_REGION,
   selectedText,
   startElementPicking,

@@ -9,7 +9,7 @@
 
 import { createElement, forwardRef, useCallback } from "react";
 
-import { confidenceFor, dataAttributes, formFor } from "../data.js";
+import { confidenceFor, dataAttributes, formFor, pointerAttributes } from "../data.js";
 import { composeRefs, Slot } from "../slot.js";
 import { applyReviewerSlot } from "../slots.js";
 import { markLabel, markTitle } from "./label.js";
@@ -34,6 +34,11 @@ export interface MarkProps extends AsChildProps, ButtonHTMLAttributes<HTMLButton
   /** What it is on, for the tooltip: "the Yield card". */
   readonly on?: string;
   readonly selected?: boolean;
+  /** A row or the mark itself is being pointed at. Sticks to nothing. */
+  readonly peeked?: boolean;
+  /** Someone moved it off what it was covering, and it holds where they put it. */
+  readonly nudged?: boolean;
+  readonly dragging?: boolean;
 }
 
 /** A mark a reviewer can click, drawn from state that arrives as `data-*`. */
@@ -47,7 +52,10 @@ export const MapleMark = /** @__PURE__ */ forwardRef<HTMLButtonElement, MarkProp
       className,
       colorSlot,
       confidence,
+      dragging,
+      nudged,
       on,
+      peeked,
       selected,
       sent,
       status = "open",
@@ -74,6 +82,11 @@ export const MapleMark = /** @__PURE__ */ forwardRef<HTMLButtonElement, MarkProp
           sent: sent ?? true,
           ...(confidence === undefined ? {} : { confidence: confidenceFor(confidence) }),
         }),
+        ...pointerAttributes({
+          peeked: peeked ?? false,
+          nudged: nudged ?? false,
+          dragging: dragging ?? false,
+        }),
         "aria-label": markLabel(address, author, status),
         "aria-pressed": selected ?? false,
         title: markTitle(author, status, on),
@@ -82,7 +95,15 @@ export const MapleMark = /** @__PURE__ */ forwardRef<HTMLButtonElement, MarkProp
       },
       ...inside(asChild, children, [
         createElement(MapleLeaf, { key: "leaf", form }),
-        createElement("span", { key: "n", className: "mk-mark-n mk-num" }, address),
+        createElement(
+          "span",
+          {
+            key: "n",
+            className: "mk-mark-n mk-num",
+            "data-mk-digits": String(String(address).length),
+          },
+          address,
+        ),
       ]),
     );
   },

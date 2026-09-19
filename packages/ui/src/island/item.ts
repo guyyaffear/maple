@@ -1,40 +1,31 @@
 /**
  * `Maple.Item`: one comment, as a row.
  *
- * Default detail is the default: who, when, what they said, and what it is on
- * in the words a reviewer would use. The rung, the confidence, the source line
- * and the CSS path are developer detail and are absent until it is on. The
- * status chip is drawn only when the status is not open, which is the ordinary
- * case and does not need saying.
+ * A row is scanned, not read: which one, who, when, what they said, and what
+ * it is on in the words a reviewer would use. The rung, the confidence, the
+ * paths and the reason an anchor lost its place are the panel's — it has the
+ * width for the sentence that explains them, and a reader who wants them has
+ * already gone there. The leaf is the one on the page, drawn from the same
+ * form and the same paint: two drawings of one comment are two comments.
  */
 
-import { labelFor } from "@maple-kit/core/anchor";
+import { kindOf, labelFor } from "@maple-kit/core/anchor";
 import { useMapleClient } from "@maple-kit/react";
-import { createElement, forwardRef, useState } from "react";
+import { createElement, forwardRef, useCallback, useRef, useState } from "react";
 
-import { confidenceFor, dataAttributes } from "../data.js";
-import { TargetIcon } from "../icons/target.js";
-import { STATUS_LABELS } from "../language.js";
+import { dataAttributes, formFor } from "../data.js";
+import { PROVENANCE_SENTENCES, STATUS_LABELS, STATUS_SENTENCES } from "../language.js";
+import { MapleLeaf } from "../marks/shape.js";
+import { composeRefs } from "../slot.js";
 import { applyReviewerSlot } from "../slots.js";
 import { Tip } from "../tip.js";
-import { kindOf } from "./comments.js";
 import { useIsland } from "./context.js";
-import {
-  ISLAND_COPY,
-  kindPhrase,
-  ORPHAN_LABELS,
-  orphanTitle,
-  PATH_COPY,
-  rungLabel,
-  rungTitle,
-} from "./language.js";
-import { Leaf } from "./leaf.js";
+import { ISLAND_COPY, kindPhrase } from "./language.js";
 import { cx, renderPart } from "./part.js";
 import { absoluteTime, relativeTime } from "./time.js";
 
 import type { PartProps } from "./part.js";
-import type { Comment, CommentAnchor, CommentAuthor } from "@maple-kit/core";
-import type { Orphaned, Resolution, Rung } from "@maple-kit/core/anchor";
+import type { Comment, CommentAuthor } from "@maple-kit/core";
 import type { ReactNode } from "react";
 
 /** One comment. The row renders it; it takes no view of its own. */
@@ -50,7 +41,7 @@ const PART = "<Maple.Item>";
 /** A second of rest: nobody hovers a timestamp meaning to ask what it was. */
 export const TIME_DELAY_MS = 1000;
 
-/** A row: who and when, what they said, and what it is on. */
+/** A row: which comment, who and when, what they said, and what it is on. */
 export const Item = /** @__PURE__ */ forwardRef<HTMLElement, ItemProps>(function Item(props, ref) {
   const { asChild, className, comment, ...rest } = props;
   const island = useIsland(PART);
@@ -59,7 +50,7 @@ export const Item = /** @__PURE__ */ forwardRef<HTMLElement, ItemProps>(function
 
   const long = comment.body.length > LONG_BODY;
   const number = island.numbers.get(comment.id) ?? 0;
-  const resolution = island.resolutions.get(comment.id);
+  const selected = island.selected === comment.id;
 
   return renderPart(
     "article",
@@ -68,23 +59,44 @@ export const Item = /** @__PURE__ */ forwardRef<HTMLElement, ItemProps>(function
       ...dataAttributes({ status: comment.status }),
       ...rest,
       "data-mk-expanded": String(expanded),
-      "data-mk-selected": String(island.selected === comment.id),
+      "data-mk-selected": String(selected),
       className: cx("mk-row", className),
       onClick: () => client.viewComment(comment.id),
       onPointerEnter: () => client.peek(comment.id),
       onPointerLeave: () => client.peek(null),
       onFocus: () => client.peek(comment.id),
       onBlur: () => client.peek(null),
-      ref,
+      ref: composeRefs<HTMLElement>(ref, useReveal(selected)),
     },
     [
       top(comment, number),
       renderPart("p", false, { key: "body", className: "mk-text mk-body" }, comment.body),
       long ? more(expanded, () => setExpanded(!expanded)) : null,
-      meta(comment, { resolution, developer: island.developer }),
+      meta(comment),
     ],
   );
 });
+
+/**
+ * A mark clicked selects its row, and a row nobody can see has not been pointed
+ * at. `nearest` keeps the scroll in the list and a visible row where it is.
+ */
+function useReveal(selected: boolean): (node: HTMLElement | null) => void {
+  const shown = useRef(false);
+
+  return useCallback(
+    (node: HTMLElement | null) => {
+      if (!node || !selected) {
+        shown.current = shown.current && selected;
+        return;
+      }
+      if (shown.current) return;
+      shown.current = true;
+      node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    },
+    [selected],
+  );
+}
 
 /** The toggle under a clamped body. Its words say what the next click does. */
 function more(expanded: boolean, onClick: () => void): ReactNode {
@@ -97,22 +109,25 @@ function more(expanded: boolean, onClick: () => void): ReactNode {
   );
 }
 
-/** Who wrote it, when, and its place on the branch. */
+/** Which comment this is, who wrote it, when, and where it is in its life. */
 function top(comment: Comment, number: number): ReactNode {
   const chip =
     comment.status === "open"
       ? null
-      : renderPart(
-          "span",
-          false,
-          { key: "status", className: cx("mk-chip", chipTone(comment)) },
+      : createElement(
+          Tip,
+          {
+            key: "status",
+            className: cx("mk-chip", chipTone(comment)),
+            sentence: STATUS_SENTENCES[comment.status],
+          },
           STATUS_LABELS[comment.status],
         );
 
   return renderPart("div", false, { key: "top", className: "mk-row-top" }, [
+    pin(comment, number),
     who(comment),
     chip,
-    renderPart("span", false, { key: "n", className: "mk-index" }, `#${String(number)}`),
   ]);
 }
 
@@ -121,7 +136,36 @@ function chipTone(comment: Comment): string {
   return comment.status === "orphaned" ? "mk-chip-lost" : "mk-chip-warn";
 }
 
-/** The avatar, the name and how long ago, all softened when unverified. */
+/**
+ * The comment's own leaf, at row size: the same address, form and paint as the
+ * mark on the page. The fill says where it is in its life, so it says so too.
+ */
+function pin(comment: Comment, number: number): ReactNode {
+  const form = formFor(comment.status);
+  const sentence = `${STATUS_LABELS[comment.status]} — ${STATUS_SENTENCES[comment.status]}`;
+
+  return createElement(
+    Tip,
+    {
+      key: "pin",
+      className: "mk-rowleaf",
+      sentence,
+      triggerProps: { ...dataAttributes({ status: comment.status, form }) },
+    },
+    createElement(MapleLeaf, { key: "leaf", form, halo: false }),
+    createElement(
+      "span",
+      {
+        key: "n",
+        className: "mk-mark-n mk-num",
+        "data-mk-digits": String(String(number).length),
+      },
+      number,
+    ),
+  );
+}
+
+/** The name and how long ago, both softened when nothing verified the name. */
 function who(comment: Comment): ReactNode {
   const { author } = comment;
 
@@ -130,8 +174,7 @@ function who(comment: Comment): ReactNode {
     false,
     { key: "who", className: "mk-who", ...dataAttributes({ provenance: author.provenance }) },
     [
-      avatar(author),
-      renderPart("span", false, { key: "name", className: "mk-name" }, author.name),
+      name(author),
       createElement(
         Tip,
         {
@@ -146,97 +189,44 @@ function who(comment: Comment): ReactNode {
   );
 }
 
-/** The leaf, in the reviewer's own colour, with their initials over it. */
-function avatar(author: CommentAuthor): ReactNode {
+/**
+ * Who wrote it, in their own colour, carrying what that name is worth. A dot
+ * rather than a second leaf: the leaf beside it is already the comment's.
+ */
+function name(author: CommentAuthor): ReactNode {
   const slot = author.colorSlot ?? 0;
 
-  return renderPart(
-    "span",
-    false,
+  return createElement(
+    Tip,
     {
-      key: "avatar",
-      className: "mk-avatar",
-      ...dataAttributes({ provenance: author.provenance }),
-      title: avatarTitle(author),
-      ref: (node: HTMLElement | null) => {
-        if (node) applyReviewerSlot(node, slot);
+      key: "name",
+      className: "mk-name",
+      sentence: `${author.name} — ${PROVENANCE_SENTENCES[author.provenance]}`,
+      triggerProps: {
+        ...dataAttributes({ provenance: author.provenance }),
+        ref: (node: HTMLElement | null) => {
+          if (node) applyReviewerSlot(node, slot);
+        },
       },
     },
-    [
-      renderPart(Leaf, false, { key: "leaf", size: 21 }),
-      renderPart("span", false, { key: "ini", className: "mk-initials" }, initials(author.name)),
-    ],
+    author.name,
   );
 }
 
-/** How much the identity is worth, in a sentence rather than a warning. */
-function avatarTitle(author: CommentAuthor): string {
-  const { name } = author;
-  if (author.provenance === "server") return `${name} — verified by the application's own session`;
-  if (author.provenance === "client") return `${name} — the application told us; unverified`;
-  return `${name} — typed a name into Maple`;
-}
-
-function initials(name: string): string {
-  const words = name.split(/\s+/).filter(Boolean);
-  const letters = words.slice(0, 2).map((word) => word.charAt(0));
-  return letters.join("").toUpperCase() || "?";
-}
-
-/** How much of the anchor's story the row is allowed to tell. */
-interface Detail {
-  readonly resolution: Resolution | undefined;
-  readonly developer: boolean;
-}
-
-/** What it is on, or why it has nowhere to be, and whether a shot came with it. */
-function meta(comment: Comment, detail: Detail): ReactNode {
+/** What it is on, and whether a shot came with it. */
+function meta(comment: Comment): ReactNode {
   const attachments = comment.attachments?.length ?? 0;
-  const { developer, resolution } = detail;
 
   return renderPart("div", false, { key: "meta", className: "mk-meta" }, [
-    resolution?.status === "orphaned" ? lost(resolution, developer) : place(comment),
-    ...(developer ? technical(comment.anchor, resolution) : []),
+    comment.status === "orphaned" ? null : place(comment),
     attachments > 0
-      ? renderPart("span", false, { key: "shot", className: "mk-chip" }, ISLAND_COPY.attachment)
+      ? createElement(
+          Tip,
+          { key: "shot", className: "mk-chip", sentence: ISLAND_COPY.attachmentSentence },
+          ISLAND_COPY.attachment,
+        )
       : null,
   ]);
-}
-
-/**
- * The rung, the confidence and the two paths — each a chip carrying a value
- * and a tooltip carrying the sentence, because a row is scanned, not read.
- */
-function technical(anchor: CommentAnchor, resolution: Resolution | undefined): ReactNode[] {
-  const chips: ReactNode[] = [];
-  if (resolution?.status === "resolved") chips.push(rung(resolution.by, resolution.confidence));
-  if (anchor.source !== undefined) chips.push(path("source", anchor.source));
-  if (anchor.selector !== undefined) chips.push(path("selector", anchor.selector));
-  return chips;
-}
-
-/** The crosshair and the percentage. The sentence says what the number buys. */
-function rung(by: Rung, confidence: number): ReactNode {
-  return createElement(
-    Tip,
-    {
-      key: "rung",
-      className: "mk-chip-dev mk-num",
-      sentence: rungTitle(by, confidenceFor(confidence)),
-    },
-    createElement(TargetIcon, { key: "icon", size: 11 }),
-    rungLabel(Math.round(confidence * 100)),
-  );
-}
-
-/** A path the cascade recorded, ellipsised: it is a value, not a field name. */
-function path(kind: "selector" | "source", value: string): ReactNode {
-  const copy = PATH_COPY[kind];
-  return createElement(
-    Tip,
-    { key: kind, className: "mk-chip-dev", sentence: `${copy.sentence} ${value}` },
-    createElement("span", { key: "v", className: "mk-path" }, value),
-  );
 }
 
 function place(comment: Comment): ReactNode {
@@ -245,18 +235,4 @@ function place(comment: Comment): ReactNode {
     "on ",
     renderPart("b", false, { key: "b" }, phrase),
   ]);
-}
-
-/** Two words on the chip; the sentence, and the rungs tried, in the tooltip. */
-function lost(resolution: Orphaned, developer: boolean): ReactNode {
-  const { reason, tried } = resolution;
-  return createElement(
-    Tip,
-    {
-      key: "lost",
-      className: "mk-chip-lost",
-      sentence: orphanTitle(reason, developer ? tried : []),
-    },
-    ORPHAN_LABELS[reason],
-  );
 }

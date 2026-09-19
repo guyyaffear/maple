@@ -59,7 +59,11 @@ export const MapleAttachments = /** @__PURE__ */ forwardRef<HTMLElement, MapleAt
     }
 
     const children = scope.pending ? filled(scope, failed, captured) : [hint()];
-    return createElement(Element, { ref, className }, ...children);
+    return createElement(
+      Element,
+      { ref, className, ...(captured ? { "data-mk-maple": "true" } : {}) },
+      ...children,
+    );
   },
 );
 
@@ -67,13 +71,28 @@ export const MapleAttachments = /** @__PURE__ */ forwardRef<HTMLElement, MapleAt
  * What a comment already written kept. Nothing is offered here: a comment is
  * one body and whatever was attached when it was sent.
  */
-/** One kept attachment: the image where it can be loaded, a line where not. */
-function shot(one: MediaRef, resolve: MapleAttachmentsProps["resolve"]): ReactElement {
+/**
+ * One kept attachment: the image where it can be loaded, a line where not, and
+ * either way the sentence saying whether Maple took it or the author did.
+ */
+function shot(one: MediaRef, resolve: MapleAttachmentsProps["resolve"]): readonly ReactElement[] {
   const src = resolve?.(one);
-  if (src === undefined) {
-    return createElement("span", { key: one.key, className: "mk-shot-said" }, ATTACH_WORDS.kept);
-  }
-  return createElement("img", { key: one.key, className: "mk-shot", src, alt: ATTACH_WORDS.alt });
+  const byMaple = one.source === "capture";
+  const words = byMaple ? ATTACH_WORDS.taken : ATTACH_WORDS.kept;
+
+  return [
+    ...(src === undefined
+      ? []
+      : [
+          createElement("img", {
+            key: `${one.key}-img`,
+            className: "mk-shot",
+            src,
+            alt: ATTACH_WORDS.alt,
+          }),
+        ]),
+    said(words, byMaple, one.key),
+  ];
 }
 
 interface KeptProps {
@@ -84,11 +103,12 @@ interface KeptProps {
 
 function kept(props: KeptProps, ref: React.ForwardedRef<HTMLElement>): ReactElement {
   if (props.attachments.length === 0) return createElement("div", { ref, hidden: true });
+  const byMaple = props.attachments.some((one) => one.source === "capture");
 
   return createElement(
     "div",
-    { ref, className: props.className },
-    ...props.attachments.map((one) => shot(one, props.resolve)),
+    { ref, className: props.className, ...(byMaple ? { "data-mk-maple": "true" } : {}) },
+    ...props.attachments.flatMap((one) => shot(one, props.resolve)),
   );
 }
 
@@ -101,7 +121,7 @@ function filled(scope: ComposerScopeValue, failed: boolean, captured: boolean): 
       src: scope.pending?.preview.url,
       alt: ATTACH_WORDS.alt,
     }),
-    said(captured ? ATTACH_WORDS.taken : ATTACH_WORDS.hint, captured),
+    said(captured ? ATTACH_WORDS.taken : ATTACH_WORDS.hint, captured, "said"),
     createElement(
       "button",
       {
@@ -120,14 +140,17 @@ function filled(scope: ComposerScopeValue, failed: boolean, captured: boolean): 
 
 /** Nothing attached: one quiet line, because both gestures are already live. */
 function hint(): ReactNode {
-  return said(ATTACH_WORDS.hint, false);
+  return said(ATTACH_WORDS.hint, false, "said");
 }
 
-/** The sparkle marks the one Maple took by itself, and only that one. */
-function said(words: string, byMaple: boolean): ReactNode {
+/**
+ * The sparkle marks the one Maple took by itself, in the one warm colour: a
+ * reviewer did everything else here, and this happened without them.
+ */
+function said(words: string, byMaple: boolean, key: string): ReactElement {
   return createElement(
     "span",
-    { key: "said", className: "mk-shot-said" },
+    { key, className: "mk-shot-said", ...(byMaple ? { "data-mk-maple": "true" } : {}) },
     byMaple ? createElement(SparkleIcon, { key: "spark", size: 12 }) : null,
     words,
   );

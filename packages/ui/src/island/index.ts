@@ -7,7 +7,7 @@
  * dealt with is the question and where it sits is a detail of one of its states.
  */
 
-export { countsFor, kindOf, numbersFor, orphanReason, resolutionsFor } from "./comments.js";
+export { countsFor, numbersFor, orphanReason, resolutionsFor } from "./comments.js";
 export type { FilterCounts } from "./comments.js";
 export { IslandContent } from "./content.js";
 export type { IslandContentProps } from "./content.js";
@@ -23,20 +23,7 @@ export { Island } from "./island.js";
 export type { IslandProps } from "./island.js";
 export { Item, TIME_DELAY_MS } from "./item.js";
 export type { ItemProps } from "./item.js";
-export {
-  FILTER_LABELS,
-  ISLAND_COPY,
-  kindPhrase,
-  openLabel,
-  ORPHAN_LABELS,
-  ORPHAN_SENTENCES,
-  orphanTitle,
-  PATH_COPY,
-  RUNG_LABELS,
-  rungLabel,
-  rungTitle,
-  SETTINGS_COPY,
-} from "./language.js";
+export { FILTER_LABELS, ISLAND_COPY, kindPhrase, openLabel, SETTINGS_COPY } from "./language.js";
 export { List } from "./list.js";
 export type { ListProps } from "./list.js";
 export { NewComment, PickButton } from "./new-comment.js";

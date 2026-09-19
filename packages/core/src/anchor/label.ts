@@ -8,7 +8,7 @@
  * reviewer reads "API key card", never "A P I Key card".
  */
 
-import { LABEL_ATTRIBUTE, NAME_ATTRIBUTE } from "../tagger/attributes.js";
+import { LABEL_ATTRIBUTE, NAME_ATTRIBUTE, SOURCE_ATTRIBUTE } from "../tagger/attributes.js";
 
 import type { Anchor } from "./types.js";
 
@@ -17,7 +17,7 @@ export interface LabelSource {
   /** The element the comment resolved to, when the page still has one. */
   readonly element?: Element | null;
   /** The anchor the comment recorded, read when there is no element left. */
-  readonly anchor?: Pick<Anchor, "component">;
+  readonly anchor?: Pick<Anchor, "component" | "source">;
 }
 
 /** An acronym, a capitalised or lowercase word, or a run of digits. */
@@ -39,6 +39,19 @@ export function labelFor(source: LabelSource): string | undefined {
   const component =
     anchor?.component ?? (element ? closestAttribute(element, NAME_ATTRIBUTE) : undefined);
   return component ? unpickCamelCase(component) : undefined;
+}
+
+/**
+ * Where the thing a comment is on is written, as `path/to/file.tsx:line:col`.
+ *
+ * The page wins over the anchor: the anchor records where the element was when
+ * the comment was written, and a redeploy since has moved the line. Undefined
+ * on a build that never ran the tagger, which is most of them.
+ */
+export function sourceFor(source: LabelSource): string | undefined {
+  const { anchor, element } = source;
+  const written = element ? closestAttribute(element, SOURCE_ATTRIBUTE) : undefined;
+  return written ?? anchor?.source;
 }
 
 /**

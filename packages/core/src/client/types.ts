@@ -10,16 +10,17 @@
 
 import type { Anchor } from "../anchor/types.js";
 import type { Draft } from "../overlay/drafts.js";
-import type { Comment, CommentContext, MapleUser, MediaRef } from "../types.js";
+import type { Comment, CommentContext, MapleUser, MediaRef, PickKind } from "../types.js";
+
+/** The picker's word. Declared with the domain vocabulary, because the anchor
+ * reads it back off a stored comment and the two cannot both own it. */
+export type { PickKind } from "../types.js";
 
 /** The five filters the inventory offers, in the order it shows them. */
 export const COMMENT_FILTERS = ["all", "open", "needs_reverify", "unpinned", "resolved"] as const;
 
 /** One of {@link COMMENT_FILTERS}. `unpinned` is the word for `orphaned`. */
 export type CommentFilter = (typeof COMMENT_FILTERS)[number];
-
-/** The three ways a reviewer says what a comment is about. */
-export type PickKind = "element" | "region" | "text";
 
 /** The four corners the island may sit in, nearest-first is not a thing here. */
 export const CORNERS = ["bottom-right", "bottom-left", "top-right", "top-left"] as const;

@@ -529,6 +529,28 @@ describe("writing a comment", () => {
   });
 
   /**
+   * The target carries the bare name and the panel puts "an area of" round it
+   * once. A phrase stored on the target read back as "an area of an area of".
+   */
+  it("phrases a region once, whatever the target was named", async () => {
+    started();
+    const surface = await open();
+
+    client.openComposer({
+      kind: "region",
+      anchor: { component: "YieldCard", region: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } },
+      label: "the Yield card",
+    });
+    await vi.waitFor(() =>
+      expect(surface.querySelector(".mk-target-on")?.textContent).toContain("an area of"),
+    );
+
+    const said = surface.querySelector(".mk-target-on")?.textContent ?? "";
+    expect(said.match(/an area of/g)).toHaveLength(1);
+    expect(said).toBe("on an area of the Yield card");
+  });
+
+  /**
    * The kind was a word beside the icon until the two together read as two
    * facts. They are one, and the sentence after them already says which.
    */

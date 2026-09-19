@@ -294,22 +294,53 @@ describe("the island while a pick is armed", () => {
   });
 });
 
-/** A region names the element under its middle: an anchor on nothing orphans. */
+/**
+ * A region is a rectangle over several elements, so what it anchors to is the
+ * box that holds the whole of it and the rectangle recorded inside that box.
+ */
 describe("a region", () => {
-  it("draws the band as it is dragged and anchors to what it covers", async () => {
-    const node = fixture();
+  /** A drag inside the fixture, in its own coordinates. */
+  async function draw(from: [number, number], to: [number, number]): Promise<void> {
     await arm("region");
     await vi.waitFor(() => expect(root().querySelector(".mk-shield")).not.toBeNull());
 
-    const box = node.getBoundingClientRect();
-    pointer("pointerdown", box.x + 20, box.y + 20);
-    pointer("pointermove", box.x + 200, box.y + 90);
+    const box = fixture().getBoundingClientRect();
+    pointer("pointerdown", box.x + from[0], box.y + from[1]);
+    pointer("pointermove", box.x + to[0], box.y + to[1]);
     await vi.waitFor(() => expect(root().querySelector(".mk-band")).not.toBeNull());
-    pointer("pointerup", box.x + 200, box.y + 90);
-
+    pointer("pointerup", box.x + to[0], box.y + to[1]);
     await vi.waitFor(() => expect(client.getState().composer.open).toBe(true));
+  }
+
+  it("draws the band as it is dragged and anchors to the box that holds it", async () => {
+    await draw([20, 20], [200, 90]);
+
     expect(client.getState().composer.target?.kind).toBe("region");
     expect(client.getState().composer.target?.anchor.component).toBe("YieldCard");
     expect(root().querySelector(".mk-band")).toBeNull();
+  });
+
+  /** Pixels do not survive a reflow, and a fraction of the box does. */
+  it("records the rectangle as fractions of that box, not as pixels", async () => {
+    await draw([80, 30], [240, 90]);
+    const region = client.getState().composer.target?.anchor.region;
+
+    expect(region).toBeDefined();
+    expect(region!.x).toBeCloseTo(80 / 320, 2);
+    expect(region!.y).toBeCloseTo(30 / 120, 2);
+    expect(region!.width).toBeCloseTo(160 / 320, 2);
+    expect(region!.height).toBeCloseTo(60 / 120, 2);
+  });
+
+  /**
+   * `ComposerTarget.label` is the bare name — "the Yield card". Every surface
+   * puts its own words round it, so a phrase stored here came back doubled.
+   */
+  it("stores the name on the target and leaves the phrase to whoever shows it", async () => {
+    await draw([20, 20], [200, 90]);
+    const { target } = client.getState().composer;
+
+    expect(target?.label).toBe("Yield card");
+    expect(target?.label).not.toContain("an area of");
   });
 });

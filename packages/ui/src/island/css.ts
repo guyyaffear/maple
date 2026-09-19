@@ -8,6 +8,7 @@
  * everything after them arrives together at the cap.
  */
 
+import { SHEET_BREAKPOINT_PX } from "../tokens.js";
 import { STAGGER_ROWS } from "./stagger.js";
 
 /** Every rule the island needs, and nothing another part owns. */
@@ -23,7 +24,25 @@ export function islandCss(): string {
     developer(),
     newComment(),
     keyframes(),
+    sheet(),
   ].join("\n\n");
+}
+
+/**
+ * Under the breakpoint the panel is a sheet off the bottom edge with nowhere
+ * beside it to stand, so the island gives way rather than moving.
+ */
+function sheet(): string {
+  return `
+@media (max-width: ${String(SHEET_BREAKPOINT_PX - 1)}px) {
+  .mk-island[data-mk-inset="true"] {
+    translate: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--mk-dur-composer-open) var(--mk-ease-surface);
+  }
+}
+`.trim();
 }
 
 function shell(): string {
@@ -35,6 +54,7 @@ function shell(): string {
   display: flex;
   align-items: flex-end;
   pointer-events: none;
+  transition: translate var(--mk-dur-composer-open) var(--mk-ease-surface);
 }
 
 .mk-island > * {
@@ -97,7 +117,6 @@ function shell(): string {
   position: absolute;
   right: 0;
   bottom: 0;
-  z-index: 1;
   width: 320px;
   max-width: calc(100vw - 24px);
   max-height: min(78vh, 460px);
@@ -158,10 +177,18 @@ function corners(): string {
   transform-origin: bottom left;
 }
 
+/* A surface beside the panel, never under it: an inventory half-covered by the
+   thing it just opened reads as a stack of two cards. */
+.mk-island[data-mk-inset="true"][data-mk-corner="bottom-right"],
+.mk-island[data-mk-inset="true"][data-mk-corner="top-right"] {
+  translate: calc(-1 * var(--mk-composer-w)) 0;
+}
+
 /* No transition on the offset: the island is under the pointer while it is
    dragged, and a transition would leave it trailing the hand that moved it. */
 .mk-island[data-mk-dragging="true"] {
   transform: translate(var(--mk-x), var(--mk-y));
+  transition: none;
   will-change: transform;
 }
 
@@ -215,12 +242,14 @@ function header(): string {
   text-overflow: ellipsis;
 }
 
+/* 32 + the header's 8px gap is 40, which is what keeps the two of them from
+   sharing a hit area: the ::after squares would otherwise overlap by four. */
 .mk-iconbtn {
   flex: none;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 26px;
+  width: 32px;
+  height: 28px;
   padding: 0;
   border: 0;
   border-radius: var(--mk-r-sm);
@@ -590,19 +619,30 @@ function row(): string {
   );
 
   return `
+/* The rail's two pixels are held from the start, in nothing. A row that gained
+   them on hover moved every word in it sideways, which reads as the list
+   redrawing rather than as the row answering. */
 .mk-row {
   display: block;
-  padding: 11px 12px;
+  padding: 11px 12px 11px 14px;
   border-bottom: 1px solid var(--mk-line);
+  box-shadow: inset 2px 0 0 transparent;
+  cursor: pointer;
   animation: mk-row-in var(--mk-dur-fade) var(--mk-ease-surface) backwards;
   transition:
     background-color var(--mk-dur-fade) var(--mk-ease-surface),
-    padding-left var(--mk-dur-fade) var(--mk-ease-surface);
+    box-shadow var(--mk-dur-fade) var(--mk-ease-surface);
 }
 
 .mk-row:hover {
   background: var(--mk-sunk);
-  padding-left: 14px;
+  box-shadow: inset 2px 0 0 color-mix(in oklab, var(--mk-accent) 35%, transparent);
+}
+
+/* A rail, not a wash: the wash is what hover already means, and the row a mark
+   or a link landed on has to stay legible while the pointer is over another. */
+.mk-row[data-mk-selected="true"] {
+  box-shadow: inset 2px 0 0 var(--mk-accent);
 }
 
 ${steps}
@@ -627,64 +667,58 @@ ${steps}
   min-width: 0;
 }
 
-.mk-avatar {
+/* The comment's own leaf, at row size. It draws from the marks' rules and
+   nothing of its own but the box: the mark on the page and this are one
+   object seen twice, so the moment they are styled apart they stop being one. */
+.mk-rowleaf {
   position: relative;
   flex: none;
   display: grid;
   place-items: center;
-  width: 21px;
-  height: 21px;
+  width: 30px;
+  height: 30px;
 }
 
-.mk-avatar svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.mk-avatar path {
-  fill: var(--mk-slot);
-  stroke: var(--mk-slot);
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-
-.mk-avatar[data-provenance="client"] path {
-  fill: color-mix(in oklab, var(--mk-slot) 40%, transparent);
-  stroke-width: 2.5;
-}
-
-.mk-avatar[data-provenance="guest"] path {
-  fill: none;
-  stroke-width: 3.5;
-  stroke-dasharray: 7 5;
-}
-
-.mk-initials {
-  position: relative;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--mk-slot-ink);
-  transform: translateY(-0.5px);
-}
-
-.mk-avatar[data-provenance="client"] .mk-initials {
-  color: var(--mk-fg);
-}
-
-.mk-avatar[data-provenance="guest"] .mk-initials {
-  color: var(--mk-slot);
+/* The number holds the share of the leaf it holds on the page — 11 in 38 —
+   rather than a size of its own, which at row scale outgrew the shape. */
+.mk-rowleaf .mk-mark-n {
+  --mk-n: 8.5px;
 }
 `.trim();
 }
 
 function rowDetail(): string {
   return `
+/* The reviewer's colour, on the name rather than on a shape of its own: the
+   only leaf in the row belongs to the comment, and a second one beside it drew
+   two different sentences with one drawing. */
 .mk-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12.5px;
   font-weight: 600;
+}
+
+.mk-name::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mk-slot, var(--mk-accent));
+}
+
+/* Hollow, then dashed: the same ladder the leaf draws provenance with, in the
+   one mark small enough to sit inside a line of text. */
+.mk-name[data-provenance="client"]::before {
+  background: color-mix(in oklab, var(--mk-slot, var(--mk-accent)) 40%, transparent);
+  box-shadow: inset 0 0 0 1px var(--mk-slot, var(--mk-accent));
+}
+
+.mk-name[data-provenance="guest"]::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--mk-slot, var(--mk-accent));
 }
 
 .mk-who[data-provenance="client"] .mk-name,
@@ -696,13 +730,6 @@ function rowDetail(): string {
 .mk-when {
   color: var(--mk-faint);
   font-size: 11px;
-}
-
-.mk-index {
-  font-family: var(--mk-mono);
-  font-size: 10px;
-  color: var(--mk-faint);
-  font-variant-numeric: tabular-nums;
 }
 
 .mk-text {
@@ -724,6 +751,7 @@ function rowDetail(): string {
   margin-top: 4px;
   padding: 0;
   border: 0;
+  border-radius: var(--mk-r-xs);
   background: none;
   color: var(--mk-accent);
   font: inherit;
@@ -808,6 +836,7 @@ function developer(): string {
   return `
 .mk-tipped {
   position: relative;
+  border-radius: var(--mk-r-xs);
   cursor: help;
 }
 
@@ -843,6 +872,12 @@ function developer(): string {
     transform var(--mk-dur-tooltip) var(--mk-ease-tooltip);
 }
 
+/* A surface grows from the edge it was placed against. The tooltip sits under
+   its chip unless there is no room, and the placement says which it did. */
+.mk-tip[data-mk-below] {
+  transform-origin: top left;
+}
+
 /* The delay is on the way in only. A hover-out is a dismissal, and a
    dismissal that waits reads as a surface that did not hear the pointer. */
 .mk-tip:popover-open {
@@ -856,39 +891,26 @@ function developer(): string {
   display: none;
 }
 
-.mk-chip-dev {
-  border-style: dashed;
-  border-color: var(--mk-line-firm);
-  background: transparent;
-}
-
-.mk-path {
-  display: inline-block;
-  max-width: 124px;
-  overflow: hidden;
-  vertical-align: bottom;
-  font-family: var(--mk-mono);
-  font-size: 10px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-}
 `.trim();
 }
 
 function newComment(): string {
   return `
+/* One row, not a label over a row: the label is two syllables and the three
+   picks it introduces are beside it, which is half the height for the same
+   sentence. */
 .mk-new {
   flex: none;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 8px 8px;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
   border-top: 1px solid var(--mk-line);
   background: var(--mk-sunk);
 }
 
 .mk-new-label {
-  padding: 0 2px;
+  flex: none;
   color: var(--mk-faint);
   font-size: 9px;
   font-weight: 700;
@@ -898,6 +920,7 @@ function newComment(): string {
 
 .mk-picks {
   display: flex;
+  flex: 1 1 auto;
   gap: 4px;
 }
 
@@ -907,7 +930,7 @@ function newComment(): string {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border: 1px solid var(--mk-line);
   border-radius: 999px;
   background: transparent;
@@ -956,28 +979,28 @@ function keyframes(): string {
 @keyframes mk-island-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(var(--mk-scale-island));
+    transform: translateY(var(--mk-rise-card)) scale(var(--mk-scale-island));
   }
 }
 
 @keyframes mk-island-out {
   to {
     opacity: 0;
-    transform: translateY(6px) scale(var(--mk-scale-island));
+    transform: translateY(var(--mk-rise-row)) scale(var(--mk-scale-island));
   }
 }
 
 @keyframes mk-pop-in {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(var(--mk-scale-tooltip));
+    transform: translateY(calc(-1 * var(--mk-rise-row))) scale(var(--mk-scale-tooltip));
   }
 }
 
 @keyframes mk-row-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(var(--mk-rise-row));
   }
 }
 `.trim();

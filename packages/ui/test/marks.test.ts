@@ -1,3 +1,4 @@
+import { kindOf } from "@maple-kit/core/anchor";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,7 +8,6 @@ import {
   COLLISION_STEP_PX,
   culled,
   initialsOf,
-  kindOf,
   kindPhrase,
   LEAF_OUTLINE,
   LEAF_ROTATION,
@@ -213,6 +213,9 @@ describe("the words", () => {
   it("reads a passage as a passage rather than as a quote", () => {
     expect(kindOf({ quote: { exact: "churn" } })).toBe("text");
     expect(kindOf({ key: "kpi-mrr" })).toBe("element");
+    expect(kindOf({ key: "kpi", region: { x: 0.1, y: 0.2, width: 0.4, height: 0.3 } })).toBe(
+      "region",
+    );
   });
 
   it("names the mark without a stray separator when nobody is known", () => {

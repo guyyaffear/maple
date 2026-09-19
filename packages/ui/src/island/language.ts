@@ -7,8 +7,6 @@
  * tooltip, because a list of comments is scanned rather than read.
  */
 
-import type { PartConfidence } from "../data.js";
-import type { OrphanReason, Rung } from "@maple-kit/core/anchor";
 import type { CommentFilter, Corner, PickKind, ThemePreference } from "@maple-kit/core/client";
 
 /** The five filters, in the words the pills show. `unpinned` is `orphaned`. */
@@ -42,38 +40,6 @@ export function tallyTitle(filter: CommentFilter, count: number): string {
   const many = count === 1 ? "comment" : "comments";
   return `${String(count)} ${FILTER_LABELS[filter].toLowerCase()} ${many} — click to show only these`;
 }
-
-/** Two words each. The sentence underneath belongs in the tooltip, not the row. */
-export const ORPHAN_LABELS: Readonly<Record<OrphanReason, string>> = {
-  empty: "No anchor",
-  missing: "Nothing matches",
-  ambiguous: "Several matches",
-  changed: "Text changed",
-};
-
-/** What the chip's tooltip says after its two words. */
-export const ORPHAN_SENTENCES: Readonly<Record<OrphanReason, string>> = {
-  empty: "Written before the build tagged anything, so there was never anything to search for.",
-  missing: "Every rung was tried. The element is gone, or this is a different route.",
-  ambiguous: "More than one element answers to what was recorded, and nothing tells them apart.",
-  changed:
-    "The passage is still on the page, but edited past the point where the match can be trusted.",
-};
-
-/**
- * How a rung reads inside a sentence. It is never shown as a field name: the
- * chip carries the number and this is what the tooltip says about it.
- */
-export const RUNG_LABELS: Readonly<Record<Rung, string>> = {
-  key: "the app's own key",
-  source: "the source line",
-  component: "the component name",
-  quote: "the quoted text",
-  selector: "a CSS path",
-};
-
-/** The order the unpinned tab groups its rows in. */
-export const ORPHAN_ORDER: readonly OrphanReason[] = ["missing", "changed", "ambiguous", "empty"];
 
 /** The three picks, in the order the island's bottom edge shows them. */
 export const PICK_ORDER: readonly PickKind[] = ["element", "text", "region"];
@@ -145,12 +111,13 @@ export const ISLAND_COPY = {
   settings: "Settings",
   close: "Close the inventory",
   closeGlyph: "✕",
-  newComment: "New comment",
+  newComment: "New:",
   empty: "Nothing here under this filter.",
   showAll: "Show all",
   showLess: "Show less",
   hide: "Hide",
   attachment: "shot",
+  attachmentSentence: "A screenshot went with this comment. The panel shows it.",
 } as const;
 
 /** The pill's own words. One number, and it is the open one. */
@@ -167,50 +134,6 @@ export function triggerLabel(count: number): string {
 export function pickTitle(kind: PickKind): string {
   return `Comment on ${kind} — press t while picking to cycle`;
 }
-
-/** The chip's full tooltip: the two words, then the sentence. */
-export function orphanTitle(reason: OrphanReason, tried: readonly Rung[] = []): string {
-  const ladder = tried.length === 0 ? "" : ` Tried: ${tried.map(rungWord).join(" → ")}.`;
-  return `${ORPHAN_LABELS[reason]}. ${ORPHAN_SENTENCES[reason]}${ladder}`;
-}
-
-/** One rung, as it appears in a list of the ones that were tried. */
-function rungWord(rung: Rung): string {
-  return RUNG_LABELS[rung];
-}
-
-/**
- * The rung chip's sentence. The number is on the chip; this says what the
- * number is worth, which is the part a field name never manages to.
- */
-export function rungTitle(rung: Rung, confidence: PartConfidence): string {
-  return (
-    `Found again by ${RUNG_LABELS[rung]} — ${confidence}. ` +
-    "After a redeploy Maple re-finds this element that way, and a lower rung " +
-    "is worth less even when it matched exactly."
-  );
-}
-
-/** What a percentage on a chip is called, for anyone not looking at it. */
-export function rungLabel(percent: number): string {
-  return `${String(percent)}%`;
-}
-
-/** The two developer chips that carry a path rather than a number. */
-export const PATH_COPY = {
-  source: {
-    word: "source",
-    sentence:
-      "Where this element is written, recorded by the build's tagger. It is the " +
-      "second rung, and the one an agent opens the file from.",
-  },
-  selector: {
-    word: "CSS path",
-    sentence:
-      "The last rung tried, and the least durable: a rebuild that changes a class " +
-      "name changes this, which is why it is never the only thing recorded.",
-  },
-} as const;
 
 /**
  * What a comment is on, in the words a reviewer would use. A passage is in

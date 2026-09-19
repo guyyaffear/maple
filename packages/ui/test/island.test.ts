@@ -1,20 +1,19 @@
+import { kindOf } from "@maple-kit/core/anchor";
 import { describe, expect, it } from "vitest";
 
-import { byReason, countsFor, kindOf, numbersFor } from "../src/island/comments.js";
+import { byReason, countsFor, numbersFor } from "../src/island/comments.js";
 import { islandCss } from "../src/island/css.js";
 import {
   FILTER_LABELS,
   ISLAND_COPY,
   kindPhrase,
   openLabel,
-  ORPHAN_LABELS,
-  ORPHAN_SENTENCES,
-  orphanTitle,
   pickTitle,
   triggerLabel,
 } from "../src/island/language.js";
 import { STAGGER_ROWS } from "../src/island/stagger.js";
 import { relativeTime } from "../src/island/time.js";
+import { ORPHAN_LABELS, ORPHAN_SENTENCES, orphanTitle } from "../src/language.js";
 import { COMMENTS } from "./fixtures.js";
 
 import type { OrphanReason } from "@maple-kit/core/anchor";

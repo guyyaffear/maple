@@ -138,15 +138,14 @@ function emojiCss(): string {
 .mk-emoji-open {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: var(--mk-r-xs);
   background: transparent;
-  color: var(--mk-faint);
+  color: var(--mk-muted);
   font: inherit;
-  font-size: 14px;
-  line-height: 1;
+  line-height: 0;
   cursor: pointer;
   transition:
     background-color var(--mk-dur-swap) var(--mk-ease-swap),
@@ -213,12 +212,14 @@ function emojiCss(): string {
 /** What the page looked like, and the screenshot taken of it. */
 function contextAndShots(): string {
   return `
+/* Two pairs to a row: seven facts one per line ran the card down half the
+   panel. Labels keep their own column, so every value still lines up. */
 .mk-ctx {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 14px;
-  margin: 0;
-  padding: 9px 11px;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 7px 10px;
+  margin: 2px 16px 4px;
+  padding: 11px 13px;
   border: 1px solid var(--mk-line);
   border-radius: var(--mk-r-sm);
   background: var(--mk-sunk);
@@ -229,16 +230,18 @@ function contextAndShots(): string {
   color: var(--mk-faint);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .mk-ctx dd {
   margin: 0;
+  min-width: 0;
   color: var(--mk-fg);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .mk-ctx dd em {
@@ -249,6 +252,12 @@ function contextAndShots(): string {
 .mk-ctx dd.mk-mono {
   font-size: 11px;
   word-break: break-all;
+}
+
+/* One pair to a row, not two: these values are sentences, and the context
+   badge's four columns cut them to a word each. */
+.mk-detail {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 /* Dashed, because nobody asked for what is inside it: the shot arrives on its
@@ -289,7 +298,26 @@ function contextAndShots(): string {
 
 .mk-shot-said svg {
   flex: none;
-  color: var(--mk-accent);
+}
+
+/* What Maple noticed on its own, in the one warm colour nothing a reviewer
+   did uses. No fill and no solid edge: a filled panel in a warm colour reads
+   as an error, and nothing is wrong when this shows. The dashed border was
+   already how this surface says "provisional"; it only changes colour. */
+.mk-shots[data-mk-maple] {
+  border-color: color-mix(in oklab, var(--mk-maple) 55%, transparent);
+}
+
+.mk-shot-said[data-mk-maple],
+.mk-ctx dd[data-mk-maple] {
+  color: var(--mk-maple);
+  font-weight: 550;
+}
+
+/* The same, for a fact the panel raises rather than one the comment carries. */
+.mk-ctx dd[data-mk-maple] em {
+  color: color-mix(in oklab, var(--mk-maple) 78%, var(--mk-muted));
+  font-weight: 450;
 }
 `.trim();
 }

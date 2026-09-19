@@ -202,32 +202,39 @@ describe("resolved comments", () => {
 });
 
 describe("the unpinned tab", () => {
-  it("lists the four by reason, each with its two words", async () => {
+  /**
+   * The order is the point: the tab groups by how an anchor lost its place. The
+   * reason is the panel's — two words in a row read as a second status.
+   */
+  it("orders them by reason, and says only that they are unpinned", async () => {
     await open();
     filterNamed("unpinned").click();
 
     await vi.waitFor(() => expect(all(".mk-row")).toHaveLength(4));
-    const labels = all(".mk-row .mk-meta .mk-chip-lost").map(
-      (chip) => chip.childNodes[0]?.textContent,
-    );
-    expect(labels).toEqual(["Nothing matches", "Text changed", "Several matches", "No anchor"]);
-  });
+    const chips = all(".mk-row .mk-chip").map((chip) => chip.childNodes[0]?.textContent);
 
-  it("keeps the sentence in a tooltip rather than in the row", async () => {
-    await open();
-    filterNamed("unpinned").click();
-
-    await vi.waitFor(() => expect(all(".mk-row")).toHaveLength(4));
-    const chip = find(".mk-row .mk-meta .mk-chip-lost");
-    const tip = chip.querySelector(".mk-tip");
-
-    expect(chip.childNodes[0]?.textContent).toBe("Nothing matches");
-    expect(tip?.textContent).toMatch(/^Nothing matches\. Every rung was tried\./);
-    expect(getComputedStyle(tip as Element).opacity).toBe("0");
+    expect(chips).toEqual(["Unpinned", "Unpinned", "Unpinned", "Unpinned"]);
+    expect(all(".mk-row .mk-meta").map((meta) => meta.textContent)).toEqual(["", "", "", ""]);
   });
 });
 
 describe("arming a pick", () => {
+  /**
+   * Two syllables introducing three pills do not need a line of their own:
+   * the label and the picks are one row, at half the height of two.
+   */
+  it("sets the label beside the picks rather than over them", async () => {
+    await open();
+    const label = find<HTMLElement>(".mk-new-label");
+    const picks = find<HTMLElement>(".mk-picks");
+
+    expect(label.textContent).toBe("New:");
+    expect(label.getBoundingClientRect().right).toBeLessThanOrEqual(
+      picks.getBoundingClientRect().left,
+    );
+    expect(label.getBoundingClientRect().top).toBeLessThan(picks.getBoundingClientRect().bottom);
+  });
+
   it("collapses the island, so the chrome is out of the way of the picking", async () => {
     await open();
     const pick = all(".mk-pick")[0] as HTMLButtonElement;

@@ -147,10 +147,12 @@ h3 {
   outline-offset: -1px;
 }
 
+/* No radius here: an outline already follows the control's own corners, and
+   forcing one squared off every pill in the overlay the moment it took focus.
+   The two controls that carry no radius of their own are given one below. */
 :where(a, button, input, textarea, [role="button"], [tabindex]):focus-visible {
   outline: 2px solid var(--mk-accent);
   outline-offset: 2px;
-  border-radius: var(--mk-r-xs);
 }
 
 .mk-press {

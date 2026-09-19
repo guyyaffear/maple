@@ -1,9 +1,10 @@
 /**
  * The leaf, drawn. The path data is the marks' and is imported, not copied.
  *
- * It is the island's wordmark on the pill and in the header, and the avatar in
- * a row. The relative import is deliberate: reaching it through the package's
- * own exports would count its weight against nothing.
+ * It is the island's wordmark, on the pill and in the header. A row's leaf is
+ * the comment's own and comes from `MapleLeaf`, which draws all four forms.
+ * The relative import is deliberate: reaching it through the package's own
+ * exports would count its weight against nothing.
  */
 
 import { createElement, forwardRef } from "react";

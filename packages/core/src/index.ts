@@ -39,6 +39,7 @@ export type {
 export { createCommentStore } from "./store.js";
 export type { CommentStore } from "./store.js";
 export type {
+  AnchorRegion,
   Comment,
   CommentAnchor,
   CommentAuthor,
@@ -49,7 +50,9 @@ export type {
   MapleUser,
   MediaBlob,
   MediaRef,
+  MediaSource,
   NewComment,
+  PickKind,
   RegionContext,
   TextQuote,
 } from "./types.js";

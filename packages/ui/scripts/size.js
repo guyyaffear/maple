@@ -18,13 +18,13 @@ const DIST = resolve(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 
 /** Each budget is the gzipped size of the modules only that column reaches. */
 const BUDGETS = [
-  { name: "the adopted stylesheet", entries: ["stylesheet.js"], max: 10 * 1024 },
+  { name: "the adopted stylesheet", entries: ["stylesheet.js"], max: 13 * 1024 },
   {
     name: "root + marks + island + icons",
     entries: ["index.js", "marks/index.js", "island/index.js", "icons/index.js"],
-    max: 19 * 1024,
+    max: 21 * 1024,
   },
-  { name: "composer, on top", entries: ["composer/index.js"], max: 8 * 1024 },
+  { name: "composer, on top", entries: ["composer/index.js"], max: 9 * 1024 },
   { name: "picker, on top", entries: ["picker/index.js"], max: 3 * 1024 },
   { name: "the default composition, on top", entries: ["maple.js"], max: 1024 },
 ];

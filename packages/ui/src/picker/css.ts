@@ -89,7 +89,7 @@ function bar(): string {
 @keyframes mk-pick-in {
   from {
     opacity: 0;
-    translate: -50% -6px;
+    translate: -50% calc(-1 * var(--mk-rise-row));
   }
 }
 

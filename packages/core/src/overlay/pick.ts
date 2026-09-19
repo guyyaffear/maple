@@ -15,10 +15,13 @@ export interface Rect {
   readonly height: number;
 }
 
-/** What a reviewer chose. */
+/**
+ * What a reviewer chose. A region carries an element too, but it is the box
+ * the rectangle was drawn inside rather than the thing being commented on.
+ */
 export type Pick =
   | { readonly kind: "element"; readonly element: Element; readonly rect: Rect }
-  | { readonly kind: "region"; readonly rect: Rect }
+  | { readonly kind: "region"; readonly element: Element; readonly rect: Rect }
   | { readonly kind: "text"; readonly range: Range; readonly rect: Rect };
 
 /** The smallest drag that counts as a rectangle rather than a click. */
@@ -30,6 +33,37 @@ export function elementAt(x: number, y: number): Element | undefined {
     if (!candidate.closest(`[${OVERLAY_MARKER}]`)) return candidate;
   }
   return undefined;
+}
+
+/** True when the outer box holds every edge of the inner one. */
+export function holds(outer: Rect, inner: Rect): boolean {
+  return (
+    outer.x <= inner.x &&
+    outer.y <= inner.y &&
+    outer.x + outer.width >= inner.x + inner.width &&
+    outer.y + outer.height >= inner.y + inner.height
+  );
+}
+
+/**
+ * The smallest element that holds a whole rectangle, which is what a region is
+ * measured against.
+ *
+ * Not the element under the middle: a rectangle drawn across two cards is
+ * about the pair, and naming one of them is how a region comment comes back
+ * saying the wrong thing. The walk starts under a corner rather than the
+ * centre so a rectangle drawn over a gap still finds the layout around it, and
+ * `documentElement` is the last box there is.
+ */
+export function containerFor(rect: Rect): Element {
+  const root = document.documentElement;
+  const start =
+    elementAt(rect.x + rect.width / 2, rect.y + rect.height / 2) ?? elementAt(rect.x, rect.y);
+
+  for (let node = start; node; node = node.parentElement ?? undefined) {
+    if (holds(node.getBoundingClientRect(), rect)) return node;
+  }
+  return root;
 }
 
 /** The current text selection, when there is one and it is not in the overlay. */
@@ -119,7 +153,7 @@ export function startRegionPicking(options: RegionPickingOptions): void {
     const rect = between(origin, event);
     origin = undefined;
     if (rect.width >= MINIMUM_REGION && rect.height >= MINIMUM_REGION) {
-      options.onPick({ kind: "region", rect });
+      options.onPick({ kind: "region", element: containerFor(rect), rect });
     }
   });
 }

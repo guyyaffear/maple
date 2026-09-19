@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  containerFor,
   createOverlayHost,
   elementAt,
   MINIMUM_REGION,
@@ -121,6 +122,30 @@ describe("picking an element", () => {
   });
 });
 
+/**
+ * A region crosses several elements on purpose, so what it is measured
+ * against is the box that holds all of them rather than one of them.
+ */
+describe("the box a rectangle was drawn inside", () => {
+  it("walks up past an element the rectangle overflows", () => {
+    mount(
+      `<section id="row" style="position: fixed; left: 0; top: 0; width: 400px; height: 200px">` +
+        `<div id="card" style="position: absolute; left: 10px; top: 10px; width: 80px; height: 80px"></div>` +
+        `</section>`,
+    );
+
+    expect(containerFor({ x: 20, y: 20, width: 40, height: 40 }).id).toBe("card");
+    expect(containerFor({ x: 20, y: 20, width: 200, height: 40 }).id).toBe("row");
+  });
+
+  it("falls back to the document element rather than to nothing", () => {
+    mount(`<p>x</p>`);
+    const past = { x: -50, y: -50, width: innerWidth + 200, height: innerHeight + 200 };
+
+    expect(containerFor(past)).toBe(document.documentElement);
+  });
+});
+
 describe("dragging a rectangle", () => {
   it("reports the rectangle, whichever way it was dragged", () => {
     mount(`<p>x</p>`);
@@ -163,6 +188,27 @@ describe("dragging a rectangle", () => {
     pointer("pointerup", 10 + MINIMUM_REGION - 1, 10 + MINIMUM_REGION - 1);
 
     expect(picked).toHaveLength(0);
+  });
+
+  /**
+   * The rectangle is the comment, not whatever sits under its middle. The
+   * element it carries is the box its fractions are measured against.
+   */
+  it("carries the smallest element that holds the whole rectangle", () => {
+    mount(
+      `<section id="row" style="position: fixed; left: 0; top: 0; width: 400px; height: 200px">` +
+        `<div id="a" style="position: absolute; left: 10px; top: 10px; width: 80px; height: 80px"></div>` +
+        `<div id="b" style="position: absolute; left: 200px; top: 10px; width: 80px; height: 80px"></div>` +
+        `</section>`,
+    );
+    stop = new AbortController();
+    const picked: Pick[] = [];
+
+    startRegionPicking({ onPick: (pick) => picked.push(pick), signal: stop.signal });
+    pointer("pointerdown", 20, 20);
+    pointer("pointerup", 270, 80);
+
+    expect(picked[0]?.kind === "region" && picked[0].element.id).toBe("row");
   });
 
   it("ignores a pointerup that no pointerdown started", () => {

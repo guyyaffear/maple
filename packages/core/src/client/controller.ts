@@ -8,6 +8,7 @@
  * guard — be tested without a browser.
  */
 
+import { kindOf } from "../anchor/kind.js";
 import { labelFor } from "../anchor/label.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
 import { openCount, visibleComments } from "./filters.js";
@@ -446,7 +447,7 @@ function viewComment(runtime: Runtime, id: string): void {
       open: true,
       viewing: id,
       target: {
-        kind: comment.anchor.quote === undefined ? "element" : "text",
+        kind: kindOf(comment.anchor),
         anchor: comment.anchor,
         context: comment.context,
       },

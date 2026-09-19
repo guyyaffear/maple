@@ -12,6 +12,13 @@ export type CommentStatus = "open" | "resolved" | "needs_reverify" | "orphaned";
 /** How confident Maple is that the author is who the comment says they are. */
 export type IdentityProvenance = "server" | "client" | "guest";
 
+/**
+ * The three ways a reviewer says what a comment is about. It lives here rather
+ * than beside the picker because the anchor reads it back off a stored
+ * comment, and the client and the anchor cannot both own one word.
+ */
+export type PickKind = "element" | "region" | "text";
+
 /** Where a comment was attached, most durable identifier first. */
 export interface CommentAnchor {
   /** Value of `data-maple-key` when the application sets one on the element. */
@@ -24,6 +31,20 @@ export interface CommentAnchor {
   readonly quote?: TextQuote;
   /** CSS selector, the least durable fallback in the cascade. */
   readonly selector?: string;
+  /** The rectangle a region pick drew, in fractions of the element above. */
+  readonly region?: AnchorRegion;
+}
+
+/**
+ * A rectangle, as fractions of the anchored element's border box. A region
+ * comment is about an area that crosses several elements, so the element is
+ * the box it is measured in rather than the thing it is about.
+ */
+export interface AnchorRegion {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 /** A W3C-style text quote selector, used to re-find a comment after a redeploy. */
@@ -122,7 +143,15 @@ export interface MediaRef {
   readonly connector: string;
   readonly key: string;
   readonly contentType: string;
+  /**
+   * Who put it there. Maple captures the page at pick time without being asked,
+   * and a reader has no other way to tell that from an image the author chose.
+   */
+  readonly source?: MediaSource;
 }
+
+/** `capture` is Maple's own, at pick time; `offered` is a paste or a drop. */
+export type MediaSource = "capture" | "offered";
 
 /** A blob on its way into a media connector. */
 export interface MediaBlob {

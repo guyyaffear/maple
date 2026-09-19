@@ -217,10 +217,12 @@ describe("clicking a mark", () => {
 
     const row = find<HTMLElement>(".mk-row[data-mk-selected='true']");
     const list = find<HTMLElement>(".mk-list");
-    const inside = row.getBoundingClientRect();
-    const around = list.getBoundingClientRect();
 
+    // Measured inside the retry: the scroll is smooth, so the first frame after
+    // the click still has the row where it was.
     await vi.waitFor(() => {
+      const inside = row.getBoundingClientRect();
+      const around = list.getBoundingClientRect();
       expect(inside.top).toBeGreaterThanOrEqual(around.top - 1);
       expect(inside.bottom).toBeLessThanOrEqual(around.bottom + 1);
     });

@@ -31,6 +31,8 @@ export interface LogoProps extends PartProps {
 export interface BranchProps extends PartProps {
   /** The branch the island is pointed at, as the chip should read it. */
   readonly branch?: string;
+  /** Shown instead of the branch, which stays on the chip as its title. */
+  readonly label?: string;
   readonly children?: ReactNode;
 }
 
@@ -74,12 +76,14 @@ export const Logo = /** @__PURE__ */ forwardRef<HTMLHeadingElement, LogoProps>(
 
 /**
  * The branch chip. It takes the branch rather than reading it, because the
- * controller keeps what it was pointed at and does not publish it back.
+ * controller keeps what it was pointed at and does not publish it back. A
+ * label reads in its place when there is one; the branch stays as the title,
+ * because a label is lossy and the exact name is what a person copies.
  */
 export const Branch = /** @__PURE__ */ forwardRef<HTMLSpanElement, BranchProps>(
   function Branch(props, ref) {
-    const { asChild, branch, children, className, ...rest } = props;
-    const shown = children ?? branch;
+    const { asChild, branch, children, className, label, ...rest } = props;
+    const shown = children ?? label ?? branch;
     if (shown === undefined) return null;
 
     return renderPart(

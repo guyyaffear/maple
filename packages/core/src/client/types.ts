@@ -144,6 +144,10 @@ export interface ResolutionClaim {
 /** A comment on its way to `POST /comments`, before the route names its author. */
 export interface PostedComment {
   readonly branch: string;
+  /** How a person names this surface, when the application knows a nicer name. */
+  readonly label?: string;
+  /** The commit the page was serving, when the application stamps one. */
+  readonly commit?: string;
   readonly body: string;
   readonly anchor: Anchor;
   /** ISO 8601, UTC. The store may overwrite it; it is not the client's to trust. */

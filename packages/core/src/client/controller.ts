@@ -54,6 +54,13 @@ export type ClientView = NavigationView & ThemeView;
 /** How the controller is built. Every field has a working default. */
 export interface MapleClientOptions extends MapleProps {
   readonly branch: string;
+  /**
+   * What a reviewer calls this surface — a ticket, or a branch shortened to a
+   * hostname label. Shown instead of `branch`, which stays the identifier.
+   */
+  readonly label?: string;
+  /** The commit the preview is serving, where the build stamps one. */
+  readonly commit?: string;
   /** Where the SDK route is mounted. Defaults to `/api/maple`. */
   readonly basePath?: string;
   /** Injectable so a test drives the route without reaching for a global. */
@@ -550,6 +557,8 @@ async function send(runtime: Runtime): Promise<Comment> {
 function postedFrom(runtime: Runtime, state: WritableComposer): PostedComment {
   return {
     branch: runtime.options.branch,
+    ...(runtime.options.label === undefined ? {} : { label: runtime.options.label }),
+    ...(runtime.options.commit === undefined ? {} : { commit: runtime.options.commit }),
     body: state.body,
     anchor: state.target.anchor,
     createdAt: new Date(runtime.now()).toISOString(),

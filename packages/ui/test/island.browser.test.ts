@@ -23,7 +23,7 @@ import type { Comment } from "@maple-kit/core";
 import type { ReactElement } from "react";
 
 /** The island's own tree, exactly as the composition documents it. */
-function mount(): ReactElement {
+function mount(label?: string): ReactElement {
   return createElement(
     MapleRoot,
     { branch: BRANCH, theme: "light", options: { fetch: fixtureFetch() } },
@@ -38,7 +38,7 @@ function mount(): ReactElement {
           Header,
           null,
           createElement(Logo),
-          createElement(Branch, { branch: BRANCH }),
+          createElement(Branch, { branch: BRANCH, ...(label === undefined ? {} : { label }) }),
           createElement(Settings),
         ),
         createElement(Filters),
@@ -377,5 +377,22 @@ describe("the card", () => {
     await vi.waitFor(() => {
       expect(getComputedStyle(find(".mk-card")).animationDuration).toBe("0.15s");
     });
+  });
+});
+
+describe("the branch chip", () => {
+  it("reads the branch when the application named no label", async () => {
+    await open();
+    expect(find(".mk-branch").textContent).toBe(BRANCH);
+  });
+
+  it("reads the label instead, and keeps the branch as its title", async () => {
+    document.querySelector("[data-maple-overlay]")?.remove();
+    await render(mount("web-482"));
+    await open();
+
+    const chip = find(".mk-branch");
+    expect(chip.textContent).toBe("web-482");
+    expect(chip.getAttribute("title")).toBe(BRANCH);
   });
 });

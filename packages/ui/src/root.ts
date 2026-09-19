@@ -41,6 +41,13 @@ export type ThemePreference = Preference;
 export interface MapleRootProps extends MapleProps {
   /** The branch the comments belong to. */
   readonly branch: string;
+  /**
+   * What a reviewer calls this surface — a ticket, or the branch shortened to
+   * a hostname label. Read wherever the branch would be; the branch stays.
+   */
+  readonly label?: string;
+  /** The commit the preview is serving, where the build stamps one. */
+  readonly commit?: string;
   readonly children?: ReactNode;
   /** Added to the overlay's own layer, inside the shadow root. */
   readonly className?: string;
@@ -49,8 +56,8 @@ export interface MapleRootProps extends MapleProps {
    * made in the island's settings, is remembered per origin and wins.
    */
   readonly theme?: ThemePreference;
-  /** Everything else the controller takes. `branch` comes from the prop above. */
-  readonly options?: Omit<MapleClientOptions, "branch">;
+  /** Everything else the controller takes. The three above win over it. */
+  readonly options?: Omit<MapleClientOptions, "branch" | "label" | "commit">;
   /** A controller the caller built and owns, started and destroyed by them. */
   readonly client?: MapleClient;
   /** For a host that mounts Maple with a script tag rather than a bundle. */
@@ -66,8 +73,14 @@ export const MapleRoot = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleRootPr
     const [shots] = useState(createShotStore);
     const host = useOverlayHost(config.enabled, props.nonce, props.parent);
     const options = useMemo(
-      () => ({ ...props.options, branch: props.branch, config }),
-      [props.options, props.branch, config],
+      () => ({
+        ...props.options,
+        branch: props.branch,
+        ...(props.label === undefined ? {} : { label: props.label }),
+        ...(props.commit === undefined ? {} : { commit: props.commit }),
+        config,
+      }),
+      [props.options, props.branch, props.label, props.commit, config],
     );
 
     if (!host || !config.enabled) return null;

@@ -17,6 +17,7 @@ export {
   useComments,
   useComposer,
   useDraft,
+  useGitHubLink,
   useMaple,
   useMapleClient,
   usePicker,

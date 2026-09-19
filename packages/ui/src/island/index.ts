@@ -7,6 +7,8 @@
  * dealt with is the question and where it sits is a detail of one of its states.
  */
 
+export { Account } from "./account.js";
+export type { AccountProps } from "./account.js";
 export { countsFor, numbersFor, orphanReason, resolutionsFor } from "./comments.js";
 export type { FilterCounts } from "./comments.js";
 export { IslandContent } from "./content.js";

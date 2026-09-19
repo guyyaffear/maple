@@ -105,6 +105,20 @@ export const SETTINGS_COPY = {
   },
 } as const;
 
+/** The GitHub link row. Short sentences: this is the one a reviewer acts on. */
+export const ACCOUNT_COPY = {
+  name: "GitHub",
+  unlinked: "Link your account and comments are posted on the pull request as you.",
+  linking: "Enter this code on GitHub. This stays open while you do.",
+  open: "Open github.com",
+  link: "Link",
+  retry: "Try again",
+  unlink: "Unlink",
+  linkedAs: (login: string | undefined) =>
+    login === undefined ? "Linked." : `Linked as ${login}.`,
+  unlinkHint: "Forgets the token here. GitHub keeps the authorisation until you revoke it.",
+} as const;
+
 /** Copy with no better home than a name. */
 export const ISLAND_COPY = {
   title: "Comments",

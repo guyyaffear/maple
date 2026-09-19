@@ -39,14 +39,42 @@ export interface TransportOptions {
   readonly fetch?: typeof globalThis.fetch;
 }
 
+/** What `POST /auth/github` hands back for the reviewer to act on. */
+export interface LinkStart {
+  readonly userCode: string;
+  readonly verificationUri: string;
+  /** Milliseconds since the epoch. */
+  readonly expiresAt: number;
+  /** Seconds GitHub asks to be left between attempts. */
+  readonly interval: number;
+}
+
+/** One exchange attempt. `pending` is the flow working, not failing. */
+export type LinkAttempt =
+  | { readonly status: "pending"; readonly interval: number }
+  | { readonly status: "linked"; readonly login?: string };
+
+/** Who the route says this reviewer is, and whether they have linked. */
+export interface Identity {
+  readonly user: MapleUser | null;
+  /** Absent when the route serves no GitHub sign-in at all. */
+  readonly github?: { readonly linked: boolean; readonly login?: string };
+}
+
 /** The route, as the controller sees it. */
 export interface Transport {
   /** Every comment on the branch, following the store's cursor to the end. */
   list(signal?: AbortSignal): Promise<readonly Comment[]>;
   append(comment: PostedComment): Promise<Comment>;
   setStatus(id: string, status: CommentStatus, resolution?: ResolutionClaim): Promise<Comment>;
-  /** Null when the host application has no session for this request. */
-  me(): Promise<MapleUser | null>;
+  /** Null user when the host application has no session for this request. */
+  me(): Promise<Identity>;
+  /** Asks GitHub for a code to show the reviewer. */
+  linkStart(): Promise<LinkStart>;
+  /** One exchange attempt. The caller does the waiting between them. */
+  linkAttempt(): Promise<LinkAttempt>;
+  /** Forgets the token. GitHub keeps the authorisation until it is revoked. */
+  linkEnd(): Promise<void>;
 }
 
 /** Opens the transport. Touches no global until a method is called. */
@@ -62,7 +90,12 @@ export function createTransport(options: TransportOptions): Transport {
         method: "PATCH",
         body: JSON.stringify({ status, ...(resolution === undefined ? {} : { resolution }) }),
       }),
-    me: async () => (await call<{ user: MapleUser | null }>("/me", {})).user,
+    me: () => call<Identity>("/me", {}),
+    linkStart: () => call<LinkStart>("/auth/github", { method: "POST" }),
+    linkAttempt: () => call<LinkAttempt>("/auth/github", { method: "PATCH" }),
+    linkEnd: async () => {
+      await call<unknown>("/auth/github", { method: "DELETE" });
+    },
   };
 }
 

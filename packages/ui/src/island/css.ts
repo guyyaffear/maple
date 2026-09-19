@@ -627,12 +627,20 @@ function row(): string {
   animation: mk-row-in var(--mk-dur-fade) var(--mk-ease-surface) backwards;
   transition:
     background-color var(--mk-dur-fade) var(--mk-ease-surface),
+    box-shadow var(--mk-dur-fade) var(--mk-ease-surface),
     padding-left var(--mk-dur-fade) var(--mk-ease-surface);
 }
 
 .mk-row:hover {
   background: var(--mk-sunk);
   padding-left: 14px;
+}
+
+/* A rail, not a wash: the wash is what hover already means, and the row a mark
+   or a link landed on has to stay legible while the pointer is over another. */
+.mk-row[data-mk-selected="true"] {
+  padding-left: 14px;
+  box-shadow: inset 2px 0 0 var(--mk-accent);
 }
 
 ${steps}

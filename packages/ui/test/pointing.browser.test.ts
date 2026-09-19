@@ -180,6 +180,19 @@ describe("clicking a mark", () => {
     expect(find(".mk-row[data-mk-selected='true']")).toBeInstanceOf(HTMLElement);
   });
 
+  /** Otherwise the inventory opens and nothing in it says which row it opened on. */
+  it("marks the row it landed on, apart from the wash a hover gives", async () => {
+    await click(1);
+    await vi.waitFor(() => expect(root().querySelector(".mk-card")).not.toBeNull());
+
+    const rows = [...root().querySelectorAll<HTMLElement>(".mk-row")];
+    const landed = find<HTMLElement>(".mk-row[data-mk-selected='true']");
+    const rest = rows.filter((row) => row !== landed);
+
+    expect(getComputedStyle(landed).boxShadow).not.toBe("none");
+    expect(rest.map((row) => getComputedStyle(row).boxShadow)).toEqual(rest.map(() => "none"));
+  });
+
   it("glows in the leaf's own shape rather than behind its box", async () => {
     const node = await click(1);
 

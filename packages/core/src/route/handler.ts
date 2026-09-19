@@ -10,14 +10,28 @@
 import { MapleStoreError } from "../errors.js";
 import { fnv1a32 } from "../lib/fnv1a.js";
 
-import type { IdentityConnector, ListQuery, StoreConnector } from "../connectors/types.js";
+import type {
+  IdentityConnector,
+  IdentityRequest,
+  ListQuery,
+  StoreConnector,
+} from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
 import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
 
+/**
+ * Chooses the store for one request. The shape a per-reviewer credential
+ * needs: the token differs per person, so the connector holding it does too.
+ * Null means this reviewer has nowhere to write yet.
+ */
+export type StoreResolver = (
+  request: IdentityRequest,
+) => StoreConnector | null | Promise<StoreConnector | null>;
+
 /** What the route is wired to. */
 export interface RouteOptions {
-  /** Where comments live. The only required connector. */
-  readonly store: StoreConnector;
+  /** Where comments live. One connector, or one chosen per request. */
+  readonly store: StoreConnector | StoreResolver;
   /** Resolves the reviewer from the request. Without one, comments are guest-written. */
   readonly identity?: IdentityConnector;
   /** Defaults to `/api/maple`. */
@@ -63,23 +77,40 @@ async function dispatch(
   route: string,
   url: URL,
 ): Promise<Response> {
-  if (route === "/comments" && request.method === "GET") return listComments(options, url);
-  if (route === "/comments" && request.method === "POST") return appendComment(options, request);
-  if (route === "/me" && request.method === "GET") return whoAmI(options, request);
+  const one = /^\/comments\/([^/]+)$/.exec(route);
+  if (route !== "/comments" && route !== "/me" && !one) return json({ error: "Not found" }, 404);
 
-  const status = /^\/comments\/([^/]+)$/.exec(route);
-  if (status && request.method === "PATCH") return setStatus(options, request, status[1]!);
-  if (status || route === "/comments" || route === "/me") {
-    return json({ error: "Method not allowed" }, 405);
-  }
-  return json({ error: "Not found" }, 404);
+  const allowed = methodAllowed(route, one !== null, request.method);
+  if (!allowed) return json({ error: "Method not allowed" }, 405);
+  if (route === "/me") return whoAmI(options, request);
+
+  const store = await storeFor(options, request);
+  if (!store) return json({ error: "This reviewer has no store to write to" }, 401);
+
+  if (one) return setStatus(store, request, one[1]!);
+  return request.method === "GET"
+    ? listComments(store, url)
+    : appendComment(options, store, request);
 }
 
-async function listComments(options: RouteOptions, url: URL): Promise<Response> {
+/** Checked before the store is resolved: a wrong method is not a credential problem. */
+function methodAllowed(route: string, one: boolean, method: string): boolean {
+  if (one) return method === "PATCH";
+  if (route === "/me") return method === "GET";
+  return method === "GET" || method === "POST";
+}
+
+/** A plain connector is used as it is; a resolver is asked, every request. */
+async function storeFor(options: RouteOptions, request: Request): Promise<StoreConnector | null> {
+  const { store } = options;
+  return typeof store === "function" ? store(identityRequest(request)) : store;
+}
+
+async function listComments(store: StoreConnector, url: URL): Promise<Response> {
   const branch = url.searchParams.get("branch");
   if (!branch) return json({ error: "A branch is required" }, 400);
 
-  const page = await options.store.list(queryFrom(url, branch));
+  const page = await store.list(queryFrom(url, branch));
   return json(page, 200);
 }
 
@@ -100,7 +131,11 @@ function queryFrom(url: URL, branch: string): ListQuery {
  * The author and their colour slot are built here, never read off the body: a
  * client that can choose its own author can choose someone else's.
  */
-async function appendComment(options: RouteOptions, request: Request): Promise<Response> {
+async function appendComment(
+  options: RouteOptions,
+  store: StoreConnector,
+  request: Request,
+): Promise<Response> {
   const posted = await readJson(request);
   if (!isDraft(posted)) return json({ error: "A branch and a body are required" }, 400);
 
@@ -114,7 +149,7 @@ async function appendComment(options: RouteOptions, request: Request): Promise<R
       : { id: "guest", name: "Guest", provenance: "guest" },
   };
 
-  return json(await options.store.append(comment), 201);
+  return json(await store.append(comment), 201);
 }
 
 /**
@@ -125,7 +160,7 @@ function colorSlotFor(id: string): number {
   return fnv1a32(id) % COLOR_SLOTS;
 }
 
-async function setStatus(options: RouteOptions, request: Request, id: string): Promise<Response> {
+async function setStatus(store: StoreConnector, request: Request, id: string): Promise<Response> {
   const change = (await readJson(request)) as
     { status?: unknown; resolution?: unknown } | undefined;
   const status = change?.status;
@@ -138,7 +173,7 @@ async function setStatus(options: RouteOptions, request: Request, id: string): P
     return json({ error: "A resolution needs a sha" }, 400);
   }
 
-  const update = options.store.setStatus?.bind(options.store);
+  const update = store.setStatus?.bind(store);
   if (!update) return json({ error: "This store cannot change a status" }, 501);
 
   const resolution = claimed === undefined ? undefined : stamp(claimed);

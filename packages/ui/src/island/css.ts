@@ -999,28 +999,28 @@ function keyframes(): string {
 @keyframes mk-island-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(var(--mk-scale-island));
+    transform: translateY(var(--mk-rise-card)) scale(var(--mk-scale-island));
   }
 }
 
 @keyframes mk-island-out {
   to {
     opacity: 0;
-    transform: translateY(6px) scale(var(--mk-scale-island));
+    transform: translateY(var(--mk-rise-row)) scale(var(--mk-scale-island));
   }
 }
 
 @keyframes mk-pop-in {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(var(--mk-scale-tooltip));
+    transform: translateY(calc(-1 * var(--mk-rise-row))) scale(var(--mk-scale-tooltip));
   }
 }
 
 @keyframes mk-row-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(var(--mk-rise-row));
   }
 }
 `.trim();

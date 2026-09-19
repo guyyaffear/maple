@@ -111,6 +111,8 @@ export const MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-scale-island": "0.97",
   "--mk-scale-tooltip": "0.98",
   "--mk-rise-mark": "8px",
+  "--mk-rise-card": "12px",
+  "--mk-rise-row": "6px",
   "--mk-shift-composer": "100%",
   "--mk-icon-scale": "0.25",
   "--mk-icon-blur": "4px",
@@ -119,7 +121,8 @@ export const MOTION_TOKENS: Readonly<Record<string, string>> = {
 /**
  * Reduced motion reduces the motion; it never removes the feedback. Distance,
  * pre-scale and stagger collapse to nothing and every duration lands at or
- * under 100ms, so what is left of a transition is its opacity.
+ * under 100ms, so what is left of a transition is its opacity. Every entrance
+ * distance is a token for that reason: a keyframe spelling `12px` keeps moving.
  */
 export const REDUCED_MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-ease-surface": "ease-out",
@@ -143,6 +146,8 @@ export const REDUCED_MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-scale-island": "1",
   "--mk-scale-tooltip": "1",
   "--mk-rise-mark": "0px",
+  "--mk-rise-card": "0px",
+  "--mk-rise-row": "0px",
   "--mk-shift-composer": "0%",
   "--mk-icon-scale": "1",
   "--mk-icon-blur": "0px",

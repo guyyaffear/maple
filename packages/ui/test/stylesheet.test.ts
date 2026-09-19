@@ -119,8 +119,22 @@ describe("reduced motion", () => {
     for (const [, value] of durations) expect(Number.parseInt(value, 10)).toBeLessThanOrEqual(100);
   });
 
+  /**
+   * A keyframe that spells its own distance keeps moving when a reader has
+   * asked it not to, because only the tokens are redefined.
+   */
+  it("reaches every keyframe, none of which spells a distance of its own", () => {
+    const frames = [...RULES.matchAll(/@keyframes[^{]+\{[\s\S]*?\n\}/g)].map((match) => match[0]);
+    expect(frames.length).toBeGreaterThan(0);
+
+    const literals = frames.map((frame) => frame.replace(/var\(--mk-[\w-]+\)/g, ""));
+    expect(literals.filter((frame) => /[\d.]px/.test(frame))).toEqual([]);
+  });
+
   it("collapses distance, pre-scale and stagger, leaving the opacity", () => {
     expect(REDUCED_MOTION_TOKENS["--mk-rise-mark"]).toBe("0px");
+    expect(REDUCED_MOTION_TOKENS["--mk-rise-card"]).toBe("0px");
+    expect(REDUCED_MOTION_TOKENS["--mk-rise-row"]).toBe("0px");
     expect(REDUCED_MOTION_TOKENS["--mk-icon-blur"]).toBe("0px");
     expect(REDUCED_MOTION_TOKENS["--mk-scale-island"]).toBe("1");
     expect(REDUCED_MOTION_TOKENS["--mk-icon-scale"]).toBe("1");

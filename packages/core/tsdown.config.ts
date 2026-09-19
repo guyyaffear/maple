@@ -9,6 +9,7 @@ export default defineConfig({
     "src/connectors/index.ts",
     "src/export/index.ts",
     "src/loader/index.ts",
+    "src/next/index.ts",
     "src/logger/index.ts",
     "src/vite/index.ts",
     "src/config/index.ts",

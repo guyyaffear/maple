@@ -248,10 +248,46 @@ describe("a panel taller than the card", () => {
     expect(box.top).toBeGreaterThanOrEqual(head.bottom - 0.5);
   });
 
+  // Seven: the sign-in, the untagged notice this page earns, theme, corner,
+  // hide resolved, developer mode and the dismiss.
   it("shows every row the panel has, sign-in included", async () => {
     await shortened();
 
-    expect(root().querySelectorAll(".mk-setting")).toHaveLength(6);
+    expect(root().querySelectorAll(".mk-setting")).toHaveLength(7);
     expect(root().querySelector("[data-mk-link]")).not.toBeNull();
+  });
+});
+
+/**
+ * A build that never tagged says "this page" for everything, and nothing else
+ * on the surface explains why. This is where a developer goes looking.
+ */
+describe("a build the tagger did not run on", () => {
+  function untagged(): HTMLElement | undefined {
+    return [...root().querySelectorAll<HTMLElement>(".mk-setting")].find(
+      (one) => one.dataset["mkMaple"] === "true",
+    );
+  }
+
+  it("says so, and names what to wrap the config in", async () => {
+    await panel();
+    const row = untagged();
+
+    expect(row?.textContent).toContain("not tagged");
+    expect(row?.textContent).toContain("withMaple");
+  });
+
+  it("says nothing at all once the page carries the attributes", async () => {
+    const tagged = document.createElement("div");
+    tagged.setAttribute("data-maple-src", "src/app/page.tsx:1:1");
+    document.body.append(tagged);
+
+    client.arm("element");
+    await vi.waitFor(() => expect(client.getState().tagged).toBe(true));
+    await panel();
+
+    expect(untagged()).toBeUndefined();
+    tagged.remove();
+    client.disarm();
   });
 });

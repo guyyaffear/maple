@@ -1,8 +1,10 @@
+import { withMaple } from "@maple-kit/core/next";
+
 import type { NextConfig } from "next";
 
-// Preview builds tag; every other build strips. One flag drives both halves,
-// so there is no configuration in which the tagger runs and the stripping
-// does not.
+// Preview builds tag; every other build strips. `withMaple` is what makes that
+// one flag rather than two settings that can silently disagree — a rule that
+// adds the attributes and a pass that takes them away again.
 const preview = process.env["MAPLE_PREVIEW"] === "1";
 
 // Verification only, and the reason this file has three modes rather than two:
@@ -11,19 +13,26 @@ const preview = process.env["MAPLE_PREVIEW"] === "1";
 // exercises reactRemoveProperties. See scripts/verify.ts.
 const stripCheck = process.env["MAPLE_STRIP_CHECK"] === "1";
 
-const TAGGER = { "*.tsx": { loaders: ["@maple-kit/core/loader"] } };
-
 function distDir(): string {
   if (preview) return ".next-preview";
   return stripCheck ? ".next-strip" : ".next";
 }
 
-const config: NextConfig = {
-  distDir: distDir(),
-  turbopack: { rules: preview || stripCheck ? TAGGER : {} },
-  compiler: {
-    reactRemoveProperties: preview ? false : { properties: ["^data-maple-"] },
-  },
+const base: NextConfig = { distDir: distDir() };
+const tagging = withMaple(base, { preview: true });
+const stripping = withMaple(base, { preview: false });
+
+// The one build that does both, spelled out here because `withMaple` will not
+// produce it: taking the tagging half of one and the stripping half of the
+// other is exactly the mistake it exists to make impossible by accident.
+const both: NextConfig = {
+  ...stripping,
+  ...(tagging.turbopack === undefined ? {} : { turbopack: tagging.turbopack }),
 };
 
-export default config;
+function chosen(): NextConfig {
+  if (stripCheck) return both;
+  return preview ? tagging : stripping;
+}
+
+export default chosen();

@@ -81,7 +81,7 @@ interface PanelProps {
  */
 function Panel(props: PanelProps): ReactNode {
   const client = useMapleClient();
-  const { position, showResolved, themePreference } = useMaple();
+  const { position, showResolved, tagged, themePreference } = useMaple();
   const island = useIsland(PART);
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -95,6 +95,7 @@ function Panel(props: PanelProps): ReactNode {
     "div",
     { id: props.id, className: "mk-settings", role: "group", onBlur, onKeyDown },
     createElement(Account, null),
+    tagged ? null : createElement(Untagged, null),
     createElement(Theme, {
       value: themePreference,
       onPick: (theme: ThemePreference) => client.setTheme(theme),
@@ -114,6 +115,25 @@ function Panel(props: PanelProps): ReactNode {
       onChange: island.setDeveloper,
     }),
     createElement(Dismiss, { onHide: () => client.setHidden(true) }),
+  );
+}
+
+/**
+ * Only when it is true, and said where a developer already goes looking: the
+ * page says "this page" for everything and nothing else explains why.
+ */
+function Untagged(): ReactNode {
+  const copy = SETTINGS_COPY.untagged;
+
+  return createElement(
+    "div",
+    { className: "mk-setting", "data-mk-maple": "true" },
+    createElement(
+      "span",
+      null,
+      createElement("span", { className: "mk-setting-name" }, copy.name),
+      createElement("span", { className: "mk-setting-hint" }, copy.hint),
+    ),
   );
 }
 

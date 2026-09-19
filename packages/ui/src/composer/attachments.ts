@@ -68,7 +68,10 @@ export const MapleAttachments = /** @__PURE__ */ forwardRef<HTMLElement, MapleAt
     }
 
     const captured = scope.pending?.source === "capture";
-    const keeps = media || phase !== "ready";
+    // `/me` is asked alongside the list, so a load that failed still answered
+    // this. Only an unasked route is unknown, and that is the one grey case.
+    const asked = phase === "error" || phase === "ready";
+    const keeps = media || !asked;
     const children = scope.pending
       ? filled(scope, { failed, captured, keeps })
       : [said(resting(keeps, claimed), false, "said")];

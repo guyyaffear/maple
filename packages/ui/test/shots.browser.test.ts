@@ -39,10 +39,11 @@ function Keep(): null {
   return null;
 }
 
-function tree(media = true): ReactElement {
+function tree(media = true, refuse?: number): ReactElement {
+  const answers = { media, ...(refuse === undefined ? {} : { refuse }) };
   return createElement(
     MapleRoot,
-    { branch: BRANCH, theme: "light", options: { fetch: offlineFetch({ media }) } },
+    { branch: BRANCH, theme: "light", options: { fetch: offlineFetch(answers) } },
     createElement(Keep),
     createElement(MapleComposer, null, createElement(MapleAttachments)),
   );
@@ -210,6 +211,17 @@ describe("the default upload", () => {
     await vi.waitFor(() => expect(strip()?.querySelector("img")).not.toBeNull());
     expect(strip()?.textContent).toContain("will not be sent");
     expect(strip()?.textContent).not.toContain("Taken of the page");
+  });
+
+  /** `/me` is asked alongside the list, so a 401 on the comments answered it. */
+  it("still knows there is nowhere to keep one when the load itself failed", async () => {
+    await render(tree(false, 401));
+    await vi.waitFor(() => expect(client?.getState().phase).toBe("error"));
+    client?.openComposer({ kind: "element", anchor: { component: "YieldCard" } });
+    await vi.waitFor(() => expect(strip()).not.toBeNull());
+    shotsOf().put(taken());
+
+    await vi.waitFor(() => expect(strip()?.textContent).toContain("will not be sent"));
   });
 });
 

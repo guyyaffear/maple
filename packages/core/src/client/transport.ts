@@ -1,5 +1,5 @@
 /**
- * The four calls the reviewer interface makes, and nothing else.
+ * The calls the reviewer interface makes, and nothing else.
  *
  * Same-origin by construction: the route is mounted on the host application's
  * own origin, so the session cookie is already on the request and Maple adds
@@ -8,7 +8,7 @@
  * 500 without importing anything of ours.
  */
 
-import type { Comment, CommentStatus, MapleUser } from "../types.js";
+import type { Comment, CommentStatus, MapleUser, MediaRef } from "../types.js";
 import type { PostedComment, ResolutionClaim } from "./types.js";
 
 /** The default mount point, matched by the route, the Vite plugin and the codemod. */
@@ -59,6 +59,8 @@ export interface Identity {
   readonly user: MapleUser | null;
   /** Absent when the route serves no GitHub sign-in at all. */
   readonly github?: { readonly linked: boolean; readonly login?: string };
+  /** Whether this deployment has anywhere to keep a screenshot. */
+  readonly media?: boolean;
 }
 
 /** The route, as the controller sees it. */
@@ -69,6 +71,10 @@ export interface Transport {
   setStatus(id: string, status: CommentStatus, resolution?: ResolutionClaim): Promise<Comment>;
   /** Null user when the host application has no session for this request. */
   me(): Promise<Identity>;
+  /** Puts an image where the media connector keeps them. */
+  putMedia(blob: Blob, contentType: string): Promise<MediaRef>;
+  /** A URL for an `img`, which the route redirects from. Builds no request. */
+  mediaUrl(ref: MediaRef): string;
   /** Asks GitHub for a code to show the reviewer. */
   linkStart(): Promise<LinkStart>;
   /** One exchange attempt. The caller does the waiting between them. */
@@ -91,12 +97,28 @@ export function createTransport(options: TransportOptions): Transport {
         body: JSON.stringify({ status, ...(resolution === undefined ? {} : { resolution }) }),
       }),
     me: () => call<Identity>("/me", {}),
+    putMedia: (blob, contentType) =>
+      call<MediaRef>("/media", {
+        method: "POST",
+        body: blob,
+        headers: { "content-type": contentType },
+      }),
+    mediaUrl: (ref) => mediaUrl(options.basePath ?? DEFAULT_BASE_PATH, ref),
     linkStart: () => call<LinkStart>("/auth/github", { method: "POST" }),
     linkAttempt: () => call<LinkAttempt>("/auth/github", { method: "PATCH" }),
     linkEnd: async () => {
       await call<unknown>("/auth/github", { method: "DELETE" });
     },
   };
+}
+
+/**
+ * The key is in the path and the type is a query, because `getUrl` takes a
+ * whole `MediaRef` and the connector is the route's own.
+ */
+function mediaUrl(base: string, ref: MediaRef): string {
+  const query = new URLSearchParams({ type: ref.contentType });
+  return `${base}/media/${encodeURIComponent(ref.key)}?${query.toString()}`;
 }
 
 /** Binds the base path and the fetch to use, so no call site repeats either. */

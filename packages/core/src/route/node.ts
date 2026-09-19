@@ -5,6 +5,8 @@
  * and Fastify's compatibility layer. One adapter serves all three.
  */
 
+import { Buffer } from "node:buffer";
+
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 /** A connect-style middleware. */
@@ -42,14 +44,17 @@ async function serve(
 
   response.statusCode = result.status;
   result.headers.forEach((value, name) => response.setHeader(name, value));
-  response.end(await result.text());
+  // Bytes, not text: a screenshot round-tripped through a UTF-8 string comes
+  // back as an image no decoder will open.
+  response.end(Buffer.from(await result.arrayBuffer()));
 }
 
 async function toWebRequest(request: IncomingMessage): Promise<Request> {
   const host = header(request, "host") ?? "localhost";
   const url = `http://${host}${request.url ?? "/"}`;
   const method = request.method ?? "GET";
-  const body = method === "GET" || method === "HEAD" ? undefined : await readBody(request);
+  const empty = method === "GET" || method === "HEAD";
+  const body = empty ? undefined : await readBody(request);
 
   return new Request(url, {
     method,
@@ -72,12 +77,19 @@ function header(request: IncomingMessage, name: string): string | undefined {
   return typeof value === "string" ? value : value?.[0];
 }
 
-function readBody(request: IncomingMessage): Promise<string> {
+/** Bytes for the same reason the response is: an upload is usually an image. */
+function readBody(request: IncomingMessage): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
-    let body = "";
-    request.setEncoding("utf8");
-    request.on("data", (chunk: string) => (body += chunk));
-    request.on("end", () => resolve(body));
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => resolve(toArrayBuffer(Buffer.concat(chunks))));
     request.on("error", reject);
   });
+}
+
+/** A fresh buffer: a Node Buffer is a view into a pool it does not own. */
+function toArrayBuffer(buffer: Buffer): ArrayBuffer {
+  const copy = new ArrayBuffer(buffer.byteLength);
+  new Uint8Array(copy).set(buffer);
+  return copy;
 }

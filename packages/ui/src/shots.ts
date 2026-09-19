@@ -13,21 +13,30 @@ import { createContext, useContext } from "react";
 
 import type { PastedImage } from "@maple-kit/core/screenshot";
 
-/** A one-slot store. There is one composer, so there is one image in flight. */
+/**
+ * What the picker got. A failure travels the same way the image does: a
+ * capture that quietly produced nothing is a strip saying "paste one" with no
+ * hint that anything was tried, which reads as a feature that does not exist.
+ */
+export type Shot =
+  | { readonly status: "taken"; readonly image: PastedImage }
+  | { readonly status: "failed"; readonly reason: string };
+
+/** A one-slot store. There is one composer, so there is one shot in flight. */
 export interface ShotStore {
-  /** The image waiting to be claimed, or nothing. */
-  get(): PastedImage | undefined;
-  /** Called by the picker, with what it captured. Replaces anything unclaimed. */
-  put(image: PastedImage | undefined): void;
+  /** The shot waiting to be claimed, or nothing. */
+  get(): Shot | undefined;
+  /** Called by the picker. Replaces anything unclaimed. */
+  put(shot: Shot | undefined): void;
   /** Called by the strip: reads it and empties the slot in one go. */
-  take(): PastedImage | undefined;
+  take(): Shot | undefined;
   subscribe(listener: () => void): () => void;
 }
 
 /** Builds the store. Holds a blob, touches no DOM, and is created per root. */
 export function createShotStore(): ShotStore {
   const listeners = new Set<() => void>();
-  let held: PastedImage | undefined;
+  let held: Shot | undefined;
 
   const tell = (): void => {
     for (const listener of listeners) listener();
@@ -35,15 +44,15 @@ export function createShotStore(): ShotStore {
 
   return {
     get: () => held,
-    put(image) {
-      held = image;
+    put(shot) {
+      held = shot;
       tell();
     },
     take() {
-      const image = held;
+      const shot = held;
       held = undefined;
-      if (image) tell();
-      return image;
+      if (shot) tell();
+      return shot;
     },
     subscribe(listener) {
       listeners.add(listener);

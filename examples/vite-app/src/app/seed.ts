@@ -33,14 +33,14 @@ function area(x: number, y: number, width: number, height: number): AnchorRegion
   return { x, y, width, height };
 }
 
-/** What Maple attached on its own at pick time. `resolve` in App.tsx reads it. */
-function capture(key: string): readonly MediaRef[] {
-  return [{ connector: "demo", key, contentType: "image/svg+xml", source: "capture" }];
+/** What Maple attached on its own at pick time, as the media connector kept it. */
+function capture(ref: MediaRef | undefined): readonly MediaRef[] {
+  return ref === undefined ? [] : [{ ...ref, source: "capture" }];
 }
 
 /** Eleven, so every state the overlay draws differently is on the page. */
-export function seedComments(branch: string): readonly NewComment[] {
-  return [...open(), ...answered(), ...unpinned()].map((comment) => ({
+export function seedComments(branch: string, shots: readonly MediaRef[]): readonly NewComment[] {
+  return [...open(shots), ...answered(shots), ...unpinned()].map((comment) => ({
     ...comment,
     branch,
     context: CONTEXT,
@@ -48,7 +48,7 @@ export function seedComments(branch: string): readonly NewComment[] {
 }
 
 /** Nothing has claimed these yet, which is the ordinary state of a comment. */
-function open(): readonly Omit<NewComment, "branch" | "context">[] {
+function open(shots: readonly MediaRef[]): readonly Omit<NewComment, "branch" | "context">[] {
   return [
     {
       body: "This delta is red for a drop in time-to-merge, which is the good direction. Flip the colour rule for this card.",
@@ -77,7 +77,7 @@ function open(): readonly Omit<NewComment, "branch" | "context">[] {
       createdAt: at(14),
       author: { id: "ivan", name: "Ivan Sutherland", provenance: "client", colorSlot: 3 },
       anchor: { component: "SplitRow", selector: ".split", region: area(0.34, 0.06, 0.62, 0.86) },
-      attachments: capture("split-gap"),
+      attachments: capture(shots[0]),
     },
     {
       body: "Nothing on this item says it is a link until you are already on it. The hover state is the only affordance.",
@@ -89,7 +89,7 @@ function open(): readonly Omit<NewComment, "branch" | "context">[] {
 }
 
 /** Claimed, or claimed and then moved under: the two ends of a comment's life. */
-function answered(): readonly Omit<NewComment, "branch" | "context">[] {
+function answered(shots: readonly MediaRef[]): readonly Omit<NewComment, "branch" | "context">[] {
   return [
     {
       status: "resolved",
@@ -121,7 +121,7 @@ function answered(): readonly Omit<NewComment, "branch" | "context">[] {
         selector: ".metrics",
         region: area(0.02, 0.1, 0.96, 0.8),
       },
-      attachments: capture("metric-row"),
+      attachments: capture(shots[1]),
       resolution: { sha: "c07ee31", note: "Set a min-height on the card.", at: at(20) },
     },
     {

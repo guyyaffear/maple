@@ -15,6 +15,7 @@ import type {
   IdentityConnector,
   IdentityRequest,
   ListQuery,
+  MediaConnector,
   StoreConnector,
 } from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
@@ -30,10 +31,23 @@ export type StoreResolver = (
   request: IdentityRequest,
 ) => StoreConnector | null | Promise<StoreConnector | null>;
 
+/**
+ * Chooses the media connector for one request, for the same reason a store is
+ * chosen per request: the credential can be the reviewer's.
+ */
+export type MediaResolver = (
+  request: IdentityRequest,
+) => MediaConnector | null | Promise<MediaConnector | null>;
+
 /** What the route is wired to. */
 export interface RouteOptions {
   /** Where comments live. One connector, or one chosen per request. */
   readonly store: StoreConnector | StoreResolver;
+  /**
+   * Where screenshots go. Without one the overlay says a screenshot has
+   * nowhere to be kept, rather than offering to take one and dropping it.
+   */
+  readonly media?: MediaConnector | MediaResolver;
   /** Resolves the reviewer from the request. Without one, comments are guest-written. */
   readonly identity?: IdentityConnector;
   /**
@@ -85,6 +99,7 @@ async function dispatch(
   url: URL,
 ): Promise<Response> {
   if (route === "/auth/github") return link(options, request);
+  if (route === "/media" || route.startsWith("/media/")) return media(options, request, route, url);
 
   const one = /^\/comments\/([^/]+)$/.exec(route);
   if (route !== "/comments" && route !== "/me" && !one) return json({ error: "Not found" }, 404);
@@ -100,6 +115,73 @@ async function dispatch(
   return request.method === "GET"
     ? listComments(store, url)
     : appendComment(options, store, request);
+}
+
+/** `POST /media` takes the bytes and hands back the reference a comment keeps;
+ * `GET /media/{key}` redirects to wherever the connector put them. */
+async function media(
+  options: RouteOptions,
+  request: Request,
+  route: string,
+  url: URL,
+): Promise<Response> {
+  const connector = await mediaFor(options, request);
+  if (!connector) return json({ error: "This deployment keeps no screenshots" }, 404);
+
+  const key = route === "/media" ? undefined : decodeURIComponent(route.slice("/media/".length));
+  if (key === undefined) {
+    if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+    return putBlob(connector, request);
+  }
+
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+  return readBlob(connector, key, url);
+}
+
+/** The content type is the request's, so nothing has to be parsed out of bytes. */
+async function putBlob(connector: MediaConnector, request: Request): Promise<Response> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("image/")) return json({ error: "An image is required" }, 415);
+
+  const data = new Uint8Array(await request.arrayBuffer());
+  if (data.byteLength === 0) return json({ error: "An image is required" }, 400);
+
+  return json(await connector.putBlob({ data, contentType }), 201);
+}
+
+/** A redirect, not a proxy: a connector's URL is signed and short-lived, and
+ * streaming the bytes would put every screenshot on the application's budget. */
+async function readBlob(connector: MediaConnector, key: string, url: URL): Promise<Response> {
+  const contentType = url.searchParams.get("type") ?? "application/octet-stream";
+  const found = await connector.getUrl({ connector: connector.name, key, contentType });
+  const inline = decoded(found);
+  if (inline) return inline;
+
+  return new Response(null, {
+    status: 302,
+    headers: { location: found, "cache-control": "no-store" },
+  });
+}
+
+/** A browser refuses to follow a redirect to a data URL, so a connector that
+ * answers with one is served rather than pointed at. Only a dev one does. */
+function decoded(found: string): Response | undefined {
+  const match = /^data:([^;,]+);base64,(.*)$/s.exec(found);
+  if (!match) return undefined;
+
+  const binary = atob(match[2]!);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new Response(bytes, {
+    status: 200,
+    headers: { "content-type": match[1]!, "cache-control": "no-store" },
+  });
+}
+
+/** A plain connector is used as it is; a resolver is asked, every request. */
+async function mediaFor(options: RouteOptions, request: Request): Promise<MediaConnector | null> {
+  const chosen = options.media;
+  if (chosen === undefined) return null;
+  return typeof chosen === "function" ? chosen(identityRequest(request)) : chosen;
 }
 
 /**
@@ -235,8 +317,9 @@ async function whoAmI(options: RouteOptions, request: Request): Promise<Response
   const user = await options.identity?.resolveUser(identityRequest(request));
   const auth = options.githubAuth;
   const github = auth ? await githubState(auth, Object.fromEntries(request.headers)) : undefined;
+  const media = (await mediaFor(options, request)) !== null;
 
-  return json({ user: user ?? null, ...(github === undefined ? {} : { github }) }, 200);
+  return json({ user: user ?? null, media, ...(github === undefined ? {} : { github }) }, 200);
 }
 
 /** The identity connector sees headers and a URL, and nothing else. */

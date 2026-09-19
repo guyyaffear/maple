@@ -32,6 +32,8 @@ export interface MapleFakeOptions {
   readonly user?: MapleUser | null;
   /** Hand back one page at a time, so cursor following is exercised. */
   readonly pageSize?: number;
+  /** Whether the route keeps screenshots. True unless a suite says otherwise. */
+  readonly media?: boolean;
 }
 
 /** Builds the fake. */
@@ -59,7 +61,15 @@ export function createMapleFake(options: MapleFakeOptions = {}): MapleFake {
         stored[found] = { ...stored[found]!, status: change.status };
         return HttpResponse.json(stored[found]);
       }),
-      http.get(`${MAPLE_BASE}/me`, () => HttpResponse.json({ user })),
+      http.get(`${MAPLE_BASE}/me`, () =>
+        HttpResponse.json({ user, media: options.media !== false }),
+      ),
+      http.post(`${MAPLE_BASE}/media`, ({ request }) => {
+        next += 1;
+        const contentType = request.headers.get("content-type") ?? "image/png";
+        const ref = { connector: "memory", key: `shot-${String(next)}`, contentType };
+        return HttpResponse.json(ref, { status: 201 });
+      }),
     ],
   };
 }

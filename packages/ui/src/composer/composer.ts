@@ -184,7 +184,8 @@ function useScopeValue(open: boolean, view: Window | null, peekable: boolean): C
       detent,
       toggleDetent: () => setDetent((was) => (was === "half" ? "full" : "half")),
       pending,
-      offer: (image) => setPending({ image, preview: previewOf(image) }),
+      offer: (image, source) =>
+        setPending({ image, preview: previewOf(image), source: source ?? "offered" }),
       clear: () => setPending(undefined),
     }),
     [peeking, detent, pending],

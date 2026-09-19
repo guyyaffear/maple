@@ -105,15 +105,17 @@ function useCommit(): (pick: Pick) => void {
   );
 }
 
-/**
- * Best effort, silent when it fails: snapdom is an optional peer, and paste
- * and drop were always the better path anyway.
- */
+/** Best effort, and it says when the effort failed: snapdom is an optional
+ * peer, so the usual failure is that nobody installed it. */
 function capture(element: Element, shots: ShotStore): void {
   void captureElement(element, { page: true }).then(
-    (blob) => shots.put({ blob, type: blob.type }),
-    () => shots.put(undefined),
+    (blob) => shots.put({ status: "taken", image: { blob, type: blob.type } }),
+    (error: unknown) => shots.put({ status: "failed", reason: reasonOf(error) }),
   );
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** Escape leaves picking; `t` cycles the three without going back to the island. */

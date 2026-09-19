@@ -49,8 +49,9 @@ Ten new entrypoints on top of Phase 0's four.
   comment comes from the identity connector and never from the request body,
   and carries a stable colour slot derived from their id.
 - **`/client`** — the framework-free reviewer controller: comments and filters,
-  the composer, picking, drafts, the navigation guard, theme detection, and the
-  preference model behind the query string. No React anywhere in it.
+  the composer, picking, drafts, the navigation guard, theme detection, the
+  preference model behind the query string, and the GitHub link with its
+  polling. No React anywhere in it.
 - **`/auth`** — GitHub Device Flow, including `slow_down` back-off, and the
   reviewer's session: one user-to-server token per person in an `HttpOnly`
   cookie on the preview's own origin, so a preview holds no GitHub secret at
@@ -58,6 +59,14 @@ Ten new entrypoints on top of Phase 0's four.
 - **`/screenshot`** — paste and drop first, capture second.
 - **`/connectors`** — `githubStore`, the default store, passing the shared
   contract.
+
+A reviewer signs in from the preview itself. Device Flow runs through the
+route — `POST`, `PATCH` and `DELETE` on `/auth/github` — so the exchange needs
+no client secret and a preview environment holds none. Each reviewer's
+user-to-server token lives in an `HttpOnly` cookie on the preview's own origin,
+and `RouteOptions.store` takes a resolver so the connector holding it is built
+per request. `docs/github-auth.md` is the design, the threat model and the
+alternatives that were rejected.
 
 A comment also keeps what came of it. `CommentResolution` records the commit an
 agent believes addressed it, with its note and the time the write happened, so
@@ -70,7 +79,8 @@ reserved and documented in `docs/replies.md` as reserved, not built.
 Two packages, not one. `@maple-kit/react` is headless and stops at hooks —
 `MapleProvider` plus six `useSyncExternalStore` bindings over the controller,
 and nothing deeper. `@maple-kit/ui` is the composed parts: the marks and the
-ring, the island, the composer, and one default composition over them. An
+ring, the island, the composer, the GitHub link row, and one default
+composition over them. An
 application rendering comments in its own design system depends on the first
 and pulls in none of the second, which is also what keeps a later Svelte or
 Astro binding a binding rather than a rewrite.
@@ -107,7 +117,7 @@ happened.
 
 ### Numbers
 
-**1,133 tests** — 762 in Node, 371 in real Chromium, up from 101. Forty-one
+**1,154 tests** — 774 in Node, 380 in real Chromium, up from 101. Forty-three
 changesets.
 `lint typecheck format test test:browser build publint attw gitleaks lockfile
 dco` all green, and `main` is protected by a ruleset requiring the eight CI

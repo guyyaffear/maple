@@ -1,0 +1,95 @@
+# Screenshots
+
+A comment about a layout is worth much less without a picture of the layout. So
+Maple takes one at pick time, without being asked, and the reviewer can replace
+it by pasting or dropping another.
+
+None of that is worth anything if the image has nowhere to go, and for the first
+two releases it did not: `MediaConnector` was a contract with no route behind
+it, and `Maple.Attachments` only attached an image when the host application
+passed it an `upload` function. A default installation showed the reviewer a
+thumbnail and then dropped it. This file is the path now.
+
+## The path an image takes
+
+| Step                           | Where                                 |
+| ------------------------------ | ------------------------------------- |
+| Captured when the pick commits | `core/screenshot`, through the picker |
+| Handed to the strip            | `ui/shots`, one slot, one composer    |
+| Uploaded                       | `POST {base}/media`                   |
+| Kept                           | the route's `MediaConnector`          |
+| Referenced on the comment      | `Comment.attachments`, a `MediaRef`   |
+| Read back                      | `GET {base}/media/{key}?type=…`       |
+
+A `MediaRef` is a connector name, a key and a content type. It is never a URL:
+a URL is minted per read, because the ones a real blob store hands out are
+signed and expire, and a comment outlives them.
+
+## Wiring it
+
+One connector on the route, and nothing in the overlay:
+
+```ts
+createMapleHandler({ store, media: s3Media({ bucket: "maple-previews" }) });
+```
+
+`media` takes a resolver as well as a connector, the same way `store` does, so
+the credential can be the reviewer's rather than the deployment's.
+
+`Maple.Attachments` still takes `upload` and `resolve`, but they are **overrides
+now, not requirements**: without them the strip posts to the route and reads
+back from it.
+
+## Reading an image back
+
+`GET {base}/media/{key}` asks the connector for a URL and **redirects** to it.
+It does not stream the bytes: a signed URL is the point of `getUrl`, and
+proxying every screenshot would put them all on the application's own budget.
+
+The one exception is a `data:` URL, which the route decodes and serves instead,
+because a browser refuses to follow a redirect to one. Only a development
+connector answers with one — `memoryMedia` in `@maple-kit/core/testing` does,
+which is how the Vite example shows the whole path without a bucket.
+
+## When there is no screenshot
+
+There are three ways not to have one, they are not the same thing, and all
+three used to render as the same grey line asking for a paste — which reads as
+a tool that never took screenshots at all.
+
+1. **The deployment keeps none.** `GET /me` reports `media: false` and the strip
+   says so. Offering a paste would be a lie: there would be nowhere to put it.
+2. **The capture failed.** The strip says a capture was tried and asks for a
+   paste instead. The usual cause is the next section.
+3. **Nothing has happened yet.** The ordinary resting state, and the only one
+   that asks for a paste.
+
+## snapdom is optional, and that is a real choice
+
+`captureElement` imports [`@zumer/snapdom`](https://github.com/zumerlab/snapdom)
+dynamically, and it is an **optional** peer dependency. An application that does
+not install it gets paste and drop and no capture.
+
+It stays optional because it is 550 KB unpacked for a transform a server-only
+use of `@maple-kit/core/route` will never reach, and because the import is
+dynamic, so nothing loads until a pick commits. What changed is that skipping it
+is no longer silent: the failure reaches the strip and says what happened.
+
+Install it where a capture is wanted:
+
+```
+npm install @zumer/snapdom
+```
+
+## Why paste is still first
+
+snapdom re-renders the DOM; it does not read the compositor. A cross-origin
+image, a canvas, a video frame and anything the GPU drew come out wrong or
+blank — which is precisely the set of things people leave comments about. A
+pasted image is the reviewer's own screenshot of what they actually saw, so it
+always wins over a capture, and the panel listens for a paste and a drop
+whether or not a capture arrived.
+
+`CaptureUnavailableError` is thrown rather than a blank image being returned,
+for the same reason: a blank screenshot attached to a comment looks like
+evidence.

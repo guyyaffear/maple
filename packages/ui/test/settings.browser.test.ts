@@ -24,7 +24,10 @@ function Keep(): null {
 function tree(): ReactElement {
   return createElement(
     MapleRoot,
-    { branch: BRANCH, options: { fetch: offlineFetch({ linked: false }), origin: ORIGIN } },
+    {
+      branch: BRANCH,
+      options: { fetch: offlineFetch({ github: { linked: false } }), origin: ORIGIN },
+    },
     createElement(Keep),
     createElement(
       Island,

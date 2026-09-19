@@ -144,6 +144,11 @@ export interface ClientState {
    * can name a component or a file, which is a build to fix.
    */
   readonly tagged: boolean;
+  /**
+   * Whether this deployment has anywhere to keep a screenshot. False means the
+   * strip says so rather than offering one and dropping it.
+   */
+  readonly media: boolean;
 }
 
 /**

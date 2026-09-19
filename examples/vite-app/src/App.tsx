@@ -8,8 +8,6 @@ import {
   SideNav,
   ThroughputChart,
 } from "./app/components.js";
-import { resolveShot } from "./app/shots.js";
-
 // The branch under review. A real deployment reads this from whatever its CI
 // stamped into the build; the example takes it from the env or falls back.
 const BRANCH = import.meta.env.VITE_MAPLE_BRANCH ?? "feat/example";
@@ -31,7 +29,7 @@ export function App() {
         <ReviewTable />
         <SettingsForm />
       </main>
-      <Maple branch={BRANCH} attachments={{ resolve: resolveShot }} />
+      <Maple branch={BRANCH} />
     </div>
   );
 }

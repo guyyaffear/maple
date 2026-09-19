@@ -298,12 +298,15 @@ describe("identity", () => {
     const response = await handler({ identity: reviewer })(
       new Request(`${BASE}/api/maple/me`, { headers: { cookie: "session=valid" } }),
     );
-    expect((await response.json()) as unknown).toEqual({ user: { id: "u_7", name: "Reviewer" } });
+    expect((await response.json()) as unknown).toEqual({
+      user: { id: "u_7", name: "Reviewer" },
+      media: false,
+    });
   });
 
   it("reports nobody rather than failing when there is no identity connector", async () => {
     const response = await handler()(request("GET", "/api/maple/me"));
-    expect((await response.json()) as unknown).toEqual({ user: null });
+    expect((await response.json()) as unknown).toEqual({ user: null, media: false });
   });
 });
 
@@ -334,6 +337,23 @@ describe("mounting on a Node server", () => {
     let passed = false;
     middleware({ url: "/index.html", headers: {} } as never, {} as never, () => (passed = true));
     expect(passed).toBe(true);
+  });
+
+  /** A screenshot through a UTF-8 string comes back as an image no decoder
+   * will open, and neither half of the round trip said anything about it. */
+  it("carries bytes in and out, not text", async () => {
+    const { toNodeMiddleware } = await import("../src/route/node.js");
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+    let seen: Uint8Array | undefined;
+    const middleware = toNodeMiddleware(async (incoming) => {
+      seen = new Uint8Array(await incoming.arrayBuffer());
+      return new Response(png);
+    }, "/api/maple");
+
+    const written = await through(middleware, png);
+    expect(seen).toEqual(png);
+    expect(written).toEqual(png);
   });
 
   it("does not pass on a request inside it", async () => {
@@ -435,3 +455,29 @@ describe("a store chosen per request", () => {
     expect(response.status).toBe(500);
   });
 });
+
+/** Drives the middleware with a body and collects what it wrote back. */
+function through(
+  middleware: (request: never, response: never, next: () => void) => void,
+  body: Uint8Array,
+): Promise<Uint8Array> {
+  return new Promise((resolve) => {
+    const listeners = new Map<string, (chunk?: unknown) => void>();
+    const request = {
+      url: "/api/maple/media",
+      method: "POST",
+      headers: { host: "x" },
+      on: (event: string, listener: (chunk?: unknown) => void) => listeners.set(event, listener),
+    };
+    const response = {
+      setHeader: () => undefined,
+      end: (written: Uint8Array) => resolve(new Uint8Array(written)),
+    };
+
+    middleware(request as never, response as never, () => undefined);
+    queueMicrotask(() => {
+      listeners.get("data")?.(Buffer.from(body));
+      listeners.get("end")?.();
+    });
+  });
+}

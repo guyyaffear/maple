@@ -111,6 +111,13 @@ export interface MapleClient {
 
   /** Loads the branch's comments and asks the route who the reviewer is. */
   load(): Promise<void>;
+  /**
+   * Puts an image where this deployment keeps them and returns the reference
+   * a comment carries. Rejects when it has nowhere to keep one.
+   */
+  uploadMedia(blob: Blob, contentType: string): Promise<MediaRef>;
+  /** A URL an `img` can load a kept screenshot from. Makes no request. */
+  mediaUrl(ref: MediaRef): string;
   /** Takes the last failure off the state. Nothing is retried by it. */
   clearError(): void;
   setFilter(filter: CommentFilter): void;
@@ -204,6 +211,8 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
     destroy: () => destroy(runtime),
 
     load: () => load(runtime),
+    uploadMedia: (blob, contentType) => runtime.transport.putMedia(blob, contentType),
+    mediaUrl: (ref) => runtime.transport.mediaUrl(ref),
     clearError: () => patch(runtime, { error: null }),
     setFilter: (filter) => patch(runtime, { filter }),
     setShowResolved: (showResolved) => patch(runtime, { showResolved }),
@@ -279,6 +288,7 @@ function runtimeFor(options: MapleClientOptions): Runtime {
       github: { state: "unsupported" },
       error: null,
       tagged: true,
+      media: false,
     }),
   };
 }
@@ -445,15 +455,15 @@ async function load(runtime: Runtime): Promise<void> {
 }
 
 /** A route that cannot say who this is means a guest, not a failed load. */
-async function whoAmI(runtime: Runtime): Promise<Pick<ClientState, "github" | "user">> {
+async function whoAmI(runtime: Runtime): Promise<Pick<ClientState, "github" | "media" | "user">> {
   try {
     const identity = await runtime.transport.me();
-    return { user: identity.user, github: linkOf(identity.github) };
+    return { user: identity.user, github: linkOf(identity.github), media: identity.media === true };
   } catch (error) {
     runtime.options.logger?.warn("Could not identify the reviewer; offering the guest flow.", {
       error: String(error),
     });
-    return { user: null, github: { state: "unsupported" } };
+    return { user: null, github: { state: "unsupported" }, media: false };
   }
 }
 

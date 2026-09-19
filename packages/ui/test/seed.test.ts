@@ -3,13 +3,18 @@ import { describe, expect, it } from "vitest";
 
 import { seedComments } from "../../../examples/vite-app/src/app/seed.js";
 
-import type { CommentStatus, IdentityProvenance, PickKind } from "@maple-kit/core";
+import type { CommentStatus, IdentityProvenance, MediaRef, PickKind } from "@maple-kit/core";
 
 /**
  * The example shows the whole vocabulary before anything is clicked, so what it
  * seeds is asserted: a state nothing renders is a state nothing checks.
  */
-const SEEDED = seedComments("feat/example");
+const SHOTS: readonly MediaRef[] = [
+  { connector: "memory", key: "shot-1", contentType: "image/svg+xml" },
+  { connector: "memory", key: "shot-2", contentType: "image/svg+xml" },
+];
+
+const SEEDED = seedComments("feat/example", SHOTS);
 
 function count<T>(values: readonly T[]): ReadonlyMap<T, number> {
   const tally = new Map<T, number>();

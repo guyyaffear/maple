@@ -7,16 +7,22 @@
 
 import { createContext, useContext } from "react";
 
+import type { MediaSource } from "@maple-kit/core";
 import type { PastedImage, Preview } from "@maple-kit/core/screenshot";
 
 /** How much of the sheet is showing. Two, and no third. */
 export type SheetDetent = "full" | "half";
 
-/** An image the reviewer offered, previewing until it uploads. */
+/** An image on its way onto a comment, previewing until it uploads. */
 export interface PendingImage {
   readonly image: PastedImage;
   /** `img-src blob:` is the one CSP directive Maple asks for, and this is why. */
   readonly preview: Preview;
+  /**
+   * Who put it here. It travels with the image because a reader of a stored
+   * comment has no other way to tell Maple's own capture from a chosen one.
+   */
+  readonly source: MediaSource;
 }
 
 /** The composer's own scope. Nothing outside the package reads it. */
@@ -25,7 +31,7 @@ export interface ComposerScopeValue {
   readonly detent: SheetDetent;
   readonly toggleDetent: () => void;
   readonly pending: PendingImage | undefined;
-  readonly offer: (image: PastedImage) => void;
+  readonly offer: (image: PastedImage, source?: MediaSource) => void;
   readonly clear: () => void;
 }
 

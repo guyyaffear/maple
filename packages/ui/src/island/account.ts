@@ -11,10 +11,10 @@
 import { useGitHubLink, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef } from "react";
 
+import { cx, renderPart } from "../part.js";
 import { ACCOUNT_COPY } from "./language.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { GitHubLink, MapleClient } from "@maple-kit/core/client";
 import type { ReactNode } from "react";
 

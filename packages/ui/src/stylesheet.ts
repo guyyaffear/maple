@@ -11,6 +11,7 @@
 import { composerCss } from "./composer/css.js";
 import { islandCss } from "./island/css.js";
 import { marksCss } from "./marks/css.js";
+import { noticeCss } from "./notice/css.js";
 import { pickerCss } from "./picker/css.js";
 import {
   COLOR_TOKENS,
@@ -216,6 +217,7 @@ h3 {
 ${islandCss()}
 ${composerCss()}
 ${marksCss()}
+${noticeCss()}
 ${pickerCss()}
 `.trim();
 }

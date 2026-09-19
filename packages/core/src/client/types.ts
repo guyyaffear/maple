@@ -11,6 +11,7 @@
 import type { Anchor } from "../anchor/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentContext, MapleUser, MediaRef, PickKind } from "../types.js";
+import type { MapleFailure } from "./failure.js";
 
 /** The picker's word. Declared with the domain vocabulary, because the anchor
  * reads it back off a stored comment and the two cannot both own it. */
@@ -133,8 +134,11 @@ export interface ClientState {
   readonly user: MapleUser | null;
   /** Whether this reviewer has a GitHub account linked, and what it is doing. */
   readonly github: GitHubLink;
-  /** What went wrong, in words a reviewer can read. Null when nothing did. */
-  readonly error: string | null;
+  /**
+   * What went wrong, as something a surface can act on. Null when nothing did.
+   * A message alone cannot tell "sign in" from "the store is down".
+   */
+  readonly error: MapleFailure | null;
 }
 
 /**

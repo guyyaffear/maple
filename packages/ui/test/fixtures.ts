@@ -203,3 +203,32 @@ function patched(
   const change = JSON.parse(sent) as { status?: Comment["status"] };
   return { ...found, ...(change.status === undefined ? {} : { status: change.status }) };
 }
+
+/** What `/me` reports about the sign-in a deployment offers, if any. */
+export interface RefusalOptions {
+  readonly status: number;
+  /** Absent means a route with no GitHub sign-in at all. */
+  readonly github?: { readonly linked: boolean; readonly login?: string };
+}
+
+/**
+ * A route that refuses the comment calls and still answers `/me`, which is the
+ * shape of a preview whose store is built per reviewer: identity resolves, the
+ * store does not exist until they have signed in.
+ */
+export function refusingFetch(options: RefusalOptions): typeof globalThis.fetch {
+  return (input: RequestInfo | URL) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.includes("/me")) {
+      const body = { user: null, ...(options.github ? { github: options.github } : {}) };
+      return Promise.resolve(Response.json(body));
+    }
+
+    return Promise.resolve(
+      Response.json(
+        { error: "This reviewer has no store to write to" },
+        { status: options.status },
+      ),
+    );
+  };
+}

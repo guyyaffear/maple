@@ -94,7 +94,37 @@ describe("loading a branch", () => {
     await maple.load();
 
     expect(maple.getState().phase).toBe("error");
-    expect(maple.getState().error).toBe("Something went wrong");
+    expect(maple.getState().error).toEqual({
+      kind: "store",
+      during: "load",
+      status: 500,
+      message: "The comment store refused the request, so nothing could be loaded.",
+    });
+  });
+
+  it("still asks who the reviewer is when the store refuses the list", async () => {
+    server.use(
+      http.get(`${MAPLE_BASE}/comments`, () => HttpResponse.json({ error: "no" }, { status: 401 })),
+      http.get(`${MAPLE_BASE}/me`, () =>
+        HttpResponse.json({ user: null, github: { linked: false } }),
+      ),
+    );
+    const maple = client();
+    await maple.load();
+
+    expect(maple.getState().error?.kind).toBe("unauthorized");
+    expect(maple.getState().github).toEqual({ state: "unlinked" });
+  });
+
+  it("takes a failure off the state when it is dismissed", async () => {
+    server.use(
+      http.get(`${MAPLE_BASE}/comments`, () => HttpResponse.json({ error: "no" }, { status: 500 })),
+    );
+    const maple = client();
+    await maple.load();
+    maple.clearError();
+
+    expect(maple.getState().error).toBeNull();
   });
 
   it("tells every subscriber, and stops telling one that unsubscribed", async () => {
@@ -287,7 +317,7 @@ describe("sending", () => {
     await expect(maple.send()).rejects.toThrow("not valid for this store");
     expect(maple.getState().drafts).toHaveLength(1);
     expect(maple.getState().composer.sending).toBe(false);
-    expect(maple.getState().error).toBe("The request was not valid for this store");
+    expect(maple.getState().error).toMatchObject({ during: "send", kind: "store", status: 400 });
   });
 });
 

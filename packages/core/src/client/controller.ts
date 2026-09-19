@@ -11,6 +11,7 @@
 import { kindOf } from "../anchor/kind.js";
 import { labelFor } from "../anchor/label.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
+import { detailOf, failureFrom } from "./failure.js";
 import { openCount, visibleComments } from "./filters.js";
 import { startLink } from "./link.js";
 import { createNavigationGuard } from "./navigation.js";
@@ -23,6 +24,7 @@ import type { Logger } from "../logger/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentStatus, MediaRef } from "../types.js";
 import type { DraftKeeper } from "./drafts.js";
+import type { MapleFailure } from "./failure.js";
 import type { LinkRun } from "./link.js";
 import type {
   LeaveAnswer,
@@ -108,6 +110,8 @@ export interface MapleClient {
 
   /** Loads the branch's comments and asks the route who the reviewer is. */
   load(): Promise<void>;
+  /** Takes the last failure off the state. Nothing is retried by it. */
+  clearError(): void;
   setFilter(filter: CommentFilter): void;
   setShowResolved(show: boolean): void;
   /** Presentation only, and remembered per origin. Nothing is recorded by it. */
@@ -194,6 +198,7 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
     destroy: () => destroy(runtime),
 
     load: () => load(runtime),
+    clearError: () => patch(runtime, { error: null }),
     setFilter: (filter) => patch(runtime, { filter }),
     setShowResolved: (showResolved) => patch(runtime, { showResolved }),
     setDetail: (detail) => remember(runtime, { detail }),
@@ -408,8 +413,12 @@ function onStorage(runtime: Runtime, event: Event): void {
   patch(runtime, { drafts: runtime.drafts.list() });
 }
 
+/** Identity is asked alongside the list, not after it: a 401 on the comments
+ * is usually a reviewer who has not signed in, and `/me` is where the offer is. */
 async function load(runtime: Runtime): Promise<void> {
   patch(runtime, { phase: "loading" });
+  const identity = whoAmI(runtime);
+
   try {
     const comments = await runtime.transport.list();
     patch(runtime, {
@@ -417,11 +426,13 @@ async function load(runtime: Runtime): Promise<void> {
       comments,
       hidden: runtime.state.hidden && comments.length <= runtime.state.comments.length,
       drafts: runtime.drafts.list(),
-      ...(await whoAmI(runtime)),
+      ...(await identity),
       error: null,
     });
   } catch (error) {
-    patch(runtime, { phase: "error", error: readable(error) });
+    patch(runtime, await identity);
+    fail(runtime, error, "load");
+    patch(runtime, { phase: "error" });
   }
 }
 
@@ -458,7 +469,11 @@ async function linkGitHub(runtime: Runtime): Promise<void> {
       ...(runtime.options.now === undefined ? {} : { now: runtime.options.now }),
     });
   } catch (error) {
-    patch(runtime, { github: { state: "failed", reason: readable(error) } });
+    patch(runtime, { github: { state: "failed", reason: failureFrom(error, "link").message } });
+    runtime.options.logger?.error(
+      "A Maple GitHub link failed.",
+      error instanceof Error ? error : new Error(detailOf(error)),
+    );
   }
 }
 
@@ -599,7 +614,7 @@ async function send(runtime: Runtime): Promise<Comment> {
     return comment;
   } catch (error) {
     composer(runtime, { sending: false });
-    patch(runtime, { error: readable(error) });
+    fail(runtime, error, "send");
     throw error;
   }
 }
@@ -624,14 +639,26 @@ async function setStatus(
   status: CommentStatus,
   resolution?: ResolutionClaim,
 ): Promise<Comment> {
-  const updated = await runtime.transport.setStatus(id, status, resolution);
-  patch(runtime, {
-    comments: runtime.state.comments.map((comment) => (comment.id === id ? updated : comment)),
-    hidden: false,
-  });
-  return updated;
+  try {
+    const updated = await runtime.transport.setStatus(id, status, resolution);
+    patch(runtime, {
+      comments: runtime.state.comments.map((comment) => (comment.id === id ? updated : comment)),
+      hidden: false,
+      error: null,
+    });
+    return updated;
+  } catch (error) {
+    fail(runtime, error, "status");
+    throw error;
+  }
 }
 
-function readable(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+/** The failure a surface reads; the route's own words go to the log instead,
+ * because a connector can name a repository or a rate limit. */
+function fail(runtime: Runtime, error: unknown, during: MapleFailure["during"]): void {
+  patch(runtime, { error: failureFrom(error, during) });
+  runtime.options.logger?.error(
+    `A Maple ${during} failed.`,
+    error instanceof Error ? error : new Error(detailOf(error)),
+  );
 }

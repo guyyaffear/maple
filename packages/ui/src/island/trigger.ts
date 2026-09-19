@@ -12,12 +12,12 @@ import { useMaple } from "@maple-kit/react";
 import { forwardRef } from "react";
 
 import { dataAttributes } from "../data.js";
+import { cx, renderPart } from "../part.js";
 import { useIsland } from "./context.js";
 import { openLabel, triggerLabel } from "./language.js";
 import { Leaf } from "./leaf.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { ReactNode } from "react";
 
 /** The pill. Its own children replace the leaf and the count. */

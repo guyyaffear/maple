@@ -24,6 +24,7 @@
     "./icons": "./dist/icons/index.js",
     "./island": "./dist/island/index.js",
     "./marks": "./dist/marks/index.js",
+    "./notice": "./dist/notice/index.js",
     "./picker": "./dist/picker/index.js",
     "./package.json": "./package.json"
   },

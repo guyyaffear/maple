@@ -14,11 +14,11 @@ import { dataAttributes } from "../data.js";
 import { ElementIcon } from "../icons/element.js";
 import { RegionIcon } from "../icons/region.js";
 import { TextIcon } from "../icons/text.js";
+import { cx, renderPart } from "../part.js";
 import { useIsland } from "./context.js";
 import { ISLAND_COPY, PICK_LABELS, pickTitle } from "./language.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { PickKind } from "@maple-kit/core/client";
 import type { ReactNode } from "react";
 

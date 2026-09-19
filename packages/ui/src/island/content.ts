@@ -9,11 +9,11 @@
 
 import { forwardRef } from "react";
 
+import { cx, renderPart } from "../part.js";
 import { useIsland } from "./context.js";
 import { ISLAND_COPY } from "./language.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { AnimationEvent, ReactNode } from "react";
 
 /** The card. Everything the island shows when it is open goes inside it. */

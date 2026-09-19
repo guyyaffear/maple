@@ -14,6 +14,7 @@ import { useMaple, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef, useId } from "react";
 
 import { CogIcon } from "../icons/cog.js";
+import { cx, renderPart } from "../part.js";
 import { Account } from "./account.js";
 import { useIsland } from "./context.js";
 import {
@@ -24,9 +25,8 @@ import {
   THEME_LABELS,
   THEME_TITLES,
 } from "./language.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { Corner, ThemePreference } from "@maple-kit/core/client";
 import type { FocusEvent, KeyboardEvent, ReactNode } from "react";
 

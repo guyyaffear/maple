@@ -26,6 +26,7 @@ const BUDGETS = [
   },
   { name: "composer, on top", entries: ["composer/index.js"], max: 9 * 1024 },
   { name: "picker, on top", entries: ["picker/index.js"], max: 3 * 1024 },
+  { name: "notice, on top", entries: ["notice/index.js"], max: 1024 },
   { name: "the default composition, on top", entries: ["maple.js"], max: 1024 },
 ];
 

@@ -11,13 +11,13 @@
 import { useMaple, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef } from "react";
 
+import { cx, renderPart } from "../part.js";
 import { Tip } from "../tip.js";
 import { countsFor } from "./comments.js";
 import { listId, useIsland } from "./context.js";
 import { FILTER_LABELS, FILTER_ORDER, FILTERS_LABEL, TALLY_ORDER, tallyTitle } from "./language.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { CommentFilter } from "@maple-kit/core/client";
 import type { ChangeEvent, ReactNode } from "react";
 

@@ -5,10 +5,13 @@ import { sampleComment } from "../src/testing/fixtures.js";
 import { memoryStore } from "../src/testing/memory-store.js";
 
 import type { IdentityConnector, StoreConnector } from "../src/connectors/types.js";
+import type { StoreResolver } from "../src/route/index.js";
 
 const BASE = "https://preview.example.com";
 
-function handler(overrides: { store?: StoreConnector; identity?: IdentityConnector } = {}) {
+function handler(
+  overrides: { store?: StoreConnector | StoreResolver; identity?: IdentityConnector } = {},
+) {
   return createMapleHandler({ store: overrides.store ?? memoryStore(), ...overrides });
 }
 
@@ -344,5 +347,91 @@ describe("mounting on a Node server", () => {
       () => (passed = true),
     );
     expect(passed).toBe(false);
+  });
+});
+
+describe("a store chosen per request", () => {
+  it("asks the resolver, and uses what it hands back", async () => {
+    const store = memoryStore();
+    const seen: string[] = [];
+    const resolve: StoreResolver = (incoming) => {
+      seen.push(incoming.headers["cookie"] ?? "");
+      return store;
+    };
+
+    const response = await handler({ store: resolve })(
+      new Request(`${BASE}/api/maple/comments?branch=main`, {
+        headers: { cookie: "maple_gh=t" },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(seen).toEqual(["maple_gh=t"]);
+  });
+
+  it("asks again on the next request, because the token is not the process's", async () => {
+    let asked = 0;
+    const resolve: StoreResolver = () => {
+      asked += 1;
+      return memoryStore();
+    };
+    const handle = handler({ store: resolve });
+
+    await handle(request("GET", "/api/maple/comments?branch=main"));
+    await handle(request("GET", "/api/maple/comments?branch=main"));
+    expect(asked).toBe(2);
+  });
+
+  it("takes a resolver that answers with a promise", async () => {
+    const resolve: StoreResolver = () => Promise.resolve(memoryStore());
+    const response = await handler({ store: resolve })(
+      request("GET", "/api/maple/comments?branch=main"),
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it("answers 401 when the reviewer has no store, rather than writing as somebody", async () => {
+    const handle = handler({ store: () => null });
+
+    const listed = await handle(request("GET", "/api/maple/comments?branch=main"));
+    const written = await handle(
+      request("POST", "/api/maple/comments", sampleComment({ branch: "main" })),
+    );
+
+    expect(listed.status).toBe(401);
+    expect(written.status).toBe(401);
+  });
+
+  it("answers who the reviewer is without resolving a store at all", async () => {
+    const resolve: StoreResolver = () => {
+      throw new Error("the identity route must not need a store");
+    };
+
+    const response = await handler({ store: resolve, identity: reviewer })(
+      request("GET", "/api/maple/me"),
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it("answers 405 before it asks for a store, a wrong method being no credential problem", async () => {
+    let asked = 0;
+    const resolve: StoreResolver = () => {
+      asked += 1;
+      return memoryStore();
+    };
+
+    const response = await handler({ store: resolve })(request("DELETE", "/api/maple/comments"));
+    expect(response.status).toBe(405);
+    expect(asked).toBe(0);
+  });
+
+  it("reports a resolver that threw as a failure, not as an empty page", async () => {
+    const resolve: StoreResolver = () => {
+      throw new Error("the token could not be read");
+    };
+    const response = await handler({ store: resolve })(
+      request("GET", "/api/maple/comments?branch=main"),
+    );
+    expect(response.status).toBe(500);
   });
 });

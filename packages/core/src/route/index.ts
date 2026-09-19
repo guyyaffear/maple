@@ -7,7 +7,7 @@
  */
 
 export { createMapleHandler, DEFAULT_BASE_PATH } from "./handler.js";
-export type { RouteOptions } from "./handler.js";
+export type { RouteOptions, StoreResolver } from "./handler.js";
 
 export { toNodeMiddleware } from "./node.js";
 export type { NodeMiddleware } from "./node.js";

@@ -10,18 +10,18 @@ pull request enforcing it: identity through the route, and the gate.
 
 ## The path a comment takes, and what is built
 
-| Step                            | Where                                     | State                                           |
-| ------------------------------- | ----------------------------------------- | ----------------------------------------------- |
-| Element is tagged at build time | `core/tagger`, `core/vite`, `core/loader` | ✅ both emitters, asserted by two example apps  |
-| Reviewer picks a target         | `core/overlay`                            | ✅ element, region and text picking             |
-| The pick becomes an anchor      | `core/anchor`                             | ✅ five rungs, four orphan reasons              |
-| The page's shape is recorded    | `core/overlay`                            | ✅ badge, regions, breakpoint                   |
-| A screenshot is attached        | `core/screenshot`                         | ✅ paste, drop, file, capture                   |
-| The reviewer writes it          | `@maple-kit/ui`, `@maple-kit/react`       | ✅ marks, ring, island, composer, detail        |
-| It is posted as them            | `core/auth`, `core/route`                 | ✅ Device Flow, through the route, per reviewer |
-| It is stored                    | `core/connectors/github`                  | ✅ default store, contract-clean                |
-| It reaches the pull request     | `core/export`                             | ✅ table over a visible fence                   |
-| An agent reads and resolves it  | `@maple-kit/mcp`                          | ✅ four tools, plus the Stop hook               |
+| Step                            | Where                                   | State                                           |
+| ------------------------------- | --------------------------------------- | ----------------------------------------------- |
+| Element is tagged at build time | `core/tagger`, `core/vite`, `core/next` | ✅ both emitters, asserted by two example apps  |
+| Reviewer picks a target         | `core/overlay`                          | ✅ element, region and text picking             |
+| The pick becomes an anchor      | `core/anchor`                           | ✅ five rungs, four orphan reasons              |
+| The page's shape is recorded    | `core/overlay`                          | ✅ badge, regions, breakpoint                   |
+| A screenshot is attached        | `core/screenshot`, `core/route`         | ✅ paste, drop, file, capture, kept, read back  |
+| The reviewer writes it          | `@maple-kit/ui`, `@maple-kit/react`     | ✅ marks, ring, island, composer, detail        |
+| It is posted as them            | `core/auth`, `core/route`               | ✅ Device Flow, through the route, per reviewer |
+| It is stored                    | `core/connectors/github`                | ✅ default store, contract-clean                |
+| It reaches the pull request     | `core/export`                           | ✅ table over a visible fence                   |
+| An agent reads and resolves it  | `@maple-kit/mcp`                        | ✅ four tools, plus the Stop hook               |
 
 ## What US1 added
 
@@ -29,10 +29,11 @@ pull request enforcing it: identity through the route, and the gate.
 
 Ten new entrypoints on top of Phase 0's four.
 
-- **`/tagger`, `/vite`, `/loader`** — the build-time JSX tagger and its two
-  emitters. One Babel plugin behind both, so they cannot drift. Not an SWC
+- **`/tagger`, `/vite`, `/loader`, `/next`** — the build-time JSX tagger and its
+  two emitters. One Babel plugin behind both, so they cannot drift. Not an SWC
   plugin: that is a Rust crate compiled to WebAssembly, for a transform that
-  already exists in TypeScript.
+  already exists in TypeScript. `withMaple` owns both halves of the Next case,
+  because wired by hand they disagree silently.
 - **`/anchor`** — the cascade, `data-maple-key` → source → component → quote →
   selector, with four orphan reasons and no silent ancestor snap. A human name
   comes from `data-maple-label`, falling back to the component's own name with
@@ -73,6 +74,13 @@ agent believes addressed it, with its note and the time the write happened, so
 `resolve_comment` no longer has to throw that away; a draft is comment-shaped,
 carrying its anchor, its context and its attachments; and `parentId` is
 reserved and documented in `docs/replies.md` as reserved, not built.
+
+Two entrypoints answer for what goes wrong. `/client` carries a `MapleFailure`
+rather than a message string, because "sign in", "the store is down" and "you
+are offline" have three different answers and a string cannot be branched on;
+`@maple-kit/ui/notice` is the band that says it and offers the one thing that
+would fix it. Before them every failure the overlay could hit was silent, and a
+401 on the list read as a branch nobody had commented on.
 
 ### `@maple-kit/react` and `@maple-kit/ui`
 
@@ -117,7 +125,7 @@ happened.
 
 ### Numbers
 
-**1,154 tests** — 774 in Node, 380 in real Chromium, up from 101. Forty-three
+**1,238 tests** — 836 in Node, 402 in real Chromium, up from 101. Forty-nine
 changesets.
 `lint typecheck format test test:browser build publint attw gitleaks lockfile
 dco` all green, and `main` is protected by a ruleset requiring the eight CI
@@ -135,11 +143,17 @@ jobs, one approval and signed commits.
   `list|inspect|reply|resolve|open` come with the TUI decision.
 - **Replies.** Decided, not deferred: one body per comment. `parentId` is
   reserved and `docs/replies.md` says what revisiting it would cost.
+- **A media connector that is not in-memory.** The route serves `POST /media`
+  and `GET /media/{key}`, and `memoryMedia` in `@maple-kit/core/testing` shows
+  the path end to end — but a deployment still has to bring a bucket. Where it
+  brings none, the strip says so rather than offering a screenshot it would
+  drop. `docs/screenshots.md` is the whole path.
 - **Eval cases.** Still no AI path to score.
 
 ## What is now known that was not
 
-Six things cost time once and would cost it again.
+Ten things cost time once and would cost it again. The first three are all one
+failure — a build that does not tag — and none of them raises anything.
 
 1. **`as: "*.tsx"` on a Turbopack rule renames the module.** Turbopack's `*`
    captures the filename including its extension, so `page.tsx` becomes
@@ -158,6 +172,19 @@ Six things cost time once and would cost it again.
 6. **Rebuilding a surface to change one thing inside it reads as a flicker.**
    Re-rendering the island to toggle a filter re-ran its entrance and
    re-measured its height. The rows swap; the card stays.
+7. **A Turbopack rule key containing a separator matches the whole path.**
+   `"src/**/*.tsx"` therefore matches nothing, and a rule that matches nothing
+   is not an error. The key is a filename glob. `withMaple` writes it.
+8. **`reactRemoveProperties` left on for the preview build untags it again.**
+   The rule adds the attributes and the pass takes them off, in one build, in
+   silence. It is the other half `withMaple` exists to own.
+9. **A `data:` URL cannot be redirected to.** A browser refuses to follow one,
+   so a route that hands out a connector's URL has to serve that case rather
+   than point at it.
+10. **Node's request body is not text.** `setEncoding("utf8")` on the way in
+    and `response.end(await result.text())` on the way out each round-trip a
+    screenshot through a UTF-8 string, and it arrives as an image no decoder
+    opens.
 
 ## What US2 needs next
 

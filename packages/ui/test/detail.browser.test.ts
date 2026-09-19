@@ -168,6 +168,26 @@ describe("default detail", () => {
   });
 });
 
+/** Centres, in CSS pixels: a client rect is scaled by the runner's zoom. */
+function centre(node: HTMLElement): number {
+  return node.offsetLeft + node.offsetWidth / 2;
+}
+
+/**
+ * The marks carry a whole collision resolver for this: two controls a thumb
+ * cannot tell apart are two controls that get pressed wrong.
+ */
+describe("the header's two controls", () => {
+  it("keep their hit areas off each other", async () => {
+    await open();
+    const [settings, close] = all(".mk-head .mk-iconbtn") as HTMLElement[];
+    const hit = Number.parseFloat(getComputedStyle(settings!, "::after").width);
+
+    expect(hit).toBeGreaterThanOrEqual(40);
+    expect(centre(close!) - centre(settings!)).toBeGreaterThanOrEqual(hit);
+  });
+});
+
 /** An outline follows the control's own corners, so nothing may force one. */
 describe("the focus ring", () => {
   it("keeps a pill round when it takes focus", async () => {

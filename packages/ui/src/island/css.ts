@@ -242,12 +242,14 @@ function header(): string {
   text-overflow: ellipsis;
 }
 
+/* 32 + the header's 8px gap is 40, which is what keeps the two of them from
+   sharing a hit area: the ::after squares would otherwise overlap by four. */
 .mk-iconbtn {
   flex: none;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 26px;
+  width: 32px;
+  height: 28px;
   padding: 0;
   border: 0;
   border-radius: var(--mk-r-sm);

@@ -31,6 +31,12 @@ export const DEFAULT_BASE_PATH = "/api/maple";
 
 const STATUSES = new Set<string>(["open", "resolved", "needs_reverify", "orphaned"]);
 
+/**
+ * Shape only: the client describes its own page here, as it already does the
+ * branch and the URL, and a store finds the commit or says it cannot.
+ */
+const COMMIT = /^[0-9a-f]{7,40}$/;
+
 /** The ten OKLCH reviewer hues a mark can be drawn in. */
 const COLOR_SLOTS = 10;
 
@@ -193,7 +199,13 @@ function withoutResolution<T extends { resolution?: unknown }>(draft: T): Omit<T
 function isDraft(value: unknown): value is Omit<NewComment, "author"> & { author?: never } {
   if (typeof value !== "object" || value === null) return false;
   const draft = value as Partial<Comment>;
-  return typeof draft.branch === "string" && typeof draft.body === "string" && !!draft.anchor;
+  return (
+    typeof draft.branch === "string" &&
+    typeof draft.body === "string" &&
+    !!draft.anchor &&
+    (draft.label === undefined || typeof draft.label === "string") &&
+    (draft.commit === undefined || COMMIT.test(draft.commit))
+  );
 }
 
 /**

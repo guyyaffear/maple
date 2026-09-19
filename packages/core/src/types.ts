@@ -115,6 +115,16 @@ export interface Comment {
    * comment without it, so it travels with the comment rather than beside it.
    */
   readonly branch: string;
+  /**
+   * What a person calls this surface — a ticket, or a shortened branch. Read
+   * in the branch's place; `branch` stays the identifier a store resolves.
+   */
+  readonly label?: string;
+  /**
+   * The commit the preview was serving when the comment was written. Exact
+   * where a label is not, and the key a later re-verify compares against.
+   */
+  readonly commit?: string;
   readonly body: string;
   readonly status: CommentStatus;
   /** ISO 8601, always UTC. */

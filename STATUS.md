@@ -104,7 +104,7 @@ happened.
 
 ### Numbers
 
-**866 tests** — 635 in Node, 231 in real Chromium, up from 101. Twenty-nine
+**1,098 tests** — 729 in Node, 369 in real Chromium, up from 101. Thirty-nine
 changesets.
 `lint typecheck format test test:browser build publint attw gitleaks lockfile
 dco` all green, and `main` is protected by a ruleset requiring the eight CI

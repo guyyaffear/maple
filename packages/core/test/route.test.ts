@@ -143,6 +143,41 @@ describe("writing a comment", () => {
     const stored = (await response.json()) as { author: { provenance: string } };
     expect(stored.author.provenance).toBe("guest");
   });
+
+  it("keeps the label and the commit the page described itself with", async () => {
+    const draft = sampleComment({
+      branch: "feature/long-name",
+      label: "web-482",
+      commit: "a1b2c3d",
+    });
+
+    const response = await handler()(request("POST", "/api/maple/comments", draft));
+    const stored = (await response.json()) as { label?: string; commit?: string; branch: string };
+    expect(response.status).toBe(201);
+    expect(stored.label).toBe("web-482");
+    expect(stored.commit).toBe("a1b2c3d");
+    expect(stored.branch).toBe("feature/long-name");
+  });
+
+  it("takes a comment that describes neither", async () => {
+    const response = await handler()(
+      request("POST", "/api/maple/comments", sampleComment({ branch: "main" })),
+    );
+    const stored = (await response.json()) as { label?: string; commit?: string };
+    expect(response.status).toBe(201);
+    expect(stored.label).toBeUndefined();
+    expect(stored.commit).toBeUndefined();
+  });
+
+  it("refuses a commit that is not one, rather than writing it into the fence", async () => {
+    const draft = sampleComment({ branch: "main", commit: "not-a-sha" });
+    expect((await handler()(request("POST", "/api/maple/comments", draft))).status).toBe(400);
+  });
+
+  it("refuses a label that is not a string", async () => {
+    const draft = { ...sampleComment({ branch: "main" }), label: 42 };
+    expect((await handler()(request("POST", "/api/maple/comments", draft))).status).toBe(400);
+  });
 });
 
 describe("a reviewer's colour slot", () => {

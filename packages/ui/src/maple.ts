@@ -70,7 +70,7 @@ export const Maple = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleProps>(
       { ...root, ref },
       createElement(MapleMarkLayer, { key: "marks" }),
       createElement(MaplePicker, { key: "picker", ...(hint === undefined ? {} : { hint }) }),
-      inventory(root.branch, defaultOpen === true),
+      inventory(root.branch, root.label, defaultOpen === true),
       composer(leave, attachments),
       children,
     );
@@ -78,7 +78,7 @@ export const Maple = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleProps>(
 );
 
 /** The island, with every row the default composition shows. */
-function inventory(branch: string, defaultOpen: boolean): ReactElement {
+function inventory(branch: string, label: string | undefined, defaultOpen: boolean): ReactElement {
   return createElement(
     Island,
     { defaultOpen, key: "island" },
@@ -90,7 +90,7 @@ function inventory(branch: string, defaultOpen: boolean): ReactElement {
         Header,
         null,
         createElement(Logo),
-        createElement(Branch, { branch }),
+        createElement(Branch, { branch, ...(label === undefined ? {} : { label }) }),
         createElement(Settings),
       ),
       createElement(Filters),

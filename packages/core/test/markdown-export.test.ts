@@ -242,4 +242,14 @@ describe("the byte budget", () => {
     expect(result.reduced).toContain("context");
     expect(first?.context.contentWidth).toBe(1020);
   });
+
+  it("carries the label and the commit, which no reduction sheds", () => {
+    const stamped = storedComment({ label: "web-482", commit: "a1b2c3d4e5f6a7b8" });
+    const result = exportMarkdown([stamped, ...many(400)], { branch: BRANCH });
+    const [first] = parseFence(result.markdown)!.comments;
+
+    expect(result.reduced).toContain("context");
+    expect(first?.label).toBe("web-482");
+    expect(first?.commit).toBe("a1b2c3d4e5f6a7b8");
+  });
 });

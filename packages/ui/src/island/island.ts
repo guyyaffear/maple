@@ -23,14 +23,14 @@ import {
 } from "react";
 
 import { useMapleUi } from "../context.js";
+import { cx, renderPart } from "../part.js";
 import { composeRefs } from "../slot.js";
 import { numbersFor, resolutionsFor } from "./comments.js";
 import { IslandContext } from "./context.js";
 import { useDrag } from "./drag.js";
-import { cx, renderPart } from "./part.js";
 
+import type { PartProps } from "../part.js";
 import type { IslandContextValue, IslandPhase } from "./context.js";
-import type { PartProps } from "./part.js";
 import type { Corner } from "@maple-kit/core/client";
 import type { ReactNode } from "react";
 

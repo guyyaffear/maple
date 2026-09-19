@@ -8,12 +8,12 @@
 
 import { forwardRef } from "react";
 
+import { cx, renderPart } from "../part.js";
 import { useIsland } from "./context.js";
 import { ISLAND_COPY } from "./language.js";
 import { Leaf } from "./leaf.js";
-import { cx, renderPart } from "./part.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { ReactNode } from "react";
 
 /** The header row. Its children sit before the close control. */

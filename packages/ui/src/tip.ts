@@ -10,7 +10,7 @@
 
 import { createElement, forwardRef, useCallback, useId, useRef } from "react";
 
-import { cx } from "./island/part.js";
+import { cx } from "./part.js";
 
 import type { ElementType, ReactNode } from "react";
 

@@ -16,15 +16,15 @@ import { createElement, forwardRef, useCallback, useRef, useState } from "react"
 import { dataAttributes, formFor } from "../data.js";
 import { PROVENANCE_SENTENCES, STATUS_LABELS, STATUS_SENTENCES } from "../language.js";
 import { MapleLeaf } from "../marks/shape.js";
+import { cx, renderPart } from "../part.js";
 import { composeRefs } from "../slot.js";
 import { applyReviewerSlot } from "../slots.js";
 import { Tip } from "../tip.js";
 import { useIsland } from "./context.js";
 import { ISLAND_COPY, kindPhrase } from "./language.js";
-import { cx, renderPart } from "./part.js";
 import { absoluteTime, relativeTime } from "./time.js";
 
-import type { PartProps } from "./part.js";
+import type { PartProps } from "../part.js";
 import type { Comment, CommentAuthor } from "@maple-kit/core";
 import type { ReactNode } from "react";
 

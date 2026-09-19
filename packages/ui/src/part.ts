@@ -8,7 +8,7 @@
 
 import { createElement } from "react";
 
-import { Slot } from "../slot.js";
+import { Slot } from "./slot.js";
 
 import type { ElementType, ReactNode } from "react";
 

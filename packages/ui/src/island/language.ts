@@ -127,6 +127,8 @@ export const ISLAND_COPY = {
   closeGlyph: "✕",
   newComment: "New:",
   empty: "Nothing here under this filter.",
+  loading: "Reading the comments on this branch…",
+  unread: "The comments could not be read, so this list is not the whole story.",
   showAll: "Show all",
   showLess: "Show less",
   hide: "Hide",

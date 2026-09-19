@@ -8,8 +8,10 @@
  */
 
 import { exportMarkdown, parseFence } from "../export/markdown.js";
+import { findPull } from "./github-pull.js";
 
 import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
+import type { PullCache, PullLookup, PullReader } from "./github-pull.js";
 import type { CommentPage, ListQuery, StoreConnector } from "./types.js";
 
 /** Everything the connector needs to reach a repository. */
@@ -25,6 +27,16 @@ export interface GitHubStoreOptions {
   readonly baseUrl?: string;
   /** Injected in tests. Defaults to the global `fetch`. */
   readonly fetch?: typeof globalThis.fetch;
+  /**
+   * How a branch, ticket or shortened label becomes a pull request. Left out,
+   * the identifier has to be the head branch's own name.
+   */
+  readonly pull?: PullLookup;
+  /**
+   * Where a resolved pull request is remembered, across the per-request stores
+   * a per-reviewer credential needs. Left out, every call asks again.
+   */
+  readonly cache?: PullCache;
 }
 
 const DEFAULT_BASE = "https://api.github.com";
@@ -58,10 +70,6 @@ interface Paged<T> {
 interface IssueComment {
   readonly id: number;
   readonly body: string;
-}
-
-interface PullRequest {
-  readonly number: number;
 }
 
 function createClient(options: GitHubStoreOptions): Client {
@@ -115,13 +123,18 @@ function hasNextPage(response: Response): boolean {
   return (response.headers.get("link") ?? "").includes('rel="next"');
 }
 
-/** The pull request a branch belongs to, or undefined when it has none open. */
-async function pullFor(api: Client, branch: string): Promise<number | undefined> {
-  const { owner, repo } = api.options;
-  const head = encodeURIComponent(`${owner}:${branch}`);
-  const path = `/repos/${owner}/${repo}/pulls?head=${head}&state=all&per_page=1`;
-  const { body } = await api.request<PullRequest[]>(path);
-  return body[0]?.number;
+/** The pull request a surface belongs to, or undefined when it has none open. */
+function pullFor(api: Client, identifier: string): Promise<number | undefined> {
+  return findPull(reader(api), identifier, api.options.pull, api.options.cache);
+}
+
+/** The lookup reads; it never writes, so it is given a narrower client. */
+function reader(api: Client): PullReader {
+  return {
+    owner: api.options.owner,
+    repo: api.options.repo,
+    get: async <T>(path: string) => (await api.request<T>(path)).body,
+  };
 }
 
 async function list(api: Client, query: ListQuery): Promise<CommentPage> {

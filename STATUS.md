@@ -10,18 +10,18 @@ pull request enforcing it: identity through the route, and the gate.
 
 ## The path a comment takes, and what is built
 
-| Step                            | Where                                     | State                                          |
-| ------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| Element is tagged at build time | `core/tagger`, `core/vite`, `core/loader` | ✅ both emitters, asserted by two example apps |
-| Reviewer picks a target         | `core/overlay`                            | ✅ element, region and text picking            |
-| The pick becomes an anchor      | `core/anchor`                             | ✅ five rungs, four orphan reasons             |
-| The page's shape is recorded    | `core/overlay`                            | ✅ badge, regions, breakpoint                  |
-| A screenshot is attached        | `core/screenshot`                         | ✅ paste, drop, file, capture                  |
-| The reviewer writes it          | `@maple-kit/ui`, `@maple-kit/react`       | ✅ marks, ring, island, composer, detail       |
-| It is posted as them            | `core/auth`                               | 🟡 Device Flow works; not wired to the route   |
-| It is stored                    | `core/connectors/github`                  | ✅ default store, contract-clean               |
-| It reaches the pull request     | `core/export`                             | ✅ table over a visible fence                  |
-| An agent reads and resolves it  | `@maple-kit/mcp`                          | ✅ four tools, plus the Stop hook              |
+| Step                            | Where                                     | State                                           |
+| ------------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| Element is tagged at build time | `core/tagger`, `core/vite`, `core/loader` | ✅ both emitters, asserted by two example apps  |
+| Reviewer picks a target         | `core/overlay`                            | ✅ element, region and text picking             |
+| The pick becomes an anchor      | `core/anchor`                             | ✅ five rungs, four orphan reasons              |
+| The page's shape is recorded    | `core/overlay`                            | ✅ badge, regions, breakpoint                   |
+| A screenshot is attached        | `core/screenshot`                         | ✅ paste, drop, file, capture                   |
+| The reviewer writes it          | `@maple-kit/ui`, `@maple-kit/react`       | ✅ marks, ring, island, composer, detail        |
+| It is posted as them            | `core/auth`, `core/route`                 | ✅ Device Flow, through the route, per reviewer |
+| It is stored                    | `core/connectors/github`                  | ✅ default store, contract-clean                |
+| It reaches the pull request     | `core/export`                             | ✅ table over a visible fence                   |
+| An agent reads and resolves it  | `@maple-kit/mcp`                          | ✅ four tools, plus the Stop hook               |
 
 ## What US1 added
 
@@ -51,7 +51,10 @@ Ten new entrypoints on top of Phase 0's four.
 - **`/client`** — the framework-free reviewer controller: comments and filters,
   the composer, picking, drafts, the navigation guard, theme detection, and the
   preference model behind the query string. No React anywhere in it.
-- **`/auth`** — GitHub Device Flow, including `slow_down` back-off.
+- **`/auth`** — GitHub Device Flow, including `slow_down` back-off, and the
+  reviewer's session: one user-to-server token per person in an `HttpOnly`
+  cookie on the preview's own origin, so a preview holds no GitHub secret at
+  all. `docs/github-auth.md` is the design and the threat model.
 - **`/screenshot`** — paste and drop first, capture second.
 - **`/connectors`** — `githubStore`, the default store, passing the shared
   contract.
@@ -104,7 +107,7 @@ happened.
 
 ### Numbers
 
-**1,098 tests** — 729 in Node, 369 in real Chromium, up from 101. Thirty-nine
+**1,133 tests** — 762 in Node, 371 in real Chromium, up from 101. Forty-one
 changesets.
 `lint typecheck format test test:browser build publint attw gitleaks lockfile
 dco` all green, and `main` is protected by a ruleset requiring the eight CI
@@ -112,9 +115,6 @@ jobs, one approval and signed commits.
 
 ## What is deliberately absent
 
-- **Device Flow wired into the route.** The flow works and the route works;
-  joining them needs a decision about where a token lives and how the session
-  is signed, which is a security design rather than plumbing.
 - **The Next codemod.** `app/api/maple/[...maple]/route.ts` is three lines a
   person can write today; the codemod that writes it is convenience, and the
   example does not have one checked in yet.
@@ -153,7 +153,13 @@ Six things cost time once and would cost it again.
 
 In dependency order:
 
-1. **Device Flow through the route**, with a decided session shape.
+1. **A second GitHub App for the gate.** The registered one carries `Checks`,
+   `Contents` and `Merge queues` for a gate that does not exist yet, and a
+   user-to-server token is bounded by the app's permissions — so today every
+   reviewer's token can read the source of every installed repository. The
+   comment app carries `Issues`, `Pull requests` and `Metadata` and nothing
+   else; the gate authenticates as itself and never needs a user token.
+   `docs/github-auth.md` has the reasoning.
 2. **A `GateConnector` kind.** The store is vendor-agnostic and the gate is not:
    `maple/visual-review` is a GitHub check run, GitLab uses external status
    checks, and Bitbucket's enforcement is Premium-only. Defining the kind before

@@ -126,19 +126,22 @@ function nextLink(url: URL, page: number): string {
 /** How the fake device flow should answer the next poll. */
 export type DeviceStep = "pending" | "slow_down" | { token: string } | { error: string };
 
-/** A fake of GitHub's two Device Flow endpoints. */
+/** A fake of GitHub's Device Flow endpoints, plus the one call that names the user. */
 export interface DeviceFlowFake {
   readonly handlers: RequestHandler[];
   /** Answers given to successive polls, consumed in order. */
   respond(...steps: DeviceStep[]): void;
   /** How many times the token endpoint was polled. */
   readonly polls: () => number;
+  /** The login `GET /user` reports, or null to make that call fail. */
+  whoami(login: string | null): void;
 }
 
 /** Creates the fake. `respond` sets what each poll returns, in order. */
 export function createDeviceFlowFake(): DeviceFlowFake {
   let steps: DeviceStep[] = [];
   let polls = 0;
+  let login: string | null = "octocat";
 
   const handlers: RequestHandler[] = [
     http.post(`${LOGIN}/login/device/code`, () =>
@@ -160,6 +163,15 @@ export function createDeviceFlowFake(): DeviceFlowFake {
       if ("error" in step) return HttpResponse.json({ error: step.error });
       return HttpResponse.json({ access_token: step.token, scope: "", token_type: "bearer" });
     }),
+
+    http.get(`${API}/user`, ({ request }) => {
+      if (login === null) return HttpResponse.json({ message: "Bad credentials" }, { status: 401 });
+      const authorization = request.headers.get("authorization") ?? "";
+      if (!authorization.startsWith("Bearer ")) {
+        return HttpResponse.json({ message: "Requires authentication" }, { status: 401 });
+      }
+      return HttpResponse.json({ login });
+    }),
   ];
 
   return {
@@ -169,5 +181,8 @@ export function createDeviceFlowFake(): DeviceFlowFake {
       polls = 0;
     },
     polls: () => polls,
+    whoami: (next) => {
+      login = next;
+    },
   };
 }

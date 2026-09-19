@@ -9,6 +9,7 @@
 
 import { MapleStoreError } from "../errors.js";
 import { fnv1a32 } from "../lib/fnv1a.js";
+import { endLink, finishLink, githubState, linkFailure, startLink } from "./auth.js";
 
 import type {
   IdentityConnector,
@@ -18,6 +19,7 @@ import type {
 } from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
 import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
+import type { GitHubAuthOptions } from "./auth.js";
 
 /**
  * Chooses the store for one request. The shape a per-reviewer credential
@@ -34,6 +36,11 @@ export interface RouteOptions {
   readonly store: StoreConnector | StoreResolver;
   /** Resolves the reviewer from the request. Without one, comments are guest-written. */
   readonly identity?: IdentityConnector;
+  /**
+   * Signs a reviewer in to GitHub with Device Flow. Absent, the three
+   * `/auth/github` endpoints answer 404 and `/me` reports no link state.
+   */
+  readonly githubAuth?: GitHubAuthOptions;
   /** Defaults to `/api/maple`. */
   readonly basePath?: string;
   /** Where failures are reported. Silent when absent. */
@@ -77,6 +84,8 @@ async function dispatch(
   route: string,
   url: URL,
 ): Promise<Response> {
+  if (route === "/auth/github") return link(options, request);
+
   const one = /^\/comments\/([^/]+)$/.exec(route);
   if (route !== "/comments" && route !== "/me" && !one) return json({ error: "Not found" }, 404);
 
@@ -91,6 +100,25 @@ async function dispatch(
   return request.method === "GET"
     ? listComments(store, url)
     : appendComment(options, store, request);
+}
+
+/**
+ * Starting, finishing and forgetting a GitHub link. Neither the device code
+ * nor the token reaches the browser: both travel in cookies this route sets.
+ */
+async function link(options: RouteOptions, request: Request): Promise<Response> {
+  const auth = options.githubAuth;
+  if (!auth) return json({ error: "Not found" }, 404);
+
+  const headers = Object.fromEntries(request.headers);
+  try {
+    if (request.method === "POST") return await startLink(auth);
+    if (request.method === "PATCH") return await finishLink(auth, headers);
+    if (request.method === "DELETE") return endLink(auth);
+    return json({ error: "Method not allowed" }, 405);
+  } catch (error) {
+    return linkFailure(error) ?? failure(options.logger, error);
+  }
 }
 
 /** Checked before the store is resolved: a wrong method is not a credential problem. */
@@ -205,7 +233,10 @@ function stamp(claim: { sha: string; note?: string }): CommentResolution {
 
 async function whoAmI(options: RouteOptions, request: Request): Promise<Response> {
   const user = await options.identity?.resolveUser(identityRequest(request));
-  return json({ user: user ?? null }, 200);
+  const auth = options.githubAuth;
+  const github = auth ? await githubState(auth, Object.fromEntries(request.headers)) : undefined;
+
+  return json({ user: user ?? null, ...(github === undefined ? {} : { github }) }, 200);
 }
 
 /** The identity connector sees headers and a URL, and nothing else. */

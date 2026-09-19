@@ -60,10 +60,20 @@ export class DeviceFlowError extends Error {
   }
 }
 
-/** The two halves of the flow. */
+/** One attempt at the exchange. `pending` is the flow working, not failing. */
+export type DeviceExchange =
+  | { readonly status: "pending"; readonly interval: number }
+  | { readonly status: "linked"; readonly token: DeviceToken };
+
+/** The halves of the flow. */
 export interface DeviceFlow {
   /** Asks GitHub for a code to show the reviewer. */
   start(): Promise<DeviceCode>;
+  /**
+   * One exchange, for a caller doing its own waiting — a browser polling a
+   * route, not a request held open for the minutes a person takes to type.
+   */
+  exchange(code: DeviceCode): Promise<DeviceExchange>;
   /** Waits for the reviewer to finish, or throws saying why they did not. */
   poll(code: DeviceCode, signal?: AbortSignal): Promise<DeviceToken>;
 }
@@ -125,6 +135,8 @@ export function createDeviceFlow(options: DeviceFlowOptions): DeviceFlow {
       };
     },
 
+    exchange,
+
     async poll(code: DeviceCode, signal?: AbortSignal): Promise<DeviceToken> {
       let interval = code.interval;
 
@@ -135,18 +147,24 @@ export function createDeviceFlow(options: DeviceFlowOptions): DeviceFlow {
         }
 
         await wait(interval * SECOND);
-        const body = await post<TokenResponse>("/login/oauth/access_token", {
-          client_id: options.clientId,
-          device_code: code.deviceCode,
-          grant_type: GRANT,
-        });
-
-        const token = tokenIn(body);
-        if (token) return token;
-        interval = nextInterval(body, interval);
+        const result = await exchange({ ...code, interval });
+        if (result.status === "linked") return result.token;
+        interval = result.interval;
       }
     },
   };
+
+  async function exchange(code: DeviceCode): Promise<DeviceExchange> {
+    const body = await post<TokenResponse>("/login/oauth/access_token", {
+      client_id: options.clientId,
+      device_code: code.deviceCode,
+      grant_type: GRANT,
+    });
+
+    const token = tokenIn(body);
+    if (token) return { status: "linked", token };
+    return { status: "pending", interval: nextInterval(body, code.interval) };
+  }
 }
 
 function tokenIn(body: TokenResponse): DeviceToken | undefined {

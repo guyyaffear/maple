@@ -6,7 +6,9 @@
  * through an adapter, and a Worker.
  */
 
+export type { GitHubAuthOptions, GitHubState } from "./auth.js";
 export { createMapleHandler, DEFAULT_BASE_PATH } from "./handler.js";
+
 export type { RouteOptions, StoreResolver } from "./handler.js";
 
 export { toNodeMiddleware } from "./node.js";

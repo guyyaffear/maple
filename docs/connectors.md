@@ -86,11 +86,11 @@ the fence has a byte budget.
 
 ### What it costs
 
-| Method      | How                                                                   | Cost                                                               |
-| ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `list`      | `GET /issues/{pull}/comments`, paged by GitHub's `Link` header.       | One extra call to resolve the branch to a pull request.            |
-| `append`    | `POST` the comment, then `PATCH` it with the id GitHub just assigned. | Two writes. The id cannot be known before the comment exists.      |
-| `setStatus` | `GET` the comment, rewrite its fence, `PATCH` it back.                | Two calls, and it preserves fields a newer Maple may have written. |
+| Method      | How                                                                   | Cost                                                                |
+| ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `list`      | `GET /issues/{pull}/comments`, paged by GitHub's `Link` header.       | One extra call to find the pull request, unless a `cache` holds it. |
+| `append`    | `POST` the comment, then `PATCH` it with the id GitHub just assigned. | Two writes. The id cannot be known before the comment exists.       |
+| `setStatus` | `GET` the comment, rewrite its fence, `PATCH` it back.                | Two calls, and it preserves fields a newer Maple may have written.  |
 
 A comment id is `gh_<pull>_<commentId>`, so `setStatus` needs nothing it was not
 given: no index, no cache, and it works in a process that never ran `list`.
@@ -106,6 +106,37 @@ given: no index, no cache, and it works in a process that never ran `list`.
   inventing a home for the comment.
 - **A branch with several pull requests resolves to the first.** GitHub returns
   them newest first; Maple does not guess between them.
+
+### Finding the pull request
+
+The branch name is the easy case and not the common one. A preview hostname has
+to be a DNS label, so what it usually carries is a ticket, a shortened branch,
+or nothing — while the build knows its commit for certain. `pull` says how the
+identifier the overlay sends becomes a pull request, and it is tried in this
+order:
+
+1. **`pull.commit`** — `GET /commits/{sha}/pulls`, which names the pull request
+   outright rather than inferring it. Stamp it from whatever your CI sets.
+2. **The identifier as the head branch's own name**, which is the plain case.
+3. **`pull.matches(head, identifier)`** — asked per open pull request, most
+   recently updated first, so an application supplies its own rule and not a
+   GitHub client.
+
+```ts
+githubStore({
+  owner,
+  repo,
+  token,
+  pull: { commit: process.env.GIT_SHA, matches: (head, ticket) => head.startsWith(ticket) },
+  cache,
+});
+```
+
+`cache` is a `createPullCache()`, and it is a parameter rather than a closure on
+purpose: a per-reviewer credential means a store built **per request**, so a
+cache inside one would be thrown away with it. Create one per process and pass
+it to every store. Only a hit is kept — a branch is pushed, the preview builds,
+and the pull request is opened after that, so a miss has to be re-asked.
 
 ### Configuration
 

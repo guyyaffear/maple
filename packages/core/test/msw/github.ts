@@ -22,18 +22,28 @@ interface StoredComment {
 /** A fake repository, with its pull requests and their comments. */
 export interface GitHubFake {
   readonly handlers: RequestHandler[];
-  /** Forgets every comment, so one test cannot see another's. */
+  /** Forgets every comment and every lookup, so one test cannot see another's. */
   reset(): void;
   /** Comments currently on a pull request, for asserting on what was written. */
   commentsOn(pull: number): readonly StoredComment[];
+  /** The branches `GET /pulls?state=open` lists, newest first. */
+  open(...branches: readonly string[]): void;
+  /** Says which branch a commit is on, for `GET /commits/{sha}/pulls`. */
+  commit(sha: string, branch: string): void;
+  /** How many pull-request lookups have been served, for asserting a cache. */
+  lookups(): number;
 }
 
 /**
- * Creates the fake. Every branch resolves to a pull request except those
- * starting with `no-pull/`, which resolve to none.
+ * Creates the fake. A head containing a slash resolves to a pull request,
+ * except one starting with `no-pull/`; anything else is a ticket or a
+ * hostname label, and only `open()` and `commit()` resolve those.
  */
 export function createGitHubFake(owner = "maple-kit", repo = "app"): GitHubFake {
   const comments = new Map<number, StoredComment[]>();
+  const commits = new Map<string, string>();
+  let opened: readonly string[] = [];
+  let lookups = 0;
   let nextId = 1000;
 
   const commentsFor = (pull: number): StoredComment[] => {
@@ -45,11 +55,28 @@ export function createGitHubFake(owner = "maple-kit", repo = "app"): GitHubFake 
   };
 
   const handlers: RequestHandler[] = [
+    http.get(`${API}/repos/${owner}/${repo}/commits/:sha/pulls`, ({ params }) => {
+      lookups += 1;
+      const branch = commits.get(String(params["sha"]));
+      if (branch === undefined) return HttpResponse.json([]);
+      return HttpResponse.json([{ number: pullFor(branch), head: { ref: branch } }]);
+    }),
+
     http.get(`${API}/repos/${owner}/${repo}/pulls`, ({ request }) => {
-      const head = new URL(request.url).searchParams.get("head") ?? "";
+      lookups += 1;
+      const head = new URL(request.url).searchParams.get("head");
+      if (head === null) {
+        return HttpResponse.json(
+          opened.map((branch) => ({ number: pullFor(branch), head: { ref: branch } })),
+        );
+      }
+
+      // A head lookup answers for anything that looks like a branch. An
+      // identifier with no slash is a ticket or a hostname label, which is
+      // exactly the case `PullLookup.matches` exists for, so it finds nothing.
       const branch = head.slice(head.indexOf(":") + 1);
-      if (branch.startsWith("no-pull/")) return HttpResponse.json([]);
-      return HttpResponse.json([{ number: pullFor(branch) }]);
+      const known = branch.includes("/") && !branch.startsWith("no-pull/");
+      return HttpResponse.json(known ? [{ number: pullFor(branch), head: { ref: branch } }] : []);
     }),
 
     http.get(`${API}/repos/${owner}/${repo}/issues/:pull/comments`, ({ params, request }) => {
@@ -97,8 +124,18 @@ export function createGitHubFake(owner = "maple-kit", repo = "app"): GitHubFake 
 
   return {
     handlers,
-    reset: () => comments.clear(),
+    reset: () => {
+      comments.clear();
+      commits.clear();
+      opened = [];
+      lookups = 0;
+    },
     commentsOn: (pull) => [...commentsFor(pull)],
+    open: (...branches) => (opened = branches),
+    commit: (sha, branch) => {
+      commits.set(sha, branch);
+    },
+    lookups: () => lookups,
   };
 }
 

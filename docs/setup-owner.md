@@ -100,16 +100,25 @@ Filling the form by hand instead:
    - **(4a) Enable Device Flow.** This is what lets a reviewer sign in from a
      preview host without a redirect URI per deployment, and it is the one
      setting a manifest cannot carry. Maple's login story depends on it.
-   - Enable **Expire user authorisation tokens**.
+   - **Disable Expire user authorisation tokens.** With it on, refreshing a
+     user token needs the client secret, which would put a secret into every
+     preview environment — the one thing `docs/github-auth.md` exists to
+     avoid. The bound moves to the session cookie instead.
    - Leave **Request user authorisation (OAuth) during installation** off.
-5. Permissions — **Repository**:
-   | Permission    | Access         | Why                                                                                                                             |
-   | ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-   | Checks        | Read and write | The `maple/visual-review` check run is the merge gate.                                                                          |
-   | Pull requests | Read and write | Posting and updating the sticky comment.                                                                                        |
-   | Contents      | Read-only      | Reading the commit a comment was anchored against.                                                                              |
-   | Merge queues  | Read-only      | Required to subscribe to `merge_group` at all. Without it GitHub rejects the event and a queued merge hangs instead of passing. |
-   | Metadata      | Read-only      | Mandatory.                                                                                                                      |
+5. Permissions — **Repository**. This table is what the app was registered
+   with, when one app was meant to serve both comments and the gate. It is
+   wider than the comment path should carry: a user-to-server token is bounded
+   by the app's permissions, so `Contents` here means every reviewer's token
+   can read the source. `docs/github-auth.md` says why that has to be split,
+   and the comment app is the first three rows only.
+   | Permission    | Access         | Why                                                                                                                         |
+   | ------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+   | Issues        | Read and write | A pull-request conversation comment is an issue comment. This is the comment write.                                         |
+   | Pull requests | Read-only      | Resolving a branch or a commit to the pull request its comments belong to.                                                  |
+   | Metadata      | Read-only      | Mandatory.                                                                                                                  |
+   | Checks        | Read and write | **Gate only.** The `maple/visual-review` check run is the merge gate.                                                       |
+   | Contents      | Read-only      | **Gate only.** Reading the commit a comment was anchored against.                                                           |
+   | Merge queues  | Read-only      | **Gate only.** Required to subscribe to `merge_group` at all. Without it GitHub rejects the event and a queued merge hangs. |
 6. **Where can this app be installed?** Any account, so other organisations can
    use the gate.
 7. Create the app, then:

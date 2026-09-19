@@ -260,6 +260,19 @@ describe("developer detail", () => {
     expect(tips.some((text) => text?.includes("the component name"))).toBe(true);
   });
 
+  /** Growing from `bottom left` while sitting below the chip grows backwards. */
+  it("grows the tooltip from the edge it was placed against", async () => {
+    await developer();
+    const chip = find<HTMLElement>(".mk-chip-dev");
+    const tip = find<HTMLElement>(".mk-chip-dev .mk-tip");
+
+    chip.focus();
+    await vi.waitFor(() => expect(tip.matches(":popover-open")).toBe(true));
+
+    expect(tip.hasAttribute("data-mk-below")).toBe(true);
+    expect(getComputedStyle(tip).transformOrigin.split(" ")[1]).toBe("0px");
+  });
+
   it("waits 80ms before a tooltip appears, and never before it goes", async () => {
     await developer();
     const chip = find<HTMLElement>(".mk-chip-dev");

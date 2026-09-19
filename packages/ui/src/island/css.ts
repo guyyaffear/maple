@@ -875,6 +875,12 @@ function developer(): string {
     transform var(--mk-dur-tooltip) var(--mk-ease-tooltip);
 }
 
+/* A surface grows from the edge it was placed against. The tooltip sits under
+   its chip unless there is no room, and the placement says which it did. */
+.mk-tip[data-mk-below] {
+  transform-origin: top left;
+}
+
 /* The delay is on the way in only. A hover-out is a dismissal, and a
    dismissal that waits reads as a surface that did not hear the pointer. */
 .mk-tip:popover-open {

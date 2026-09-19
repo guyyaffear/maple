@@ -20,6 +20,9 @@ const GAP_PX = 6;
 /** Kept clear of the viewport's edges by this much when it is clamped. */
 const EDGE_PX = 8;
 
+/** Set while the tooltip sits under its chip, which is where it prefers to. */
+const BELOW = "data-mk-below";
+
 /** A chip, its sentence, and whatever the chip is drawn as. */
 export interface TipProps {
   /** The sentence. Never rendered in the row itself. */
@@ -122,11 +125,13 @@ export function tipSpot(
   return { x: Math.min(Math.max(EDGE_PX, wanted), Math.max(EDGE_PX, last)), y };
 }
 
+/** A surface grows from the edge it was placed against, or it grows backwards. */
 function place(node: HTMLElement, anchor: DOMRect): void {
   const box = node.getBoundingClientRect();
   const view = { width: window.innerWidth, height: window.innerHeight };
   const spot = tipSpot(anchor, box, view);
 
+  node.toggleAttribute(BELOW, spot.y >= anchor.bottom);
   node.style.setProperty("--mk-x", `${String(Math.round(spot.x))}px`);
   node.style.setProperty("--mk-y", `${String(Math.round(spot.y))}px`);
 }

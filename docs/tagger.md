@@ -86,6 +86,13 @@ silently. Nothing throws, the page renders, and every comment anchors to "this
 page" with no component name and no file. `withMaple` owns both, and a webpack
 hook as well, so `next dev --webpack` is not a quiet downgrade.
 
+`@maple-kit/core/next` is deliberately **not** in the repository's `paths`
+mapping, unlike every other subpath: Next's own config transpiler rewrites a
+mapped specifier into a relative path that resolves nowhere at build time. The
+example's config therefore resolves it through the exports map, exactly as a
+consumer would — which is why `pnpm typecheck` builds core before typechecking
+the examples.
+
 It **throws** when the config already sets `compiler.reactRemoveProperties`.
 Two owners for the field that decides whether the tagger's work survives is the
 bug it exists to prevent; extra patterns go through `removeProperties`.

@@ -202,13 +202,15 @@ function corners(): string {
 
 function header(): string {
   return `
+/* A fixed height, not a padded one: the settings panel is positioned against
+   the card so it can be bounded by it, and it starts where this ends. */
 .mk-head {
-  position: relative;
   flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 9px 8px 11px;
+  height: var(--mk-head-h);
+  padding: 0 9px 0 11px;
   border-bottom: 1px solid var(--mk-line);
 }
 
@@ -276,8 +278,6 @@ function header(): string {
   display: contents;
 }
 
-/* The card's own width, and the card's own bottom corners: a panel inset from
-   one edge and not the other reads as a surface that missed. */
 ${settingsPanel()}
 
 ${preferenceControls()}
@@ -336,17 +336,22 @@ ${preferenceControls()}
 `.trim();
 }
 
-/** The panel itself: the card's own width, and the card's own bottom corners. */
+/** The panel: the card's whole body, so nothing in it can fall off the end. */
 function settingsPanel(): string {
   return `
+/* Pinned to the card's own bottom rather than hung off the header: hung off
+   it, everything past the card's height was cut off by the card, which is
+   where Developer mode and Hide the island went. */
 .mk-settings {
   position: absolute;
-  top: 100%;
+  top: var(--mk-head-h);
   right: 0;
+  bottom: 0;
   left: 0;
   z-index: 5;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
-  border-top: 1px solid var(--mk-line);
   border-radius: 0 0 var(--mk-r) var(--mk-r);
   background: var(--mk-bg);
   box-shadow: var(--mk-sh3);

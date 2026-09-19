@@ -24,7 +24,7 @@ function Keep(): null {
 function tree(): ReactElement {
   return createElement(
     MapleRoot,
-    { branch: BRANCH, options: { fetch: offlineFetch(), origin: ORIGIN } },
+    { branch: BRANCH, options: { fetch: offlineFetch({ linked: false }), origin: ORIGIN } },
     createElement(Keep),
     createElement(
       Island,
@@ -209,5 +209,49 @@ describe("the panel itself", () => {
 
     expect(panelStyle.borderBottomLeftRadius).toBe(cardStyle.borderBottomLeftRadius);
     expect(panelStyle.borderBottomRightRadius).toBe(cardStyle.borderBottomRightRadius);
+  });
+});
+
+/** Hung off the header it ran past the card, and everything below Hide
+ * resolved was clipped with no scrollbar to say so. */
+describe("a panel taller than the card", () => {
+  async function shortened(): Promise<HTMLElement> {
+    await page.viewport(1100, 520);
+    return settled();
+  }
+
+  it("stops at the card's own bottom edge rather than running past it", async () => {
+    const box = (await shortened()).getBoundingClientRect();
+    const card = find<HTMLElement>(".mk-card").getBoundingClientRect();
+
+    expect(box.bottom).toBeLessThanOrEqual(card.bottom + 0.5);
+    expect(box.top).toBeGreaterThanOrEqual(card.top - 0.5);
+  });
+
+  it("scrolls, so the last row is reachable instead of cut off", async () => {
+    const node = await shortened();
+    expect(node.scrollHeight).toBeGreaterThan(node.clientHeight);
+
+    node.scrollTop = node.scrollHeight;
+    const last = [...root().querySelectorAll<HTMLElement>(".mk-setting")].at(-1)!;
+    const box = last.getBoundingClientRect();
+    const panel = node.getBoundingClientRect();
+
+    expect(box.bottom).toBeLessThanOrEqual(panel.bottom + 0.5);
+    expect(box.top).toBeGreaterThanOrEqual(panel.top - 0.5);
+  });
+
+  it("starts under the header, so the cog that opened it stays pressable", async () => {
+    const box = (await shortened()).getBoundingClientRect();
+    const head = find<HTMLElement>(".mk-head").getBoundingClientRect();
+
+    expect(box.top).toBeGreaterThanOrEqual(head.bottom - 0.5);
+  });
+
+  it("shows every row the panel has, sign-in included", async () => {
+    await shortened();
+
+    expect(root().querySelectorAll(".mk-setting")).toHaveLength(6);
+    expect(root().querySelector("[data-mk-link]")).not.toBeNull();
   });
 });

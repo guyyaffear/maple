@@ -85,6 +85,9 @@ export const TYPE_TOKENS: Readonly<Record<string, string>> = {
 /** Hit areas and the one press scale, so neither is written twice. */
 export const SIZE_TOKENS: Readonly<Record<string, string>> = {
   "--mk-hit": "40px",
+  // The island header's height, fixed so the settings panel can sit exactly
+  // under it: the panel is positioned against the card, not against the header.
+  "--mk-head-h": "44px",
   "--mk-press": "0.96",
   // The sheet is the panel under SHEET_BREAKPOINT_PX, so it is a width and a
   // radius rather than a variant prop. The media query redeclares both.

@@ -17,6 +17,7 @@ import type {
   ClientState,
   CommentFilter,
   ComposerState,
+  GitHubLink,
   MapleClient,
   PickState,
 } from "@maple-kit/core/client";
@@ -36,6 +37,8 @@ export interface Snapshots {
   readonly anchor: (id: string) => Anchor | undefined;
   /** A draft by id, or the one the composer is writing into. */
   readonly draft: (id?: string) => Draft | undefined;
+  /** Whether the reviewer has a GitHub account linked, and what it is doing. */
+  readonly github: () => GitHubLink;
 }
 
 /** What a cached list was derived from. All three have to match to reuse it. */
@@ -58,6 +61,7 @@ export function createSnapshots(client: MapleClient): Snapshots {
     picker: () => client.getState().pick,
     anchor: (id) => anchorFor(client.getState(), id),
     draft: (id) => draftFor(client.getState(), id),
+    github: () => client.getState().github,
   };
 }
 

@@ -12,6 +12,7 @@ import { kindOf } from "../anchor/kind.js";
 import { labelFor } from "../anchor/label.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
 import { openCount, visibleComments } from "./filters.js";
+import { startLink } from "./link.js";
 import { createNavigationGuard } from "./navigation.js";
 import { readMapleConfig, writePreferences } from "./preferences.js";
 import { opensComposer } from "./shortcut.js";
@@ -22,6 +23,7 @@ import type { Logger } from "../logger/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentStatus, MediaRef } from "../types.js";
 import type { DraftKeeper } from "./drafts.js";
+import type { LinkRun } from "./link.js";
 import type {
   LeaveAnswer,
   LeavePrompt,
@@ -41,6 +43,7 @@ import type {
   ComposerTarget,
   Corner,
   Detail,
+  GitHubLink,
   PickKind,
   PickState,
   PostedComment,
@@ -143,6 +146,14 @@ export interface MapleClient {
   send(): Promise<Comment>;
 
   setStatus(id: string, status: CommentStatus, resolution?: ResolutionClaim): Promise<Comment>;
+
+  /**
+   * Starts a GitHub link and resolves once there is a code to show. The
+   * polling carries on after it resolves; watch `state.github` for the rest.
+   */
+  linkGitHub(): Promise<void>;
+  /** Forgets the token on this deployment. GitHub keeps the authorisation. */
+  unlinkGitHub(): Promise<void>;
 }
 
 const CLOSED: ComposerState = {
@@ -164,6 +175,7 @@ interface Runtime {
   readonly now: () => number;
   guard: NavigationGuard | undefined;
   theme: ThemeWatch | undefined;
+  link: LinkRun | undefined;
   release: (() => void) | undefined;
   state: ClientState;
 }
@@ -208,6 +220,9 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
     send: () => send(runtime),
 
     setStatus: (id, status, resolution) => setStatus(runtime, id, status, resolution),
+
+    linkGitHub: () => linkGitHub(runtime),
+    unlinkGitHub: () => unlinkGitHub(runtime),
   };
 }
 
@@ -230,6 +245,7 @@ function runtimeFor(options: MapleClientOptions): Runtime {
     now: options.now ?? Date.now,
     guard: undefined,
     theme: undefined,
+    link: undefined,
     release: undefined,
     state: derive({
       phase: "idle",
@@ -249,6 +265,7 @@ function runtimeFor(options: MapleClientOptions): Runtime {
       theme: themeFrom({}),
       themePreference: config.theme,
       user: null,
+      github: { state: "unsupported" },
       error: null,
     }),
   };
@@ -368,11 +385,13 @@ function destroy(runtime: Runtime): void {
   runtime.guard?.stop();
   runtime.theme?.stop();
   runtime.release?.();
+  runtime.link?.cancel();
   runtime.drafts.destroy();
   runtime.listeners.clear();
   runtime.guard = undefined;
   runtime.theme = undefined;
   runtime.release = undefined;
+  runtime.link = undefined;
 }
 
 /** `c` arms element picking; `Ctrl`+`C` is copy and must not reach this. */
@@ -398,7 +417,7 @@ async function load(runtime: Runtime): Promise<void> {
       comments,
       hidden: runtime.state.hidden && comments.length <= runtime.state.comments.length,
       drafts: runtime.drafts.list(),
-      user: await whoAmI(runtime),
+      ...(await whoAmI(runtime)),
       error: null,
     });
   } catch (error) {
@@ -407,15 +426,47 @@ async function load(runtime: Runtime): Promise<void> {
 }
 
 /** A route that cannot say who this is means a guest, not a failed load. */
-async function whoAmI(runtime: Runtime): Promise<ClientState["user"]> {
+async function whoAmI(runtime: Runtime): Promise<Pick<ClientState, "github" | "user">> {
   try {
-    return await runtime.transport.me();
+    const identity = await runtime.transport.me();
+    return { user: identity.user, github: linkOf(identity.github) };
   } catch (error) {
     runtime.options.logger?.warn("Could not identify the reviewer; offering the guest flow.", {
       error: String(error),
     });
-    return null;
+    return { user: null, github: { state: "unsupported" } };
   }
+}
+
+/**
+ * No `github` on the answer is a route with no sign-in at all, not a reviewer
+ * who has not linked. One draws nothing and the other draws an offer.
+ */
+function linkOf(github: { linked: boolean; login?: string } | undefined): GitHubLink {
+  if (github === undefined) return { state: "unsupported" };
+  if (!github.linked) return { state: "unlinked" };
+  return { state: "linked", ...(github.login === undefined ? {} : { login: github.login }) };
+}
+
+/** Resolves once there is a code to show. The polling outlives the call. */
+async function linkGitHub(runtime: Runtime): Promise<void> {
+  runtime.link?.cancel();
+  try {
+    runtime.link = await startLink({
+      transport: runtime.transport,
+      onChange: (github) => patch(runtime, { github }),
+      ...(runtime.options.now === undefined ? {} : { now: runtime.options.now }),
+    });
+  } catch (error) {
+    patch(runtime, { github: { state: "failed", reason: readable(error) } });
+  }
+}
+
+async function unlinkGitHub(runtime: Runtime): Promise<void> {
+  runtime.link?.cancel();
+  runtime.link = undefined;
+  await runtime.transport.linkEnd();
+  patch(runtime, { github: { state: "unlinked" } });
 }
 
 function openComposer(runtime: Runtime, target: ComposerTarget): void {

@@ -87,13 +87,64 @@ describe("writing", () => {
 
 describe("who the reviewer is", () => {
   it("returns the user the host application's session named", async () => {
-    await expect(transport().me()).resolves.toMatchObject({ id: "u_7" });
+    await expect(transport().me()).resolves.toMatchObject({ user: { id: "u_7" } });
   });
 
-  it("returns null when there is no session, which is the guest flow", async () => {
+  it("returns a null user when there is no session, which is the guest flow", async () => {
     server.use(http.get(`${MAPLE_BASE}/me`, () => HttpResponse.json({ user: null })));
 
-    await expect(transport().me()).resolves.toBeNull();
+    await expect(transport().me()).resolves.toEqual({ user: null });
+  });
+
+  it("carries the link state through when the route serves a sign-in", async () => {
+    server.use(
+      http.get(`${MAPLE_BASE}/me`, () =>
+        HttpResponse.json({ user: null, github: { linked: true, login: "octocat" } }),
+      ),
+    );
+
+    await expect(transport().me()).resolves.toMatchObject({
+      github: { linked: true, login: "octocat" },
+    });
+  });
+});
+
+describe("linking a GitHub account", () => {
+  it("asks for a code, and reports what to show the reviewer", async () => {
+    server.use(
+      http.post(`${MAPLE_BASE}/auth/github`, () =>
+        HttpResponse.json({
+          userCode: "WDJB-MJHT",
+          verificationUri: "https://github.com/login/device",
+          expiresAt: 1,
+          interval: 5,
+        }),
+      ),
+    );
+
+    await expect(transport().linkStart()).resolves.toMatchObject({ userCode: "WDJB-MJHT" });
+  });
+
+  it("makes one exchange attempt per call", async () => {
+    let attempts = 0;
+    server.use(
+      http.patch(`${MAPLE_BASE}/auth/github`, () => {
+        attempts += 1;
+        return HttpResponse.json({ status: "pending", interval: 5 });
+      }),
+    );
+
+    await transport().linkAttempt();
+    await transport().linkAttempt();
+    expect(attempts).toBe(2);
+  });
+
+  it("forgets the link without reading a body back", async () => {
+    server.use(
+      http.delete(`${MAPLE_BASE}/auth/github`, () => HttpResponse.json({ status: "signed-out" })),
+    );
+
+    await expect(transport().linkEnd()).resolves.toBeUndefined();
   });
 });
 

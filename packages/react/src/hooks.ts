@@ -1,5 +1,5 @@
 /**
- * Six subscriptions and an escape hatch. There is no seventh thing here.
+ * Seven subscriptions and an escape hatch. There is no eighth thing here.
  *
  * Every hook is one `useSyncExternalStore` over a read from `snapshots.ts`,
  * because anything else — a filter applied in a hook body, a sort, a lookup
@@ -19,6 +19,7 @@ import type {
   ClientState,
   CommentFilter,
   ComposerState,
+  GitHubLink,
   MapleClient,
   PickState,
 } from "@maple-kit/core/client";
@@ -58,6 +59,16 @@ export function useComments(filter?: CommentFilter): readonly Comment[] {
 export function useComposer(): ComposerState {
   const { snapshots } = useMapleContext("useComposer()");
   return useSyncExternalStore(snapshots.subscribe, snapshots.composer, snapshots.composer);
+}
+
+/**
+ * The reviewer's GitHub link. `unsupported` means the route serves no sign-in
+ * at all, and a surface draws nothing rather than an offer nobody can take.
+ * `linkGitHub` and `unlinkGitHub` on the controller are what act on it.
+ */
+export function useGitHubLink(): GitHubLink {
+  const { snapshots } = useMapleContext("useGitHubLink()");
+  return useSyncExternalStore(snapshots.subscribe, snapshots.github, snapshots.github);
 }
 
 /** Whether a pick is armed and which kind, for the three pick buttons. */

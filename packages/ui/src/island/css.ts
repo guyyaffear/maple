@@ -380,6 +380,49 @@ function settingsPanel(): string {
   color: var(--mk-faint);
   text-wrap: pretty;
 }
+
+.mk-acct-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.mk-acct-code code {
+  padding: 3px 7px;
+  border-radius: var(--mk-r-xs);
+  background: var(--mk-sunk);
+  color: var(--mk-fg);
+  font-family: var(--mk-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+.mk-acct-code a {
+  color: var(--mk-accent);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.mk-acct-do {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--mk-line);
+  border-radius: 999px;
+  background: var(--mk-bg);
+  color: var(--mk-fg);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--mk-dur-fade) var(--mk-ease-surface);
+}
+
+.mk-acct-do:active {
+  transform: scale(var(--mk-press));
+}
 `.trim();
 }
 

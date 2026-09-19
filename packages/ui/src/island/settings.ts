@@ -1,10 +1,12 @@
 /**
- * `Maple.Settings`: two switches behind one control in the header.
+ * `Maple.Settings`: the panel behind one control in the header.
  *
  * A visible row of settings is a row every reviewer reads once and then reads
  * past forever. The icon is sliders rather than a gear: a gear at 13px with a
  * hover rotation reads as a sun. Hiding resolved is the controller's setting,
  * because it changes the list every other surface reads as well.
+ *
+ * The GitHub link is first: the one row that changes what a comment is.
  */
 
 import { THEME_PREFERENCES } from "@maple-kit/core/client";
@@ -12,6 +14,7 @@ import { useMaple, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef, useId } from "react";
 
 import { CogIcon } from "../icons/cog.js";
+import { Account } from "./account.js";
 import { useIsland } from "./context.js";
 import {
   CORNER_LABELS,
@@ -91,6 +94,7 @@ function Panel(props: PanelProps): ReactNode {
   return createElement(
     "div",
     { id: props.id, className: "mk-settings", role: "group", onBlur, onKeyDown },
+    createElement(Account, null),
     createElement(Theme, {
       value: themePreference,
       onPick: (theme: ThemePreference) => client.setTheme(theme),

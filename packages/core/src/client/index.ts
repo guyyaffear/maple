@@ -12,6 +12,8 @@ export type { ClientView, MapleClient, MapleClientOptions } from "./controller.j
 export { createDraftKeeper, DRAFT_DEBOUNCE_MS, DRAFT_LIFETIME_MS, draftIdFor } from "./drafts.js";
 export type { DraftKeeper, DraftKeeperOptions } from "./drafts.js";
 export { matchesFilter, openCount, visibleComments } from "./filters.js";
+export { startLink } from "./link.js";
+export type { LinkOptions, LinkRun } from "./link.js";
 export { createNavigationGuard } from "./navigation.js";
 export type {
   LeaveAnswer,
@@ -54,11 +56,12 @@ export {
 } from "./theme.js";
 export type { ThemeSignals, ThemeView, ThemeWatch, ThemeWatchOptions } from "./theme.js";
 export { createTransport, DEFAULT_BASE_PATH, MapleRequestError } from "./transport.js";
-export type { Transport, TransportOptions } from "./transport.js";
+export type { Identity, LinkAttempt, LinkStart, Transport, TransportOptions } from "./transport.js";
 export { COMMENT_FILTERS, CORNERS, DETAILS, THEME_PREFERENCES } from "./types.js";
 export type {
   ClientState,
   CommentFilter,
+  GitHubLink,
   ComposerState,
   ComposerTarget,
   Corner,

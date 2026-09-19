@@ -22,7 +22,7 @@ const BUDGETS = [
   {
     name: "root + marks + island + icons",
     entries: ["index.js", "marks/index.js", "island/index.js", "icons/index.js"],
-    max: 21 * 1024,
+    max: 22 * 1024,
   },
   { name: "composer, on top", entries: ["composer/index.js"], max: 9 * 1024 },
   { name: "picker, on top", entries: ["picker/index.js"], max: 3 * 1024 },

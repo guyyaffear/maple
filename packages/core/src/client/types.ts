@@ -131,9 +131,30 @@ export interface ClientState {
   readonly themePreference: ThemePreference;
   /** Null once `GET /me` has answered with no session: offer the guest flow. */
   readonly user: MapleUser | null;
+  /** Whether this reviewer has a GitHub account linked, and what it is doing. */
+  readonly github: GitHubLink;
   /** What went wrong, in words a reviewer can read. Null when nothing did. */
   readonly error: string | null;
 }
+
+/**
+ * The reviewer's GitHub link, as a surface reads it. `unsupported` is the
+ * resting state of a deployment that stores comments some other way: there is
+ * nothing to offer, so nothing is drawn.
+ */
+export type GitHubLink =
+  | { readonly state: "unsupported" }
+  | { readonly state: "unlinked" }
+  | { readonly state: "linked"; readonly login?: string }
+  | {
+      readonly state: "linking";
+      /** Shown to the reviewer. Short, and meant to be typed or read aloud. */
+      readonly userCode: string;
+      readonly verificationUri: string;
+      /** Milliseconds since the epoch. */
+      readonly expiresAt: number;
+    }
+  | { readonly state: "failed"; readonly reason: string };
 
 /** What a client may claim about a resolution; the route stamps the time. */
 export interface ResolutionClaim {

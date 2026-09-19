@@ -117,6 +117,17 @@ describe("clicking a comment", () => {
     expect(root().querySelectorAll(".mk-ctx dt").length).toBeGreaterThan(0);
   });
 
+  /** Seven facts one to a line ran the card down half the panel to say a width. */
+  it("lays the context out two pairs to a row, inset from the panel's edges", async () => {
+    await openFirstRow();
+    const badge = find<HTMLElement>(".mk-ctx");
+    const style = getComputedStyle(badge);
+
+    expect(style.gridTemplateColumns.split(" ")).toHaveLength(4);
+    expect(Number.parseFloat(style.marginLeft)).toBeGreaterThan(12);
+    expect(Number.parseFloat(style.paddingLeft)).toBeGreaterThan(9);
+  });
+
   it("offers no field: one body per comment, so there is nothing to type into", async () => {
     await openFirstRow();
 

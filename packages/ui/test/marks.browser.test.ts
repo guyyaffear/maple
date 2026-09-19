@@ -384,9 +384,19 @@ describe("the layer", () => {
     expect(marks[0]!.getAttribute("aria-pressed")).toBe("true");
     expect(getComputedStyle(marks[0]!).zIndex).toBe("3");
     expect(getComputedStyle(marks[1]!).zIndex).toBe("auto");
-    expect(getComputedStyle(marks[0]!.querySelector(".mk-leaf-halo")!).stroke).toBe(
-      token("--mk-fg"),
-    );
+  });
+
+  /** A box-shadow on the 38px button draws a rounded square behind a leaf. */
+  it("glows in the shape of the leaf rather than behind its box", async () => {
+    fixture("c1", { x: 200, y: 300, w: 60, h: 40 });
+    const comments = [comment("c1")];
+
+    await render(layer({ comments, visible: comments, selectedId: "c1" }));
+    const marks = await drawn(1);
+
+    const style = getComputedStyle(marks[0]!);
+    expect(style.boxShadow).toBe("none");
+    expect(style.filter).toContain("drop-shadow");
   });
 
   it("keeps two neighbours' hit areas apart", async () => {

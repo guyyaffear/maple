@@ -72,10 +72,40 @@ off: every duration lands at or under 100ms and distance, pre-scale and stagger
 collapse to nothing, so what is left is the opacity. The motion is reduced; the
 state feedback is not removed.
 
+## One ring, and what wins it
+
+There is exactly one `Maple.TargetRing` on the page, because two rings are two
+answers to "which one is this about". What wins it, in order:
+
+1. **A pointer.** A hovered mark or row takes the ring even while a panel is
+   open, and gives it straight back on the way out. A peek sticks to nothing.
+2. **The composer**, while one is open on a pick.
+3. **The selection.** A click is the gesture that outlives the hand: the ring
+   stays on the page after the pointer has moved away, at
+   `data-mk-state="selected"`.
+
+A panel opened on a comment is _reading_ it, so it draws `selected` rather than
+`composing` — the state says why the ring is showing, not which part drew it.
+
+Developer detail adds a second line to the ring's label: the source line, from
+`sourceFor` in `@maple-kit/core/anchor`. The page wins over the anchor there,
+because the anchor records where the element was when the comment was written.
+
+## Surfaces stand beside each other, never on top
+
+The composer panel and the island are both surfaces, and neither is a layer
+over the other. When the panel opens, the island steps aside by
+`--mk-composer-w` (`data-mk-inset` on `.mk-island`); under
+`SHEET_BREAKPOINT_PX` the panel is a sheet off the bottom edge with nowhere
+beside it to stand, so the island gives way instead. Nothing in the overlay
+solves this with a `z-index`: an inventory half-covered by the thing it just
+opened reads as a stack of two cards whichever one is on top.
+
 ## The bundle budget
 
-Marks, the island, the icons and the root they need stay under 25 KB gzipped,
-and the composer costs its own 8 KB on top. `packages/ui/scripts/size.js` runs
+The adopted stylesheet is weighed on its own, under 11 KB gzipped; marks, the
+island, the icons and the root they need stay under 20 KB; the composer costs
+its own 8 KB and the picker 3 KB. `packages/ui/scripts/size.js` runs
 as the second half of this package's `build`, so the existing CI build job
 enforces it. It measures this package's own emitted modules; `react` is a peer
 and the other two workspace packages carry their own budgets.

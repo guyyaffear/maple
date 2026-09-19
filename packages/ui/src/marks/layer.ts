@@ -7,7 +7,7 @@
  * clicked wrong. Marks are drawn from the filter's list; the addresses are not.
  */
 
-import { resolveAnchor } from "@maple-kit/core/anchor";
+import { resolveAnchor, sourceFor } from "@maple-kit/core/anchor";
 import { useMaple, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -22,9 +22,10 @@ import { MapleTargetRing } from "./ring.js";
 
 import type { Box } from "./geometry.js";
 import type { Placement } from "./placement.js";
-import type { TargetRingProps } from "./ring.js";
+import type { RingState, TargetRingProps } from "./ring.js";
 import type { Comment } from "@maple-kit/core";
-import type { ClientState, ComposerTarget } from "@maple-kit/core/client";
+import type { LabelSource } from "@maple-kit/core/anchor";
+import type { ClientState, ComposerTarget, Detail } from "@maple-kit/core/client";
 
 const PART = "Maple.MarkLayer";
 
@@ -35,6 +36,7 @@ export interface MarkLayerProps {
   /** The ones to draw. Defaults to what the current filter shows. */
   readonly visible?: readonly Comment[];
   readonly selectedId?: string;
+  /** What a click does. Defaults to opening the comment, which is the point. */
   readonly onSelect?: (comment: Comment) => void;
   readonly className?: string;
 }
@@ -42,10 +44,18 @@ export interface MarkLayerProps {
 /** The marks, and the one ring they share. */
 export const MapleMarkLayer = /** @__PURE__ */ forwardRef<HTMLDivElement, MarkLayerProps>(
   function MapleMarkLayer(props, ref) {
-    const { className, onSelect } = props;
+    const { className } = props;
     const { container } = useMapleUi(PART);
     const state = useMaple();
     const client = useMapleClient();
+    const chosen = props.onSelect;
+    const onSelect = useCallback(
+      (comment: Comment) => {
+        if (chosen) return chosen(comment);
+        client.viewComment(comment.id);
+      },
+      [chosen, client],
+    );
 
     const comments = props.comments ?? state.comments;
     const visible = props.visible ?? state.visible;
@@ -79,7 +89,7 @@ export const MapleMarkLayer = /** @__PURE__ */ forwardRef<HTMLDivElement, MarkLa
             ...markProps(placement, selectedId),
             key: placement.comment.id,
             ref: keep(nodes.current, placement.comment.id),
-            onClick: () => onSelect?.(placement.comment),
+            onClick: () => onSelect(placement.comment),
             onPointerEnter: () => client.peek(placement.comment.id),
             onPointerLeave: () => client.peek(null),
             onFocus: () => client.peek(placement.comment.id),
@@ -98,7 +108,7 @@ export const MapleMarkLayer = /** @__PURE__ */ forwardRef<HTMLDivElement, MarkLa
         ringFor({
           client: state,
           placed,
-          hovered: peeked ?? selectedId,
+          pointing: { peeked, selected: selectedId },
           root: container.ownerDocument,
         }),
       ),
@@ -156,34 +166,50 @@ function markProps(placement: Placement, selectedId: string | undefined) {
   };
 }
 
-/** What the ring is decided from: the composer first, then a hovered mark. */
+/** Which comment each of the two pointers is on, neither of them the composer's. */
+interface Pointing {
+  readonly peeked: string | undefined;
+  readonly selected: string | undefined;
+}
+
+/** What the ring is decided from: what is pointed at, then the composer. */
 interface RingInput {
   readonly client: ClientState;
   readonly placed: readonly Placement[];
-  readonly hovered: string | undefined;
+  readonly pointing: Pointing;
   readonly root: ParentNode;
 }
 
 /**
- * The ring follows the composer while one is open, and a hovered mark
- * otherwise. Two rings would be two answers to "which one is this about".
+ * A pointer wins, because a peek gives the ring straight back; then the
+ * composer; then the click, which is what holds it after the hand has gone.
  */
 function ringFor(input: RingInput): TargetRingProps {
-  const { composer } = input.client;
-  if (composer.open && composer.target) return composing(composer.target, input.root);
+  const peeked = marked(input, input.pointing.peeked, "hovered");
+  if (peeked) return peeked;
 
-  const hit = input.placed.find((placement) => placement.comment.id === input.hovered);
-  if (!hit) return {};
+  const { composer } = input.client;
+  if (composer.open && composer.target) return composing(composer.target, input);
+
+  return marked(input, input.pointing.selected, "selected") ?? {};
+}
+
+/** The ring around one drawn mark, or nothing when the page has no such mark. */
+function marked(input: RingInput, id: string | undefined, state: RingState) {
+  const hit = input.placed.find((placement) => placement.comment.id === id);
+  if (!hit) return undefined;
+
   return {
     target: hit.range ?? hit.element,
     label: ringLabel({ kind: kindOf(hit.comment.anchor), element: hit.element }),
-    state: "hovered",
+    ...noteFor({ anchor: hit.comment.anchor, element: hit.element }, input.client.detail),
+    state,
   };
 }
 
 /** A composer on something the page no longer has gets no ring, and no guess. */
-function composing(target: ComposerTarget, root: ParentNode): TargetRingProps {
-  const found = resolveAnchor(target.anchor, { root, passage: target.kind === "text" });
+function composing(target: ComposerTarget, input: RingInput): TargetRingProps {
+  const found = resolveAnchor(target.anchor, { root: input.root, passage: target.kind === "text" });
   const label = ringLabel({
     kind: target.kind,
     anchor: target.anchor,
@@ -192,5 +218,21 @@ function composing(target: ComposerTarget, root: ParentNode): TargetRingProps {
   });
 
   if (found.status !== "resolved") return {};
-  return { target: found.range ?? found.element, label, state: "composing" };
+  return {
+    target: found.range ?? found.element,
+    label,
+    ...noteFor({ anchor: target.anchor, element: found.element }, input.client.detail),
+    // A panel opened on a comment is reading it, not answering it, and the
+    // ring says which of the two the reader is looking at.
+    state: input.client.composer.viewing === undefined ? "composing" : "selected",
+  };
+}
+
+/**
+ * Where the element is written, under the name it is known by. Developer
+ * detail only: in default detail a path is noise over the page itself.
+ */
+function noteFor(source: LabelSource, detail: Detail): { note?: string } {
+  const note = detail === "developer" ? sourceFor(source) : undefined;
+  return note === undefined ? {} : { note };
 }

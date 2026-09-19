@@ -6,7 +6,7 @@
  * That is why entering comment mode has no chrome of its own: a second
  * permanent thing over the preview is wrong before anything else about it.
  * Which corner it sits in, and whether it is showing at all, are the
- * controller's: both outlive this component and both are shared.
+ * controller's. A panel opening moves the island aside rather than under it.
  */
 
 import { watchEscape } from "@maple-kit/core/client";
@@ -47,7 +47,7 @@ export interface IslandProps extends PartProps {
 export const Island = /** @__PURE__ */ forwardRef<HTMLDivElement, IslandProps>(
   function Island(props, ref) {
     const { asChild, children, className, defaultOpen, ...rest } = props;
-    const { hidden, position } = useMaple();
+    const { composer, hidden, position } = useMaple();
     const value = useIslandState(defaultOpen === true);
 
     if (hidden) return null;
@@ -60,6 +60,7 @@ export const Island = /** @__PURE__ */ forwardRef<HTMLDivElement, IslandProps>(
         className: cx("mk-island", className),
         "data-mk-open": String(value.phase !== "closed"),
         "data-mk-corner": position,
+        "data-mk-inset": String(composer.open),
         ref: composeRefs(ref, value.drag.attach),
       },
       children,

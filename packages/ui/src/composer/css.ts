@@ -213,12 +213,14 @@ function emojiCss(): string {
 /** What the page looked like, and the screenshot taken of it. */
 function contextAndShots(): string {
   return `
+/* Two pairs to a row: seven facts one per line ran the card down half the
+   panel. Labels keep their own column, so every value still lines up. */
 .mk-ctx {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 14px;
-  margin: 0;
-  padding: 9px 11px;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 7px 10px;
+  margin: 2px 16px 4px;
+  padding: 11px 13px;
   border: 1px solid var(--mk-line);
   border-radius: var(--mk-r-sm);
   background: var(--mk-sunk);
@@ -229,16 +231,18 @@ function contextAndShots(): string {
   color: var(--mk-faint);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .mk-ctx dd {
   margin: 0;
+  min-width: 0;
   color: var(--mk-fg);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .mk-ctx dd em {

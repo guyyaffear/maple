@@ -8,7 +8,7 @@
 
 export { describeElement, describeRange } from "./describe.js";
 export type { DescribeOptions } from "./describe.js";
-export { labelFor, unpickCamelCase } from "./label.js";
+export { labelFor, sourceFor, unpickCamelCase } from "./label.js";
 export type { LabelSource } from "./label.js";
 export { resolveAnchor } from "./resolve.js";
 export type { ResolveOptions } from "./resolve.js";

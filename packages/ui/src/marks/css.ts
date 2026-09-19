@@ -137,16 +137,17 @@ function markCss(): string {
   transform: scale(calc(var(--mk-mark-up) * var(--mk-press)));
 }
 
+/* A box-shadow on the 38px button draws a rounded square behind a leaf, which
+   reads as a second object. A drop-shadow takes the alpha, so it takes the leaf. */
 .mk-mark[aria-pressed="true"] {
-  box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--mk-paint) 30%, transparent),
-    var(--mk-sh3);
+  filter:
+    drop-shadow(0 0 3px color-mix(in oklab, var(--mk-paint) 70%, transparent))
+    drop-shadow(0 0 9px color-mix(in oklab, var(--mk-paint) 45%, transparent))
+    drop-shadow(var(--mk-sh1));
 }
 
 .mk-mark[aria-pressed="true"] .mk-leaf-halo {
-  fill: var(--mk-fg);
-  stroke: var(--mk-fg);
-  stroke-width: 11;
+  stroke-width: 10;
 }
 
 .mk-mark-n {
@@ -210,26 +211,44 @@ function ringCss(): string {
   box-shadow: none;
 }
 
+/* Anchored to the ring's edge rather than offset by a number: the label is two
+   lines in developer detail and one line the rest of the time. */
 .mk-ring-label {
   position: absolute;
-  top: -21px;
+  bottom: 100%;
   left: -2px;
-  max-width: 240px;
-  padding: 1px 7px;
+  display: flex;
+  flex-direction: column;
+  max-width: 260px;
+  margin-bottom: 3px;
+  padding: 1px 7px 2px;
   border-radius: var(--mk-r-xs) var(--mk-r-xs) var(--mk-r-xs) 0;
   background: var(--mk-accent);
   color: var(--mk-accent-ink);
   font-size: 10px;
   font-weight: 600;
+}
+
+.mk-ring-label[data-mk-below] {
+  bottom: auto;
+  top: 100%;
+  margin: 3px 0 0;
+  border-radius: 0 var(--mk-r-xs) var(--mk-r-xs) var(--mk-r-xs);
+}
+
+.mk-ring-name,
+.mk-ring-note {
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.mk-ring-label[data-mk-below] {
-  top: auto;
-  bottom: -21px;
-  border-radius: 0 var(--mk-r-xs) var(--mk-r-xs) var(--mk-r-xs);
+/* Quieter than the name: it is where to go next, not what this is. */
+.mk-ring-note {
+  font-size: 9px;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--mk-accent-ink) 78%, transparent);
 }
 
 /* The wash a reviewer reads as "this text": the same green the ring is drawn

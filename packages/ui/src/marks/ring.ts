@@ -24,10 +24,16 @@ export const BELOW_ATTRIBUTE = "data-mk-below";
 /** How much room the label needs above the anchor before it moves below it. */
 const LABEL_ROOM_PX = 26;
 
+/** The same, once a note has given the label a second line. */
+const NOTE_ROOM_PX = 40;
+
 const PART = "Maple.TargetRing";
 
-/** Why the ring is showing: a composer is open on it, or something hovers it. */
-export type RingState = "composing" | "hovered";
+/**
+ * Why the ring is showing. `selected` is the one that outlives the pointer:
+ * a click holds the ring on the page after the hand has moved away.
+ */
+export type RingState = "composing" | "hovered" | "selected";
 
 /** What the ring names, and the words it names it with. */
 export interface TargetRingProps {
@@ -35,6 +41,8 @@ export interface TargetRingProps {
   readonly target?: Element | Range | null;
   /** The label's words. `ringLabel` builds them; the ring never invents them. */
   readonly label?: string;
+  /** A second line under the label. Developer detail: where this is written. */
+  readonly note?: string;
   readonly state?: RingState;
   readonly className?: string;
 }
@@ -52,7 +60,8 @@ function empty(rect: Box): boolean {
 /** The ring around one target, repositioned per scrolled frame. */
 export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, TargetRingProps>(
   function MapleTargetRing(props, ref) {
-    const { className, label, state = "composing", target } = props;
+    const { className, label, note, state = "composing", target } = props;
+    const room = note === undefined ? LABEL_ROOM_PX : NOTE_ROOM_PX;
     const { container } = useMapleUi(PART);
 
     const ring = useRef<HTMLDivElement | null>(null);
@@ -72,7 +81,7 @@ export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, Targe
         if (away) return;
 
         place(node, ringBox(rect));
-        if (cap.current) flag(cap.current, BELOW_ATTRIBUTE, rect.y < LABEL_ROOM_PX);
+        if (cap.current) flag(cap.current, BELOW_ATTRIBUTE, rect.y < room);
 
         const boxes = linesOf(target);
         if (boxes.length !== lines) setLines(boxes.length);
@@ -81,7 +90,7 @@ export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, Targe
           if (run) place(run, runBox(box, rect));
         });
       },
-      [container, lines, target],
+      [container, lines, room, target],
     );
 
     useFrameLoop(PART, paint);
@@ -97,11 +106,30 @@ export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, Targe
           ring.current = node;
         }),
       },
-      label ? createElement("span", { className: "mk-ring-label mk-mono", ref: cap }, label) : null,
+      label === undefined ? null : caption(label, note, cap),
       ...run(lines, runs),
     );
   },
 );
+
+/**
+ * The name of the thing, and under it — in developer detail only — the file
+ * it is written in, which is the next place the reader is going anyway.
+ */
+function caption(
+  label: string,
+  note: string | undefined,
+  ref: { current: HTMLSpanElement | null },
+): ReactElement {
+  return createElement(
+    "span",
+    { className: "mk-ring-label", ref },
+    createElement("span", { key: "name", className: "mk-ring-name mk-mono" }, label),
+    note === undefined
+      ? null
+      : createElement("span", { key: "note", className: "mk-ring-note mk-mono" }, note),
+  );
+}
 
 /** One rectangle per line, positioned inside the ring rather than the page. */
 function run(lines: number, runs: { current: (HTMLDivElement | null)[] }): ReactElement[] {

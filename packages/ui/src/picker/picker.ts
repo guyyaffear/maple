@@ -9,6 +9,7 @@
  * cannot be selected.
  */
 
+import { sourceFor } from "@maple-kit/core/anchor";
 import { captureContext, watchPickKeys } from "@maple-kit/core/overlay";
 import { captureElement } from "@maple-kit/core/screenshot";
 import { useMaple, useMapleClient } from "@maple-kit/react";
@@ -23,7 +24,7 @@ import { startSession } from "./session.js";
 import { elementOf, targetFor } from "./target.js";
 
 import type { ShotStore } from "../shots.js";
-import type { PickKind } from "@maple-kit/core/client";
+import type { Detail, PickKind } from "@maple-kit/core/client";
 import type { Pick, Rect } from "@maple-kit/core/overlay";
 import type { ReactElement, ReactNode } from "react";
 
@@ -38,7 +39,7 @@ export interface MaplePickerProps {
 
 /** Runs the armed pick, and closes it into the composer. */
 export function MaplePicker(props: MaplePickerProps): ReactNode {
-  const { pick } = useMaple();
+  const { detail, pick } = useMaple();
   const client = useMapleClient();
   const { container, root } = useMapleUi(PART);
   const [hovered, setHovered] = useState<Pick>();
@@ -76,7 +77,7 @@ export function MaplePicker(props: MaplePickerProps): ReactNode {
     createElement(MapleTargetRing, {
       state: "hovered",
       target: targetOf(hovered),
-      ...named(hovered, container),
+      ...named(hovered, container, detail),
     }),
     props.hint === false ? null : createElement(Hint, { kind }),
   );
@@ -204,10 +205,24 @@ function targetOf(pick: Pick | undefined): Element | Range | null {
   return pick.kind === "text" ? pick.range : null;
 }
 
-/** The ring's words, left off entirely when nothing on the page names it. */
-function named(pick: Pick | undefined, container: HTMLElement): { label?: string } {
-  const label = pick ? targetFor(pick, { root: container.ownerDocument })?.label : undefined;
-  return label === undefined ? {} : { label };
+/**
+ * The ring's words, left off entirely when nothing on the page names it, and
+ * under them the source line, which developer detail is mostly there for.
+ */
+function named(
+  pick: Pick | undefined,
+  container: HTMLElement,
+  detail: Detail,
+): { label?: string; note?: string } {
+  if (!pick) return {};
+  const found = targetFor(pick, { root: container.ownerDocument });
+  const on = { ...(found ? { anchor: found.anchor } : {}), element: elementOf(pick) ?? null };
+  const note = detail === "developer" ? sourceFor(on) : undefined;
+
+  return {
+    ...(found?.label === undefined ? {} : { label: found.label }),
+    ...(note === undefined ? {} : { note }),
+  };
 }
 
 function bandStyle(rect: Rect): Record<string, string> {

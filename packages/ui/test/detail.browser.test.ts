@@ -160,9 +160,37 @@ describe("default detail", () => {
     expect(row.querySelector(".mk-chip-dev")).toBeNull();
     expect(row.querySelector(".mk-path")).toBeNull();
   });
+
+  it("says a row can be clicked, because clicking one opens the comment", async () => {
+    await open();
+
+    expect(getComputedStyle(find(".mk-row")).cursor).toBe("pointer");
+  });
 });
 
 describe("developer detail", () => {
+  /**
+   * A row is the same object in both detentes. A box per fact made a row in
+   * developer detail read as a different component from the row beside it.
+   */
+  it("leaves the row the shape it already was, with the facts as a footnote", async () => {
+    await developer();
+    const fact = find<HTMLElement>(".mk-chip-dev");
+    const style = getComputedStyle(fact);
+
+    expect(style.borderTopWidth).toBe("0px");
+    expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    expect(style.color).toBe(getComputedStyle(find(".mk-row")).getPropertyValue("--mk-faint"));
+  });
+
+  it("keeps a path on one line, however long the selector it recorded is", async () => {
+    await developer();
+    const path = find<HTMLElement>(".mk-path");
+
+    expect(getComputedStyle(path).whiteSpace).toBe("nowrap");
+    expect(getComputedStyle(path).textOverflow).toBe("ellipsis");
+  });
+
   it("puts the rung's number on a chip and its sentence in a tooltip", async () => {
     await developer();
     const chip = all(".mk-chip-dev").find((one) => one.textContent?.includes("%") === true);

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { labelFor } from "../src/anchor/index.js";
+import { labelFor, sourceFor } from "../src/anchor/index.js";
 
 let container: HTMLElement;
 
@@ -63,5 +63,36 @@ describe("naming the thing a comment is on", () => {
     const root = mount(`<section><b>Inner</b></section>`);
     const element = root.querySelector("b");
     expect(labelFor({ element, anchor: { component: "RetentionPanel" } })).toBe("Retention panel");
+  });
+});
+
+/**
+ * The line a reader goes to next. The page wins over the anchor: a redeploy
+ * since the comment was written has moved what the anchor recorded.
+ */
+describe("saying where the thing is written", () => {
+  const HERE = "app/dashboard/page.tsx:42:7";
+  const RECORDED = "app/dashboard/page.tsx:18:3";
+
+  it("reads the attribute the tagger wrote, from the nearest ancestor", () => {
+    const root = mount(`<section data-maple-src="${HERE}"><p><b>Inner</b></p></section>`);
+    expect(sourceFor({ element: root.querySelector("b") })).toBe(HERE);
+  });
+
+  it("prefers where the page says it is now over where the anchor recorded it", () => {
+    const root = mount(`<section data-maple-src="${HERE}"><b>Inner</b></section>`);
+    const element = root.querySelector("b");
+    expect(sourceFor({ element, anchor: { source: RECORDED } })).toBe(HERE);
+  });
+
+  it("falls back to the anchor when the page ran no tagger", () => {
+    const root = mount(`<section><b>Inner</b></section>`);
+    const element = root.querySelector("b");
+    expect(sourceFor({ element, anchor: { source: RECORDED } })).toBe(RECORDED);
+  });
+
+  it("says nothing when neither the page nor the anchor knows", () => {
+    const root = mount(`<section><b>Inner</b></section>`);
+    expect(sourceFor({ element: root.querySelector("b") })).toBeUndefined();
   });
 });

@@ -37,7 +37,11 @@ export function kindOf(anchor: Anchor): PickKind {
   return anchor.quote ? "text" : "element";
 }
 
-/** Everything drawable, in the order it was given, with nothing guessed. */
+/**
+ * Everything drawable, in the order it was given, with nothing guessed. A text
+ * anchor is narrowed to its passage, so the ring a mark draws highlights the
+ * words the comment is on rather than the paragraph they sit in.
+ */
 export function placements(
   comments: readonly Comment[],
   address: ReadonlyMap<string, number>,
@@ -47,7 +51,8 @@ export function placements(
 
   for (const comment of comments) {
     if (comment.status === "orphaned") continue;
-    const found = resolveAnchor(comment.anchor, { root });
+    const passage = kindOf(comment.anchor) === "text";
+    const found = resolveAnchor(comment.anchor, { root, passage });
     if (found.status !== "resolved") continue;
 
     placed.push({

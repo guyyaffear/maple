@@ -8,6 +8,7 @@
  * everything after them arrives together at the cap.
  */
 
+import { SHEET_BREAKPOINT_PX } from "../tokens.js";
 import { STAGGER_ROWS } from "./stagger.js";
 
 /** Every rule the island needs, and nothing another part owns. */
@@ -23,7 +24,25 @@ export function islandCss(): string {
     developer(),
     newComment(),
     keyframes(),
+    sheet(),
   ].join("\n\n");
+}
+
+/**
+ * Under the breakpoint the panel is a sheet off the bottom edge with nowhere
+ * beside it to stand, so the island gives way rather than moving.
+ */
+function sheet(): string {
+  return `
+@media (max-width: ${String(SHEET_BREAKPOINT_PX - 1)}px) {
+  .mk-island[data-mk-inset="true"] {
+    translate: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--mk-dur-composer-open) var(--mk-ease-surface);
+  }
+}
+`.trim();
 }
 
 function shell(): string {
@@ -35,6 +54,7 @@ function shell(): string {
   display: flex;
   align-items: flex-end;
   pointer-events: none;
+  transition: translate var(--mk-dur-composer-open) var(--mk-ease-surface);
 }
 
 .mk-island > * {
@@ -97,7 +117,6 @@ function shell(): string {
   position: absolute;
   right: 0;
   bottom: 0;
-  z-index: 1;
   width: 320px;
   max-width: calc(100vw - 24px);
   max-height: min(78vh, 460px);
@@ -158,10 +177,18 @@ function corners(): string {
   transform-origin: bottom left;
 }
 
+/* A surface beside the panel, never under it: an inventory half-covered by the
+   thing it just opened reads as a stack of two cards. */
+.mk-island[data-mk-inset="true"][data-mk-corner="bottom-right"],
+.mk-island[data-mk-inset="true"][data-mk-corner="top-right"] {
+  translate: calc(-1 * var(--mk-composer-w)) 0;
+}
+
 /* No transition on the offset: the island is under the pointer while it is
    dragged, and a transition would leave it trailing the hand that moved it. */
 .mk-island[data-mk-dragging="true"] {
   transform: translate(var(--mk-x), var(--mk-y));
+  transition: none;
   will-change: transform;
 }
 
@@ -594,6 +621,7 @@ function row(): string {
   display: block;
   padding: 11px 12px;
   border-bottom: 1px solid var(--mk-line);
+  cursor: pointer;
   animation: mk-row-in var(--mk-dur-fade) var(--mk-ease-surface) backwards;
   transition:
     background-color var(--mk-dur-fade) var(--mk-ease-surface),
@@ -856,20 +884,35 @@ function developer(): string {
   display: none;
 }
 
+/* Not a chip: a box per fact made a row in developer detail read as a
+   different component from the same row without it. They are a footnote. */
 .mk-chip-dev {
-  border-style: dashed;
-  border-color: var(--mk-line-firm);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
   background: transparent;
+  color: var(--mk-faint);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-chip-dev svg {
+  opacity: 0.6;
 }
 
 .mk-path {
   display: inline-block;
-  max-width: 124px;
+  max-width: 132px;
   overflow: hidden;
   vertical-align: bottom;
   font-family: var(--mk-mono);
   font-size: 10px;
   font-weight: 500;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 `.trim();

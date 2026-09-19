@@ -180,17 +180,23 @@ describe("clicking a mark", () => {
     expect(find(".mk-row[data-mk-selected='true']")).toBeInstanceOf(HTMLElement);
   });
 
-  /** Otherwise the inventory opens and nothing in it says which row it opened on. */
-  it("marks the row it landed on, apart from the wash a hover gives", async () => {
+  /**
+   * Otherwise the inventory opens and nothing says which row it opened on. The
+   * rail's two pixels are held in nothing, so only their colour changes.
+   */
+  it("paints the rail on the row it landed on, and on no other", async () => {
     await click(1);
     await vi.waitFor(() => expect(root().querySelector(".mk-card")).not.toBeNull());
 
     const rows = [...root().querySelectorAll<HTMLElement>(".mk-row")];
     const landed = find<HTMLElement>(".mk-row[data-mk-selected='true']");
     const rest = rows.filter((row) => row !== landed);
+    const rail = (row: HTMLElement) => getComputedStyle(row).boxShadow;
 
-    expect(getComputedStyle(landed).boxShadow).not.toBe("none");
-    expect(rest.map((row) => getComputedStyle(row).boxShadow)).toEqual(rest.map(() => "none"));
+    expect(rail(landed)).toContain("inset");
+    expect(rail(landed)).not.toContain("rgba(0, 0, 0, 0)");
+    expect(rest.every((row) => rail(row).includes("rgba(0, 0, 0, 0)"))).toBe(true);
+    expect(new Set(rows.map((row) => row.getBoundingClientRect().left)).size).toBe(1);
   });
 
   it("glows in the leaf's own shape rather than behind its box", async () => {
@@ -199,6 +205,25 @@ describe("clicking a mark", () => {
     await vi.waitFor(() => expect(node.getAttribute("aria-pressed")).toBe("true"));
     expect(getComputedStyle(node).boxShadow).toBe("none");
     expect(getComputedStyle(node).filter).toContain("drop-shadow");
+  });
+
+  /**
+   * A mark clicked on the page and a row in the list are the same comment, and
+   * a row nobody can see has not been pointed at.
+   */
+  it("brings the row it stands for into view inside the list", async () => {
+    (await mark(2)).click();
+    await vi.waitFor(() => expect(root().querySelector(".mk-card")).not.toBeNull());
+
+    const row = find<HTMLElement>(".mk-row[data-mk-selected='true']");
+    const list = find<HTMLElement>(".mk-list");
+    const inside = row.getBoundingClientRect();
+    const around = list.getBoundingClientRect();
+
+    await vi.waitFor(() => {
+      expect(inside.top).toBeGreaterThanOrEqual(around.top - 1);
+      expect(inside.bottom).toBeLessThanOrEqual(around.bottom + 1);
+    });
   });
 
   /** Otherwise a reader with the panel up cannot point at anything else. */
@@ -210,6 +235,91 @@ describe("clicking a mark", () => {
 
     await vi.waitFor(() => expect(find(".mk-ring").getAttribute("data-mk-state")).toBe("hovered"));
     expect(find(".mk-ring-name").textContent).toBe("a passage in the gate notice");
+  });
+});
+
+/**
+ * A row pointed at is the same gesture as a mark pointed at, so the mark grows
+ * and comes forward. The glow is the click's: that one outlives the hand.
+ */
+describe("pointing at a row", () => {
+  async function row(): Promise<HTMLElement> {
+    await vi.waitFor(() => expect(find(".mk-pill").textContent).toContain("open"));
+    find<HTMLButtonElement>(".mk-pill").click();
+    await vi.waitFor(() => expect(root().querySelectorAll(".mk-row").length).toBeGreaterThan(0));
+    return find<HTMLElement>(".mk-row");
+  }
+
+  it("grows the mark it stands for, in the shape a click gives without the glow", async () => {
+    const node = await mark(1);
+    const rested = getComputedStyle(node).transform;
+
+    point(await row(), true);
+
+    await vi.waitFor(() => expect(node.getAttribute("data-mk-peeked")).toBe("true"));
+    // The entrance animation still owns opacity for its first half-second.
+    await vi.waitFor(() => expect(getComputedStyle(node).opacity).toBe("1"));
+    expect(getComputedStyle(node).transform).not.toBe(rested);
+    expect(getComputedStyle(node).filter.match(/drop-shadow/g)).toHaveLength(1);
+  });
+
+  it("gives it straight back when the pointer leaves, because a peek sticks to nothing", async () => {
+    const node = await mark(1);
+    const one = await row();
+    point(one, true);
+    await vi.waitFor(() => expect(node.getAttribute("data-mk-peeked")).toBe("true"));
+
+    point(one, false);
+    await vi.waitFor(() => expect(node.getAttribute("data-mk-peeked")).toBe("false"));
+  });
+});
+
+/**
+ * A mark stands outside its anchor's corner, and sometimes that corner is the
+ * one thing worth reading. The offset is held for the session and never sent.
+ */
+describe("moving a mark off what it covers", () => {
+  function at(node: HTMLElement, type: string, x: number, y: number): void {
+    node.dispatchEvent(
+      new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, bubbles: true }),
+    );
+  }
+
+  /** The drag's own coordinates, from wherever the layer put the mark. */
+  function drag(node: HTMLElement, by: { dx: number; dy: number }): void {
+    const from = node.getBoundingClientRect();
+    at(node, "pointerdown", from.x, from.y);
+    at(node, "pointermove", from.x + by.dx, from.y + by.dy);
+    at(node, "pointerup", from.x + by.dx, from.y + by.dy);
+  }
+
+  it("holds a mark where it was dragged to, and says so on the mark", async () => {
+    const node = await mark(1);
+    const before = node.getBoundingClientRect().x;
+
+    drag(node, { dx: 60, dy: 24 });
+
+    await vi.waitFor(() => expect(node.getAttribute("data-mk-nudged")).toBe("true"));
+    await vi.waitFor(() => expect(node.getBoundingClientRect().x).toBeCloseTo(before + 60, 0));
+  });
+
+  /** A mark that opened the panel every time it was moved would be unusable. */
+  it("does not open the comment on the click that ends a drag", async () => {
+    const node = await mark(1);
+    drag(node, { dx: 60, dy: 24 });
+    node.click();
+
+    await vi.waitFor(() => expect(node.getAttribute("data-mk-nudged")).toBe("true"));
+    expect(root().querySelector(".mk-read")).toBeNull();
+  });
+
+  it("leaves a click a click when the pointer barely moved", async () => {
+    const node = await mark(1);
+    drag(node, { dx: 1, dy: 1 });
+    node.click();
+
+    await vi.waitFor(() => expect(root().querySelector(".mk-read")).not.toBeNull());
+    expect(node.getAttribute("data-mk-nudged")).toBe("false");
   });
 });
 

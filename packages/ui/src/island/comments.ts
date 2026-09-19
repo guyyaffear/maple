@@ -10,11 +10,11 @@
 import { resolveAnchor } from "@maple-kit/core/anchor";
 import { matchesFilter } from "@maple-kit/core/client";
 
-import { ORPHAN_ORDER } from "./language.js";
+import { ORPHAN_ORDER } from "../language.js";
 
 import type { Comment } from "@maple-kit/core";
 import type { Anchor, OrphanReason, Resolution } from "@maple-kit/core/anchor";
-import type { CommentFilter, PickKind } from "@maple-kit/core/client";
+import type { CommentFilter } from "@maple-kit/core/client";
 
 /** The count beside one filter's pill. */
 export type FilterCounts = Readonly<Record<CommentFilter, number>>;
@@ -41,14 +41,6 @@ export function countsFor(comments: readonly Comment[], showResolved: boolean): 
     resolved,
     unpinned: count("unpinned"),
   };
-}
-
-/**
- * Which pick a comment was made with. A quote is a passage; a region is not
- * separable from an element on the wire, so it is not guessed at.
- */
-export function kindOf(anchor: Anchor): PickKind {
-  return anchor.quote === undefined ? "element" : "text";
 }
 
 /**

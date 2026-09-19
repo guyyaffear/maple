@@ -22,9 +22,10 @@ const POSITIONED = `
 function paintCss(): string {
   return `
 /* A mark is drawn in its status, not in its author's hue: where a comment is
-   in its life is what a reviewer scans the page for, and the author is on the
-   row. The avatar is the other way round — that one is about who. */
-.mk-mark {
+   in its life is what a reviewer scans the page for, and who wrote it is the
+   name beside it. The row's leaf answers to the same four rules, because a
+   comment drawn two ways in two places is two comments. */
+:is(.mk-mark, .mk-rowleaf) {
   --mk-paint: var(--mk-pin, var(--mk-accent));
   --mk-ink: var(--mk-pin-ink, var(--mk-accent-ink));
 }
@@ -34,22 +35,27 @@ function paintCss(): string {
   --mk-ink: var(--mk-pin-ink, var(--mk-slot-ink, var(--mk-accent-ink)));
 }
 
-.mk-mark[data-status="needs_reverify"] {
+:is(.mk-mark, .mk-rowleaf)[data-status="needs_reverify"] {
   --mk-paint: var(--mk-pin, var(--mk-warn));
   --mk-ink: var(--mk-pin-ink, var(--mk-warn-sub));
 }
 
-.mk-mark[data-status="resolved"] {
+:is(.mk-mark, .mk-rowleaf)[data-status="resolved"] {
   --mk-paint: var(--mk-pin, var(--mk-ok));
   --mk-ink: var(--mk-pin-ink, var(--mk-bg));
-  opacity: 0.6;
+}
+
+/* Held back, not faded out: at 0.6 a resolved mark read as one that had
+   failed to load, and a reviewer re-checking it has to be able to see it. */
+.mk-mark[data-status="resolved"] {
+  opacity: 0.85;
 }
 
 /* Unpinned never reached the page and unsent never left it, so neither takes
    a status colour: grey is what separates them from an open comment, which
    is drawn in the same outline. */
-.mk-mark[data-status="orphaned"],
-.mk-mark[data-sent="false"] {
+:is(.mk-mark, .mk-rowleaf)[data-status="orphaned"],
+:is(.mk-mark, .mk-rowleaf)[data-sent="false"] {
   --mk-paint: var(--mk-pin, var(--mk-muted));
   --mk-ink: var(--mk-pin-ink, var(--mk-muted));
 }
@@ -82,12 +88,15 @@ function leafCss(): string {
   stroke-linejoin: round;
 }
 
-/* A full stroke, not a dashed one: at 34px a dash reads as a broken shape
-   rather than an empty one, and the number inside it loses its edge. */
+/* The ring is a filled shape carrying its own counter, so it keeps one weight
+   at every size and recolours with one declaration. A dashed stroke was tried
+   and reads as a broken leaf rather than an empty one, which is a different
+   sentence about the comment. The stroke on top of the fill is what gives it
+   weight: the drawn path alone is a hairline beside the solid form. */
 .mk-leaf-edge {
-  fill: none;
+  fill: var(--mk-paint);
   stroke: var(--mk-paint);
-  stroke-width: 2.6;
+  stroke-width: 1.6;
   stroke-linejoin: round;
 }
 `;
@@ -126,15 +135,32 @@ function markCss(): string {
     opacity var(--mk-dur-fade) var(--mk-ease-surface);
 }
 
+/* A row pointed at is the same gesture as a mark pointed at, so it gets the
+   same answer: the mark grows and comes forward. The glow below is the click's
+   alone — that one outlives the hand, and this does not. */
 .mk-mark:hover,
 .mk-mark:focus-visible,
+.mk-mark[data-mk-peeked="true"],
 .mk-mark[aria-pressed="true"] {
   transform: scale(var(--mk-mark-up));
+  opacity: 1;
   z-index: 3;
 }
 
 .mk-mark:active {
   transform: scale(calc(var(--mk-mark-up) * var(--mk-press)));
+}
+
+/* Moved out of the way of what it was covering. The cursor says so before the
+   drag starts, because nothing else on the page suggests a mark can move. */
+.mk-mark[data-mk-nudged="true"] {
+  cursor: grab;
+}
+
+.mk-mark[data-mk-dragging="true"] {
+  cursor: grabbing;
+  transition: none;
+  z-index: 4;
 }
 
 /* A box-shadow on the 38px button draws a rounded square behind a leaf, which
@@ -150,25 +176,53 @@ function markCss(): string {
   stroke-width: 10;
 }
 
+/* The leaf's mass sits below its middle — the stem is the long end — so a
+   box-centred number reads high inside it. 1px down is where it looks centred,
+   which is 2px from where the box says it is. */
 .mk-mark-n {
+  --mk-n: 11px;
   position: relative;
-  font-size: 11px;
+  font-size: var(--mk-n);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
   color: var(--mk-ink);
-  transform: translateY(-1px);
+  transform: translateY(1px);
 }
 
-.mk-mark[data-form="outline"] .mk-mark-n {
+/* Two digits are twice the width in the same waist. The leaf does not grow —
+   a mark that changed size at the tenth comment would be a different object —
+   so the number gives way instead. */
+.mk-mark-n[data-mk-digits="2"] {
+  font-size: calc(var(--mk-n) * 0.9);
+  letter-spacing: -0.05em;
+}
+
+.mk-mark-n[data-mk-digits="3"] {
+  font-size: calc(var(--mk-n) * 0.78);
+  letter-spacing: -0.06em;
+}
+
+:is(.mk-mark, .mk-rowleaf)[data-form="outline"] .mk-mark-n {
   color: var(--mk-paint);
 }
 
+/* A half-filled leaf puts the waterline through the number, so the glyph is
+   two colours at once and legible in neither. Stroking it in the paint, under
+   the fill, sits it on its own colour wherever the waterline happens to fall. */
+:is(.mk-mark, .mk-rowleaf)[data-form="partial"] .mk-mark-n {
+  paint-order: stroke fill;
+  -webkit-text-stroke: 2.5px var(--mk-paint);
+}
+
+/* A weak anchor thins the fill and leaves the ring at full strength: how sure
+   the anchor is and how far through its life the comment is are two signals,
+   and one washing out the other is how they stop being two. */
 .mk-mark[data-confidence="weak"] .mk-leaf-body {
   fill-opacity: 0.42;
 }
 
-.mk-mark[data-confidence="weak"] .mk-leaf-ring {
+.mk-mark[data-confidence="weak"] .mk-leaf-edge {
   fill-opacity: 1;
 }
 
@@ -210,6 +264,17 @@ function ringCss(): string {
 .mk-ring[data-mk-passage="true"] {
   box-shadow: none;
 }
+
+/* A region is an area, not a thing: it is filled as well as outlined, in the
+   picker's own band, so what a reviewer drew is what they get back. It has no
+   outer halo — the halo reads as a margin around an element, and there is no
+   element here to have one. */
+.mk-ring[data-mk-region="true"] {
+  border-radius: var(--mk-r-xs);
+  background: color-mix(in oklab, var(--mk-accent) 18%, transparent);
+  box-shadow: 0 0 0 2px var(--mk-accent);
+}
+
 
 /* Anchored to the ring's edge rather than offset by a number: the label is two
    lines in developer detail and one line the rest of the time. */
@@ -292,7 +357,7 @@ function avatarCss(): string {
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--mk-ink);
-  transform: translateY(-0.5px);
+  transform: translateY(0.5px);
 }
 
 .mk-avatar[data-provenance="client"] .mk-leaf-body {
@@ -302,11 +367,6 @@ function avatarCss(): string {
 
 .mk-avatar[data-provenance="client"] .mk-avatar-ini {
   color: var(--mk-fg);
-}
-
-.mk-avatar[data-provenance="guest"] .mk-leaf-dashed {
-  stroke-width: 3.5;
-  stroke-dasharray: 7 5;
 }
 
 .mk-avatar[data-provenance="guest"] .mk-avatar-ini {

@@ -7,6 +7,7 @@
  * sentence wrapping over three lines is shown as the three lines it is.
  */
 
+import { regionBox } from "@maple-kit/core/anchor";
 import { createElement, forwardRef, useCallback, useRef, useState } from "react";
 
 import { useMapleUi } from "../context.js";
@@ -16,6 +17,7 @@ import { culled, ringBox, runBox } from "./geometry.js";
 import { flag, MOVING_ATTRIBUTE, OFF_ATTRIBUTE, place } from "./paint.js";
 
 import type { Box } from "./geometry.js";
+import type { AnchorRegion } from "@maple-kit/core/anchor";
 import type { ReactElement } from "react";
 
 /** Set on the label when the anchor is too near the top to sit above it. */
@@ -39,6 +41,11 @@ export type RingState = "composing" | "hovered" | "selected";
 export interface TargetRingProps {
   /** The anchored element, or the passage itself when it is a text anchor. */
   readonly target?: Element | Range | null;
+  /**
+   * The rectangle a region pick drew, in fractions of the target's box. The
+   * ring is that rectangle rather than the element it was measured in.
+   */
+  readonly region?: AnchorRegion;
   /** The label's words. `ringLabel` builds them; the ring never invents them. */
   readonly label?: string;
   /** A second line under the label. Developer detail: where this is written. */
@@ -60,7 +67,7 @@ function empty(rect: Box): boolean {
 /** The ring around one target, repositioned per scrolled frame. */
 export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, TargetRingProps>(
   function MapleTargetRing(props, ref) {
-    const { className, label, note, state = "composing", target } = props;
+    const { className, label, note, region, state = "composing", target } = props;
     const room = note === undefined ? LABEL_ROOM_PX : NOTE_ROOM_PX;
     const { container } = useMapleUi(PART);
 
@@ -74,7 +81,8 @@ export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, Targe
         const node = ring.current;
         if (!node || !target) return;
 
-        const rect = target.getBoundingClientRect();
+        const box = target.getBoundingClientRect();
+        const rect = region === undefined ? box : regionBox(box, region);
         const away = empty(rect) || culled(rect, viewportHeight(container));
         flag(node, OFF_ATTRIBUTE, away);
         flag(node, MOVING_ATTRIBUTE, moving);
@@ -83,14 +91,14 @@ export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, Targe
         place(node, ringBox(rect));
         if (cap.current) flag(cap.current, BELOW_ATTRIBUTE, rect.y < room);
 
-        const boxes = linesOf(target);
+        const boxes = region === undefined ? linesOf(target) : [];
         if (boxes.length !== lines) setLines(boxes.length);
         boxes.forEach((box, index) => {
           const run = runs.current[index];
           if (run) place(run, runBox(box, rect));
         });
       },
-      [container, lines, room, target],
+      [container, lines, region, room, target],
     );
 
     useFrameLoop(PART, paint);
@@ -101,7 +109,8 @@ export const MapleTargetRing = /** @__PURE__ */ forwardRef<HTMLDivElement, Targe
       {
         className: className ? `mk-ring ${className}` : "mk-ring",
         "data-mk-state": state,
-        "data-mk-passage": String("startContainer" in target),
+        "data-mk-passage": String(region === undefined && "startContainer" in target),
+        "data-mk-region": String(region !== undefined),
         ref: composeRefs<HTMLDivElement>(ref, (node) => {
           ring.current = node;
         }),

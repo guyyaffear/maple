@@ -50,6 +50,30 @@ export function dataAttributes(state: PartState): PartAttributes {
 }
 
 /**
+ * What a pointer is doing to a part, rather than what its comment is.
+ *
+ * These are the overlay's own, so they carry the `mk` prefix the wire states
+ * do not: nothing here is recorded, sent, or true of the comment — a mark is
+ * peeked because a row is hovered, and nudged because someone moved it.
+ */
+export interface PointerState {
+  /** A row or the mark itself is under a pointer. Sticks to nothing. */
+  readonly peeked?: boolean;
+  /** Moved off what it was covering, and holding where it was put. */
+  readonly nudged?: boolean;
+  readonly dragging?: boolean;
+}
+
+/** The three attributes, ready to spread. Absent state produces no attribute. */
+export function pointerAttributes(state: PointerState): PartAttributes {
+  const attributes: Record<string, string> = {};
+  if (state.peeked !== undefined) attributes["data-mk-peeked"] = String(state.peeked);
+  if (state.nudged !== undefined) attributes["data-mk-nudged"] = String(state.nudged);
+  if (state.dragging !== undefined) attributes["data-mk-dragging"] = String(state.dragging);
+  return attributes;
+}
+
+/**
  * Fill, edge and colour never compete: this decides fill alone. An unsent
  * comment is an outline and so is an unpinned one, which never reached the
  * page; their colour is what separates them from an open comment.

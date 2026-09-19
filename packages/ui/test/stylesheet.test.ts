@@ -165,3 +165,52 @@ describe("the overlay brings its own everything", () => {
     expect(classes.filter((name) => !name.startsWith("mk-"))).toEqual([]);
   });
 });
+
+/** `oklch(L C H)`, which is the only colour form the token table uses. */
+function lightnessOf(value: string): number {
+  const found = /^oklch\(([\d.]+)/.exec(value.trim());
+  if (!found) throw new Error(`not an oklch colour: ${value}`);
+  return Number(found[1]);
+}
+
+/**
+ * A ring nobody can find is not a ring. At #283618 and #606c38 the light accent
+ * read as black on white and the dark one barely cleared the overlay's panel.
+ */
+describe("what the accent has to clear", () => {
+  const GAP = 0.25;
+
+  it.each([
+    ["light", "light" as const, "--mk-bg"],
+    ["dark", "dark" as const, "--mk-bg"],
+  ])("stands off the overlay's own background in %s", (_scheme, scheme, background) => {
+    const accent = lightnessOf(COLOR_TOKENS["--mk-accent"]![scheme]);
+    const behind = lightnessOf(COLOR_TOKENS[background]![scheme]);
+
+    expect(Math.abs(accent - behind)).toBeGreaterThan(GAP);
+  });
+
+  it.each([
+    ["light", "light" as const],
+    ["dark", "dark" as const],
+  ])("keeps its ink on the other side of it in %s", (_scheme, scheme) => {
+    const accent = lightnessOf(COLOR_TOKENS["--mk-accent"]![scheme]);
+    const ink = lightnessOf(COLOR_TOKENS["--mk-accent-ink"]![scheme]);
+
+    expect(Math.abs(accent - ink)).toBeGreaterThan(GAP * 2);
+  });
+
+  /**
+   * The warm colour is what Maple noticed, not what went wrong. At hue 29 it
+   * read as an error message, which is the one thing it must never say.
+   */
+  it.each([
+    ["light", "light" as const],
+    ["dark", "dark" as const],
+  ])("keeps the maple colour out of the reds in %s", (_scheme, scheme) => {
+    const hue = COLOR_TOKENS["--mk-maple"]![scheme].trim().split(" ").at(-1)?.replace(")", "");
+
+    expect(Number(hue)).toBeGreaterThanOrEqual(45);
+    expect(Number(hue)).toBeLessThanOrEqual(90);
+  });
+});

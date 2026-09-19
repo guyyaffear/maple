@@ -15,6 +15,7 @@ import {
   MapleBody,
   MapleComposer,
   MapleContextBadge,
+  MapleDetail,
   MapleTarget,
 } from "./composer/index.js";
 import {
@@ -36,7 +37,7 @@ import { MapleMarkLayer } from "./marks/index.js";
 import { MaplePicker } from "./picker/index.js";
 import { MapleRoot } from "./root.js";
 
-import type { LeaveAsk } from "./composer/index.js";
+import type { LeaveAsk, MapleAttachmentsProps } from "./composer/index.js";
 import type { MapleRootProps } from "./root.js";
 import type { Comment } from "@maple-kit/core";
 import type { ReactElement } from "react";
@@ -49,6 +50,11 @@ export interface MapleProps extends MapleRootProps {
   readonly hint?: boolean;
   /** Asked before a link takes the page away from an unsent comment. */
   readonly leave?: LeaveAsk;
+  /**
+   * Where images go and are read back from. Seams, not options: core has no
+   * blob route, and without `resolve` a kept shot is a sentence about one.
+   */
+  readonly attachments?: Pick<MapleAttachmentsProps, "resolve" | "upload">;
 }
 
 /**
@@ -57,7 +63,7 @@ export interface MapleProps extends MapleRootProps {
  */
 export const Maple = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleProps>(
   function Maple(props, ref) {
-    const { children, defaultOpen, hint, leave, ...root } = props;
+    const { attachments, children, defaultOpen, hint, leave, ...root } = props;
 
     return createElement(
       MapleRoot,
@@ -65,7 +71,7 @@ export const Maple = /** @__PURE__ */ forwardRef<HTMLDivElement, MapleProps>(
       createElement(MapleMarkLayer, { key: "marks" }),
       createElement(MaplePicker, { key: "picker", ...(hint === undefined ? {} : { hint }) }),
       inventory(root.branch, defaultOpen === true),
-      composer(leave),
+      composer(leave, attachments),
       children,
     );
   },
@@ -99,14 +105,15 @@ function inventory(branch: string, defaultOpen: boolean): ReactElement {
 }
 
 /** The panel, in the order a comment is written: what, then words, then send. */
-function composer(leave: LeaveAsk | undefined): ReactElement {
+function composer(leave: LeaveAsk | undefined, shots: MapleProps["attachments"]): ReactElement {
   return createElement(
     MapleComposer,
     { key: "composer", ...(leave === undefined ? {} : { leave }) },
     createElement(MapleTarget, { key: "target" }),
     createElement(MapleBody, { key: "body" }),
+    createElement(MapleDetail, { key: "detail" }),
     createElement(MapleContextBadge, { key: "context" }),
-    createElement(MapleAttachments, { key: "attachments" }),
+    createElement(MapleAttachments, { key: "attachments", ...shots }),
     createElement(MapleActions, { key: "actions" }),
   );
 }

@@ -123,6 +123,20 @@ describe("the emoji control", () => {
     expect(box.left).toBeGreaterThan(area.left + area.width / 2);
   });
 
+  /**
+   * The character it started as was an outlined `☺` at 14px, which reads as a
+   * smudge beside the text it sits in and disappears against the field.
+   */
+  it("draws a filled face rather than an outlined character", async () => {
+    await open();
+    const icon = find<SVGSVGElement>(".mk-emoji-open svg");
+
+    expect(icon.getAttribute("fill")).toBe("currentColor");
+    expect(icon.getAttribute("stroke")).toBe("none");
+    expect(Number(icon.getAttribute("width"))).toBeGreaterThan(14);
+    expect(find<HTMLElement>(".mk-emoji-open").textContent).toBe("");
+  });
+
   it("writes a glyph into the draft when one is chosen", async () => {
     await open();
     type("ship it");

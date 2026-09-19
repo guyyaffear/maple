@@ -7,11 +7,10 @@
  * island's Unpinned filter, which is why that filter exists.
  */
 
-import { resolveAnchor } from "@maple-kit/core/anchor";
+import { kindOf, resolveAnchor } from "@maple-kit/core/anchor";
 
 import type { Comment } from "@maple-kit/core";
-import type { Anchor } from "@maple-kit/core/anchor";
-import type { PickKind } from "@maple-kit/core/client";
+import type { AnchorRegion } from "@maple-kit/core/anchor";
 
 /** A comment the page still has somewhere to put. */
 export interface Placement {
@@ -21,20 +20,14 @@ export interface Placement {
   readonly element: Element;
   /** The passage itself, when a text rung placed it. */
   readonly range?: Range;
+  /** The rectangle, when the comment is on a region rather than an element. */
+  readonly region?: AnchorRegion;
   readonly confidence: number;
 }
 
 /** The address of every comment, which the list and the export share. */
 export function addresses(comments: readonly Comment[]): ReadonlyMap<string, number> {
   return new Map(comments.map((comment, index) => [comment.id, index + 1]));
-}
-
-/**
- * A stored comment does not keep which of the three picks made it, so the
- * anchor answers: a quote is a passage, anything else is its element.
- */
-export function kindOf(anchor: Anchor): PickKind {
-  return anchor.quote ? "text" : "element";
 }
 
 /**
@@ -60,6 +53,7 @@ export function placements(
       address: address.get(comment.id) ?? 0,
       element: found.element,
       ...(found.range === undefined ? {} : { range: found.range }),
+      ...(comment.anchor.region === undefined ? {} : { region: comment.anchor.region }),
       confidence: found.confidence,
     });
   }

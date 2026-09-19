@@ -27,9 +27,13 @@ export const COLOR_TOKENS: Readonly<Record<string, ThemedToken>> = {
   "--mk-faint": { light: "oklch(0.66 0.012 265)", dark: "oklch(0.665 0.012 265)" },
   "--mk-line": { light: "oklch(0.915 0.005 265)", dark: "oklch(0.365 0.012 265)" },
   "--mk-line-firm": { light: "oklch(0.86 0.007 265)", dark: "oklch(0.47 0.015 265)" },
-  "--mk-accent": { light: "oklch(0.52 0.115 152)", dark: "oklch(0.78 0.145 152)" },
-  "--mk-accent-ink": { light: "oklch(0.99 0.01 152)", dark: "oklch(0.16 0.04 152)" },
-  "--mk-accent-sub": { light: "oklch(0.955 0.025 152)", dark: "oklch(0.32 0.055 152)" },
+  // The olive, lifted off both ends of #283618 / #606c38: at the hexes
+  // themselves the light one read as black on white and the dark one carried
+  // 2.2:1 against the overlay's own background, which is a ring nobody can
+  // find. Same hue and chroma, moved until each clears 7:1 on its scheme.
+  "--mk-accent": { light: "oklch(0.44 0.075 128)", dark: "oklch(0.76 0.1 122)" },
+  "--mk-accent-ink": { light: "oklch(0.981 0.034 100)", dark: "oklch(0.22 0.040 128)" },
+  "--mk-accent-sub": { light: "oklch(0.958 0.028 122)", dark: "oklch(0.30 0.040 124)" },
   "--mk-ok": { light: "oklch(0.52 0.11 155)", dark: "oklch(0.74 0.12 155)" },
   "--mk-ok-sub": { light: "oklch(0.955 0.03 155)", dark: "oklch(0.29 0.05 155)" },
   "--mk-warn": { light: "oklch(0.60 0.13 82)", dark: "oklch(0.82 0.13 82)" },
@@ -38,6 +42,11 @@ export const COLOR_TOKENS: Readonly<Record<string, ThemedToken>> = {
   "--mk-lost-sub": { light: "oklch(0.958 0.028 305)", dark: "oklch(0.29 0.05 305)" },
   "--mk-info": { light: "oklch(0.53 0.12 248)", dark: "oklch(0.74 0.12 248)" },
   "--mk-info-sub": { light: "oklch(0.958 0.032 248)", dark: "oklch(0.28 0.05 248)" },
+  // What Maple noticed, not what a reviewer said. Around #bc6c25 in both
+  // schemes: at the brick #772e25 the light one read as an error message, and
+  // nothing is wrong when this shows. Never a fill, for the same reason.
+  "--mk-maple": { light: "oklch(0.56 0.12 60)", dark: "oklch(0.72 0.125 62)" },
+  "--mk-maple-sub": { light: "oklch(0.965 0.030 62)", dark: "oklch(0.30 0.050 58)" },
   // A screenshot's outline is pure black or pure white at 10%, chosen by the
   // overlay's scheme. A tinted neutral reads as a border on one of the two.
   "--mk-shot-edge": { light: "oklch(0 0 0 / 0.1)", dark: "oklch(1 0 0 / 0.1)" },

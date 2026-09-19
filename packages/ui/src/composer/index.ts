@@ -25,6 +25,8 @@ export {
   MapleComposer as Composer,
 } from "./composer.js";
 export type { MapleComposerProps } from "./composer.js";
+export { detailRows, MapleDetail, MapleDetail as Detail } from "./detail.js";
+export type { MapleDetailProps } from "./detail.js";
 export {
   appended,
   REVIEW_EMOJI,
@@ -49,7 +51,13 @@ export {
   targetPhrase,
   UNNAMED_TARGET,
 } from "./phrase.js";
-export { EMOJI_COPY, EmojiGrid, MapleEmoji, MapleEmoji as Emoji } from "./picker-emoji.js";
+export {
+  EMOJI_COPY,
+  EMOJI_ICON_PX,
+  EmojiGrid,
+  MapleEmoji,
+  MapleEmoji as Emoji,
+} from "./picker-emoji.js";
 export type { EmojiGridProps, MapleEmojiProps } from "./picker-emoji.js";
 export { ComposerScopeError } from "./scope.js";
 export type { SheetDetent } from "./scope.js";

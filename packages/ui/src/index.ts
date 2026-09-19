@@ -11,15 +11,27 @@
 
 export { MapleUiContextError, useMapleUi } from "./context.js";
 export type { MapleUiContextValue } from "./context.js";
-export { confidenceFor, dataAttributes, formFor } from "./data.js";
+export { confidenceFor, dataAttributes, formFor, pointerAttributes } from "./data.js";
 export type {
   PartAttributes,
   PartConfidence,
   PartForm,
   PartProvenance,
   PartState,
+  PointerState,
 } from "./data.js";
-export { STATUS_LABELS } from "./language.js";
+export {
+  DETAIL_COPY,
+  ORPHAN_LABELS,
+  ORPHAN_ORDER,
+  ORPHAN_SENTENCES,
+  orphanTitle,
+  PROVENANCE_SENTENCES,
+  RUNG_LABELS,
+  rungLabel,
+  STATUS_LABELS,
+  STATUS_SENTENCES,
+} from "./language.js";
 export { MapleRoot, MapleRoot as Root } from "./root.js";
 export type { MapleRootProps, ThemePreference } from "./root.js";
 export { AsChildError, composeRefs, mergeProps, Slot } from "./slot.js";

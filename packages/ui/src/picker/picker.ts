@@ -17,6 +17,7 @@ import { createElement, Fragment, useCallback, useEffect, useRef, useState } fro
 
 import { useMapleUi } from "../context.js";
 import { PICK_ORDER } from "../island/language.js";
+import { ringLabel } from "../marks/label.js";
 import { MapleTargetRing } from "../marks/ring.js";
 import { useShots } from "../shots.js";
 import { PICK_HINTS, PICKER_COPY, pickerLabel } from "./language.js";
@@ -218,9 +219,17 @@ function named(
   const found = targetFor(pick, { root: container.ownerDocument });
   const on = { ...(found ? { anchor: found.anchor } : {}), element: elementOf(pick) ?? null };
   const note = detail === "developer" ? sourceFor(on) : undefined;
+  const label =
+    found === undefined
+      ? undefined
+      : ringLabel({
+          kind: pick.kind,
+          element: on.element,
+          ...(found.label === undefined ? {} : { named: found.label }),
+        });
 
   return {
-    ...(found?.label === undefined ? {} : { label: found.label }),
+    ...(label === undefined ? {} : { label }),
     ...(note === undefined ? {} : { note }),
   };
 }

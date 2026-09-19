@@ -4,7 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { MapleRoot } from "../src/index.js";
-import { MapleAvatar, MapleMark, MapleMarkLayer, MapleTargetRing } from "../src/marks/index.js";
+import {
+  LEAF_OUTLINE,
+  MapleAvatar,
+  MapleMark,
+  MapleMarkLayer,
+  MapleTargetRing,
+} from "../src/marks/index.js";
 import { offlineFetch } from "./offline.js";
 
 import type { MarkLayerProps, MarkProps, TargetRingProps } from "../src/marks/index.js";
@@ -141,9 +147,10 @@ describe("the three forms", () => {
 
     expect(node.getAttribute("data-form")).toBe("outline");
     expect(node.querySelector("clipPath")).toBeNull();
-    expect(getComputedStyle(edge).fill).toBe("none");
+    expect(edge.getAttribute("d")).toBe(LEAF_OUTLINE);
+    expect(getComputedStyle(edge).fill).toBe(token("--mk-accent"));
     expect(getComputedStyle(edge).stroke).toBe(token("--mk-accent"));
-    expect(getComputedStyle(edge).strokeDasharray).toBe("none");
+    expect(Number.parseFloat(getComputedStyle(edge).strokeWidth)).toBeGreaterThan(1);
   });
 
   it("half fills one that needs re-verifying, in amber", async () => {
@@ -151,8 +158,8 @@ describe("the three forms", () => {
 
     expect(node.getAttribute("data-form")).toBe("partial");
     expect(node.querySelector("clipPath rect")).not.toBeNull();
-    expect(node.querySelectorAll(".mk-leaf-body")).toHaveLength(2);
-    expect(getComputedStyle(node.querySelector(".mk-leaf-edge")!).stroke).toBe(token("--mk-warn"));
+    expect(node.querySelectorAll(".mk-leaf-body")).toHaveLength(1);
+    expect(getComputedStyle(node.querySelector(".mk-leaf-edge")!).fill).toBe(token("--mk-warn"));
   });
 
   it("fills a resolved one whole, in green, and holds it back", async () => {
@@ -163,7 +170,7 @@ describe("the three forms", () => {
     expect(node.querySelector("clipPath")).toBeNull();
     expect(node.querySelector(".mk-leaf-edge")).toBeNull();
     expect(getComputedStyle(body).fill).toBe(token("--mk-ok"));
-    await vi.waitFor(() => expect(getComputedStyle(node).opacity).toBe("0.6"));
+    await vi.waitFor(() => expect(getComputedStyle(node).opacity).toBe("0.85"));
   });
 
   it("outlines one that has not been sent, in grey rather than a status", async () => {
@@ -172,8 +179,8 @@ describe("the three forms", () => {
 
     expect(node.getAttribute("data-form")).toBe("outline");
     expect(node.getAttribute("data-sent")).toBe("false");
-    expect(getComputedStyle(edge).fill).toBe("none");
     expect(getComputedStyle(edge).strokeDasharray).toBe("none");
+    expect(getComputedStyle(edge).fill).toBe(token("--mk-muted"));
     expect(getComputedStyle(edge).stroke).toBe(token("--mk-muted"));
   });
 
@@ -181,7 +188,49 @@ describe("the three forms", () => {
     const node = await mark({ status: "orphaned" });
 
     expect(node.getAttribute("data-form")).toBe("outline");
-    expect(getComputedStyle(node.querySelector(".mk-leaf-edge")!).stroke).toBe(token("--mk-muted"));
+    expect(getComputedStyle(node.querySelector(".mk-leaf-edge")!).fill).toBe(token("--mk-muted"));
+  });
+
+  /**
+   * The leaf's mass is below its middle, so a box-centred number reads high
+   * inside it.
+   */
+  it("sets the number below the box's middle, where the leaf's middle is", async () => {
+    const node = await mark({ address: 1 });
+    const number = node.querySelector<HTMLElement>(".mk-mark-n")!;
+    const shift = new DOMMatrix(getComputedStyle(number).transform).m42;
+
+    expect(shift).toBeGreaterThan(0);
+  });
+
+  it("counts a number's digits onto it, so the rules have something to key off", async () => {
+    const node = await mark({ address: 128 });
+
+    expect(node.querySelector(".mk-mark-n")!.getAttribute("data-mk-digits")).toBe("3");
+  });
+
+  /** A mark that changed size at the tenth comment would be a second object. */
+  it("shrinks the number rather than the leaf once it runs to two digits", async () => {
+    await render(
+      mounted(
+        createElement(
+          "div",
+          null,
+          createElement(MapleMark, { key: "a", address: 7 }),
+          createElement(MapleMark, { key: "b", address: 12 }),
+          createElement(MapleMark, { key: "c", address: 128 }),
+        ),
+      ),
+    );
+    await vi.waitFor(() => expect(root().querySelectorAll(".mk-mark")).toHaveLength(3));
+
+    const marks = [...root().querySelectorAll<HTMLElement>(".mk-mark")];
+    const size = (node: HTMLElement) =>
+      Number.parseFloat(getComputedStyle(node.querySelector(".mk-mark-n")!).fontSize);
+
+    expect(size(marks[0]!)).toBeGreaterThan(size(marks[1]!));
+    expect(size(marks[1]!)).toBeGreaterThan(size(marks[2]!));
+    expect(new Set(marks.map((one) => one.getBoundingClientRect().width)).size).toBe(1);
   });
 
   it("thins the fill of a weak anchor and leaves its edge solid", async () => {
@@ -189,7 +238,7 @@ describe("the three forms", () => {
 
     expect(node.getAttribute("data-confidence")).toBe("weak");
     expect(getComputedStyle(node.querySelector(".mk-leaf-body")!).fillOpacity).toBe("0.42");
-    expect(getComputedStyle(node.querySelector(".mk-leaf-edge")!).strokeOpacity).toBe("1");
+    expect(getComputedStyle(node.querySelector(".mk-leaf-edge")!).fillOpacity).toBe("1");
   });
 
   it("carries the address, the name and the status without opening anything", async () => {
@@ -316,6 +365,44 @@ describe("the ring", () => {
     window.scrollTo(0, window.innerHeight + 200);
     await vi.waitFor(() => expect(node.hasAttribute("data-mk-off")).toBe(true));
     expect(getComputedStyle(node).visibility).toBe("hidden");
+  });
+
+  /**
+   * The rectangle is the comment. Ringing the element it was measured in said
+   * "the metric row" about a comment pointing at the gap between two cards.
+   */
+  it("draws the rectangle a region recorded, not the box it was measured in", async () => {
+    const target = fixture("split", { x: 100, y: 200, w: 400, h: 200 });
+    const node = await around({
+      target,
+      region: { x: 0.25, y: 0.5, width: 0.5, height: 0.25 },
+      label: "an area of the split",
+    });
+
+    expect(node.getAttribute("data-mk-region")).toBe("true");
+    expect(node.style.getPropertyValue("--mk-x")).toBe("197px");
+    expect(node.style.getPropertyValue("--mk-y")).toBe("297px");
+    expect(node.style.getPropertyValue("--mk-w")).toBe("206px");
+    expect(node.style.getPropertyValue("--mk-h")).toBe("56px");
+  });
+
+  it("fills a region as well as outlining it, because an area is not a thing", async () => {
+    const target = fixture("split", { x: 100, y: 200, w: 400, h: 200 });
+    const node = await around({ target, region: { x: 0, y: 0, width: 1, height: 1 } });
+    const plain = getComputedStyle(node).backgroundColor;
+
+    expect(plain).not.toBe("rgba(0, 0, 0, 0)");
+    expect(root().querySelectorAll(".mk-ring-run")).toHaveLength(0);
+  });
+
+  it("moves a region with its container rather than holding a pixel offset", async () => {
+    const target = fixture("split", { x: 100, y: 200, w: 400, h: 200 });
+    const node = await around({ target, region: { x: 0.5, y: 0, width: 0.5, height: 1 } });
+    expect(node.style.getPropertyValue("--mk-x")).toBe("297px");
+
+    target.style.left = "200px";
+    window.dispatchEvent(new Event("resize"));
+    await vi.waitFor(() => expect(node.style.getPropertyValue("--mk-x")).toBe("397px"));
   });
 
   it("draws one rectangle per line of a passage", async () => {

@@ -22,11 +22,16 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "ref"> {
 /** What `createIcon` returns: a forwarding component, ref and className included. */
 export type IconComponent = ForwardRefExoticComponent<IconProps & RefAttributes<SVGSVGElement>>;
 
-/** The path, and the two things that vary between the eight. */
+/** The path, and the three things that vary between them. */
 export interface IconSpec {
   readonly d: string;
   readonly strokeWidth?: number;
   readonly dashArray?: string;
+  /**
+   * Filled rather than stroked: a stroked glyph at 14px is three hairlines with
+   * gaps between them, and reads as an outline of nothing in particular.
+   */
+  readonly filled?: boolean;
 }
 
 /** Builds one icon. Called once per module, so a bundler can drop the unused. */
@@ -44,8 +49,8 @@ export function createIcon(spec: IconSpec): IconComponent {
         width: size,
         height: size,
         viewBox: "0 0 16 16",
-        fill: "none",
-        stroke: "currentColor",
+        fill: spec.filled === true ? "currentColor" : "none",
+        stroke: spec.filled === true ? "none" : "currentColor",
         strokeWidth: spec.strokeWidth ?? 1.4,
         strokeLinecap: "round",
         strokeLinejoin: "round",

@@ -8,6 +8,7 @@
 
 import { createElement, forwardRef } from "react";
 
+import { SmileyIcon } from "../icons/smiley.js";
 import { Slot } from "../slot.js";
 import { REVIEW_EMOJI } from "./emoji.js";
 
@@ -25,6 +26,9 @@ export interface MapleEmojiProps extends AsChildProps {
   /** Replaces the default set, in the order they are shown. */
   readonly emoji?: readonly EmojiChoice[];
 }
+
+/** Bigger than the 13px the icons default to: it is a control, not a footnote. */
+export const EMOJI_ICON_PX = 16;
 
 /** Every word this part shows. */
 export const EMOJI_COPY = {
@@ -50,7 +54,7 @@ export const MapleEmoji = /** @__PURE__ */ forwardRef<HTMLButtonElement, MapleEm
         title: `${EMOJI_COPY.open} — ${EMOJI_COPY.hint}`,
         onClick: () => props.onToggle?.(!open),
       },
-      "☺",
+      createElement(SmileyIcon, { size: EMOJI_ICON_PX }),
     );
 
     const grid = createElement(EmojiGrid, {

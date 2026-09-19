@@ -619,27 +619,29 @@ function row(): string {
   );
 
   return `
+/* The rail's two pixels are held from the start, in nothing. A row that gained
+   them on hover moved every word in it sideways, which reads as the list
+   redrawing rather than as the row answering. */
 .mk-row {
   display: block;
-  padding: 11px 12px;
+  padding: 11px 12px 11px 14px;
   border-bottom: 1px solid var(--mk-line);
+  box-shadow: inset 2px 0 0 transparent;
   cursor: pointer;
   animation: mk-row-in var(--mk-dur-fade) var(--mk-ease-surface) backwards;
   transition:
     background-color var(--mk-dur-fade) var(--mk-ease-surface),
-    box-shadow var(--mk-dur-fade) var(--mk-ease-surface),
-    padding-left var(--mk-dur-fade) var(--mk-ease-surface);
+    box-shadow var(--mk-dur-fade) var(--mk-ease-surface);
 }
 
 .mk-row:hover {
   background: var(--mk-sunk);
-  padding-left: 14px;
+  box-shadow: inset 2px 0 0 color-mix(in oklab, var(--mk-accent) 35%, transparent);
 }
 
 /* A rail, not a wash: the wash is what hover already means, and the row a mark
    or a link landed on has to stay legible while the pointer is over another. */
 .mk-row[data-mk-selected="true"] {
-  padding-left: 14px;
   box-shadow: inset 2px 0 0 var(--mk-accent);
 }
 
@@ -665,64 +667,58 @@ ${steps}
   min-width: 0;
 }
 
-.mk-avatar {
+/* The comment's own leaf, at row size. It draws from the marks' rules and
+   nothing of its own but the box: the mark on the page and this are one
+   object seen twice, so the moment they are styled apart they stop being one. */
+.mk-rowleaf {
   position: relative;
   flex: none;
   display: grid;
   place-items: center;
-  width: 21px;
-  height: 21px;
+  width: 30px;
+  height: 30px;
 }
 
-.mk-avatar svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.mk-avatar path {
-  fill: var(--mk-slot);
-  stroke: var(--mk-slot);
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-
-.mk-avatar[data-provenance="client"] path {
-  fill: color-mix(in oklab, var(--mk-slot) 40%, transparent);
-  stroke-width: 2.5;
-}
-
-.mk-avatar[data-provenance="guest"] path {
-  fill: none;
-  stroke-width: 3.5;
-  stroke-dasharray: 7 5;
-}
-
-.mk-initials {
-  position: relative;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--mk-slot-ink);
-  transform: translateY(-0.5px);
-}
-
-.mk-avatar[data-provenance="client"] .mk-initials {
-  color: var(--mk-fg);
-}
-
-.mk-avatar[data-provenance="guest"] .mk-initials {
-  color: var(--mk-slot);
+/* The number holds the share of the leaf it holds on the page — 11 in 38 —
+   rather than a size of its own, which at row scale outgrew the shape. */
+.mk-rowleaf .mk-mark-n {
+  --mk-n: 8.5px;
 }
 `.trim();
 }
 
 function rowDetail(): string {
   return `
+/* The reviewer's colour, on the name rather than on a shape of its own: the
+   only leaf in the row belongs to the comment, and a second one beside it drew
+   two different sentences with one drawing. */
 .mk-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12.5px;
   font-weight: 600;
+}
+
+.mk-name::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mk-slot, var(--mk-accent));
+}
+
+/* Hollow, then dashed: the same ladder the leaf draws provenance with, in the
+   one mark small enough to sit inside a line of text. */
+.mk-name[data-provenance="client"]::before {
+  background: color-mix(in oklab, var(--mk-slot, var(--mk-accent)) 40%, transparent);
+  box-shadow: inset 0 0 0 1px var(--mk-slot, var(--mk-accent));
+}
+
+.mk-name[data-provenance="guest"]::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--mk-slot, var(--mk-accent));
 }
 
 .mk-who[data-provenance="client"] .mk-name,
@@ -734,13 +730,6 @@ function rowDetail(): string {
 .mk-when {
   color: var(--mk-faint);
   font-size: 11px;
-}
-
-.mk-index {
-  font-family: var(--mk-mono);
-  font-size: 10px;
-  color: var(--mk-faint);
-  font-variant-numeric: tabular-nums;
 }
 
 .mk-text {
@@ -902,54 +891,26 @@ function developer(): string {
   display: none;
 }
 
-/* Not a chip: a box per fact made a row in developer detail read as a
-   different component from the same row without it. They are a footnote. */
-.mk-chip-dev {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--mk-faint);
-  font-size: 10.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.mk-chip-dev svg {
-  opacity: 0.6;
-}
-
-.mk-path {
-  display: inline-block;
-  max-width: 132px;
-  overflow: hidden;
-  vertical-align: bottom;
-  font-family: var(--mk-mono);
-  font-size: 10px;
-  font-weight: 500;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
 `.trim();
 }
 
 function newComment(): string {
   return `
+/* One row, not a label over a row: the label is two syllables and the three
+   picks it introduces are beside it, which is half the height for the same
+   sentence. */
 .mk-new {
   flex: none;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 8px 8px;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
   border-top: 1px solid var(--mk-line);
   background: var(--mk-sunk);
 }
 
 .mk-new-label {
-  padding: 0 2px;
+  flex: none;
   color: var(--mk-faint);
   font-size: 9px;
   font-weight: 700;
@@ -959,6 +920,7 @@ function newComment(): string {
 
 .mk-picks {
   display: flex;
+  flex: 1 1 auto;
   gap: 4px;
 }
 
@@ -968,7 +930,7 @@ function newComment(): string {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border: 1px solid var(--mk-line);
   border-radius: 999px;
   background: transparent;

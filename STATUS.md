@@ -77,8 +77,8 @@ State reaches the stylesheet as `data-*` rather than as props, every part takes
 the composer panel. One shadow root, one adopted stylesheet built from a token
 table, no hardcoded duration or easing, and `prefers-reduced-motion` handled by
 redefining the tokens rather than switching rules off. Marks, the island and
-the icons are 19.2 KB gzipped against a 20 KB budget, the stylesheet 10.1 KB
-against 11 KB and the composer 7.2 KB against 8 KB, asserted by
+the icons are 20.3 KB gzipped against a 21 KB budget, the stylesheet 11.8 KB
+against 13 KB and the composer 8.2 KB against 9 KB, asserted by
 `packages/ui/scripts/size.js` on every build.
 
 Developer detail, the query string, dismissal and the island's corner are

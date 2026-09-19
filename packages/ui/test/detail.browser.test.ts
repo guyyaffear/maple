@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
+import { MapleComposer, MapleDetail, MapleTarget } from "../src/composer/index.js";
 import { MapleRoot } from "../src/index.js";
 import {
   Branch,
@@ -56,6 +57,7 @@ function mount(props: Partial<MapleRootProps> = {}): ReactElement {
         ),
       ),
     ),
+    createElement(MapleComposer, null, createElement(MapleTarget), createElement(MapleDetail)),
   );
 }
 
@@ -99,7 +101,38 @@ async function developer(): Promise<void> {
   find<HTMLButtonElement>('[aria-label="Settings"]').click();
   await vi.waitFor(() => expect(all(".mk-setting").length).toBeGreaterThan(0));
   switchNamed("Developer mode").click();
-  await vi.waitFor(() => expect(all(".mk-chip-dev").length).toBeGreaterThan(0));
+  await vi.waitFor(() =>
+    expect(switchNamed("Developer mode").getAttribute("aria-checked")).toBe("true"),
+  );
+}
+
+/**
+ * Opens the panel on one written comment, where the facts now live. The row is
+ * named so the fixture page answers its anchor and a rung is real.
+ */
+async function read(says = "The yield number"): Promise<HTMLElement> {
+  const settings = root().querySelector<HTMLElement>(".mk-settings");
+  if (settings) find<HTMLButtonElement>('[aria-label="Settings"]').click();
+
+  const row = all(".mk-row").find((one) => one.textContent?.includes(says));
+  if (!row) throw new Error(`no row says ${says}`);
+  (row as HTMLElement).click();
+  await vi.waitFor(() => expect(find(".mk-composer").getAttribute("data-mk-open")).toBe("true"));
+  await vi.waitFor(() => expect(root().querySelector(".mk-detail")).not.toBeNull());
+  return find<HTMLElement>(".mk-detail");
+}
+
+/** Every label the panel's block wrote, in order. */
+function labels(block: HTMLElement): string[] {
+  return [...block.querySelectorAll("dt")].map((one) => one.textContent ?? "");
+}
+
+/** The value beside one of those labels, its sentence included. */
+function valueOf(block: HTMLElement, label: string): string {
+  const terms = [...block.querySelectorAll("dt")];
+  const at = terms.findIndex((one) => one.textContent === label);
+  if (at < 0) throw new Error(`the panel wrote no ${label}`);
+  return block.querySelectorAll("dd")[at]?.textContent ?? "";
 }
 
 /**
@@ -157,14 +190,82 @@ describe("default detail", () => {
     const row = find(".mk-row");
 
     expect(row.textContent).toContain("on ");
-    expect(row.querySelector(".mk-chip-dev")).toBeNull();
-    expect(row.querySelector(".mk-path")).toBeNull();
+    expect(row.textContent).not.toContain("%");
+    expect(row.textContent).not.toContain(".tsx:");
+  });
+
+  /**
+   * The panel is read, not scanned, so the two facts a row only hints at —
+   * whose word this is, and where it is in its life — are words here.
+   */
+  it("says who wrote it and what its status means, in the panel, either way", async () => {
+    await open();
+    const block = await read();
+
+    expect(labels(block)).toEqual(["Written by", "Status"]);
+    expect(valueOf(block, "Written by")).toContain("dot");
+    expect(valueOf(block, "Status")).toMatch(/Open|Resolved|Needs re-verify|Unpinned/);
   });
 
   it("says a row can be clicked, because clicking one opens the comment", async () => {
     await open();
 
     expect(getComputedStyle(find(".mk-row")).cursor).toBe("pointer");
+  });
+});
+
+/**
+ * One comment, drawn twice, has to be drawn the same twice. The row's leaf and
+ * the mark on the page take their form and their paint from the same rules.
+ */
+describe("the row's leaf and the mark", () => {
+  it("draws the row's leaf from the comment's status, not from its author", async () => {
+    await open();
+    const row = all(".mk-row").find((one) => one.textContent?.includes("The title wraps"));
+    const leaf = row?.querySelector(".mk-rowleaf");
+
+    expect(leaf?.getAttribute("data-status")).toBe("needs_reverify");
+    expect(leaf?.getAttribute("data-form")).toBe("partial");
+  });
+
+  it("gives them one paint, so neither can be restyled without the other", async () => {
+    await open();
+    const leaf = find<HTMLElement>(".mk-rowleaf .mk-leaf-edge");
+    const accent = getComputedStyle(find(".mk-row")).getPropertyValue("--mk-accent").trim();
+
+    expect(getComputedStyle(leaf).fill).toBe(accent);
+  });
+
+  /** A half-filled leaf puts the waterline through the glyph. */
+  it("strokes the number on a half leaf in the leaf's own colour", async () => {
+    await open();
+    const row = all(".mk-row").find((one) => one.textContent?.includes("The title wraps"));
+    const number = row?.querySelector<HTMLElement>(".mk-mark-n");
+    const leaf = row?.querySelector(".mk-leaf-body");
+    const style = getComputedStyle(number!);
+
+    expect(style.paintOrder).toContain("stroke");
+    expect(Number.parseFloat(style.webkitTextStrokeWidth)).toBeGreaterThan(0);
+    expect(style.webkitTextStrokeColor).toBe(getComputedStyle(leaf!).fill);
+  });
+
+  /** The number holds the share of the leaf it holds on the page: 11 in 38. */
+  it("keeps the number inside the leaf at row scale", async () => {
+    await open();
+    const leaf = find<HTMLElement>(".mk-rowleaf");
+    const number = leaf.querySelector<HTMLElement>(".mk-mark-n")!;
+    const size = Number.parseFloat(getComputedStyle(number).fontSize);
+
+    expect(size / leaf.getBoundingClientRect().width).toBeLessThan(0.3);
+  });
+
+  it("carries the address the page carries, and no second spelling of it", async () => {
+    await open();
+    const numbers = all(".mk-rowleaf .mk-mark-n").map((one) => one.textContent);
+
+    expect(numbers.length).toBeGreaterThan(0);
+    expect(numbers.every((text) => /^\d+$/.test(text ?? ""))).toBe(true);
+    expect(root().querySelector(".mk-index")).toBeNull();
   });
 });
 
@@ -208,63 +309,82 @@ describe("the focus ring", () => {
 
 describe("developer detail", () => {
   /**
-   * A row is the same object in both detentes. A box per fact made a row in
-   * developer detail read as a different component from the row beside it.
+   * A row is the same object in both detentes. The rung, the percentage and the
+   * two paths belong where there is width for the sentence that explains them.
    */
-  it("leaves the row the shape it already was, with the facts as a footnote", async () => {
+  it("adds nothing at all to a row, in either detail", async () => {
     await developer();
-    const fact = find<HTMLElement>(".mk-chip-dev");
-    const style = getComputedStyle(fact);
+    const row = find<HTMLElement>(".mk-row");
 
-    expect(style.borderTopWidth).toBe("0px");
-    expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
-    expect(style.color).toBe(getComputedStyle(find(".mk-row")).getPropertyValue("--mk-faint"));
+    expect(row.textContent).not.toContain("%");
+    expect(row.textContent).not.toContain(".tsx:");
+    expect(row.querySelector(".mk-mono")).toBeNull();
   });
 
-  it("keeps a path on one line, however long the selector it recorded is", async () => {
+  it("names the rung in words and the confidence as a percentage", async () => {
     await developer();
-    const path = find<HTMLElement>(".mk-path");
+    const block = await read();
+    const rung = valueOf(block, "Found again by");
 
-    expect(getComputedStyle(path).whiteSpace).toBe("nowrap");
-    expect(getComputedStyle(path).textOverflow).toBe("ellipsis");
+    expect(rung).toMatch(/%/);
+    expect(rung).toMatch(/the component name|the source line|the quoted text|a CSS path/);
+    expect(rung).toContain("a lower rung is worth less");
+    expect(rung).not.toContain("confidence:");
   });
 
-  it("puts the rung's number on a chip and its sentence in a tooltip", async () => {
+  it("carries the source line as a value, never as a field name", async () => {
     await developer();
-    const chip = all(".mk-chip-dev").find((one) => one.textContent?.includes("%") === true);
-    const tip = chip?.querySelector(".mk-tip");
+    const block = await read();
 
-    expect(chip?.childNodes[0]).toBeInstanceOf(SVGElement);
-    expect(tip?.textContent).toMatch(/^Found again by the /);
-    expect(tip?.textContent).toContain("After a redeploy Maple re-finds this element that way");
-    expect(tip?.textContent).not.toContain("confidence:");
+    expect(labels(block)).toContain("Source");
+    expect(valueOf(block, "Source")).toContain(".tsx:");
+    expect(block.textContent).not.toContain("source:");
   });
 
-  it("carries the source line and the CSS path as values, never as field names", async () => {
+  /** c5 records a CSS path and nothing above it, which is the last rung. */
+  it("carries the CSS path too, on a comment whose anchor is only one", async () => {
     await developer();
-    const paths = all(".mk-path").map((one) => one.textContent);
+    const block = await read("The panel opens under the header");
 
-    expect(paths.some((path) => path?.includes(".tsx:"))).toBe(true);
-    expect(
-      all(".mk-chip-dev")
-        .map((one) => one.textContent)
-        .join(" "),
-    ).not.toContain("selector:");
+    expect(labels(block)).toContain("CSS path");
+    expect(valueOf(block, "CSS path")).toBe("#settings-panel");
+    expect(valueOf(block, "Found again by")).toContain("a CSS path");
+    expect(block.textContent).not.toContain("selector:");
   });
 
-  it("appends the rungs an unpinned comment tried to its tooltip", async () => {
+  it("keeps a path on one line of its own rather than wrapping the block", async () => {
     await developer();
-    const tips = all(".mk-meta .mk-chip-lost .mk-tip").map((one) => one.textContent);
+    const block = await read();
+    const path = block.querySelector<HTMLElement>(".mk-mono");
 
-    expect(tips.some((text) => text?.includes("Tried: "))).toBe(true);
-    expect(tips.some((text) => text?.includes("the component name"))).toBe(true);
+    expect(path).not.toBeNull();
+    expect(getComputedStyle(path!).wordBreak).toBe("break-all");
   });
 
+  /**
+   * Which rungs were tried on the way to giving up is the developer's half of
+   * why a comment lost its place, and it needs the sentence around it.
+   */
+  it("names the rungs an unpinned comment tried before it gave up", async () => {
+    await developer();
+    find<HTMLElement>('[aria-label="Show"]')?.click();
+    const block = await read("The empty state here is doing nothing");
+
+    expect(labels(block)).toContain("Nothing to pin to");
+    expect(valueOf(block, "Nothing to pin to")).toContain("Tried: ");
+  });
+});
+
+/**
+ * Who wrote a comment is a name and a dot in its colour; what the name is worth
+ * is the dot's fill. Nothing says that in words, so the name carries it.
+ */
+describe("the row's tooltips", () => {
   /** Growing from `bottom left` while sitting below the chip grows backwards. */
   it("grows the tooltip from the edge it was placed against", async () => {
-    await developer();
-    const chip = find<HTMLElement>(".mk-chip-dev");
-    const tip = find<HTMLElement>(".mk-chip-dev .mk-tip");
+    await open();
+    const chip = find<HTMLElement>(".mk-name");
+    const tip = find<HTMLElement>(".mk-name .mk-tip");
 
     chip.focus();
     await vi.waitFor(() => expect(tip.matches(":popover-open")).toBe(true));
@@ -274,9 +394,9 @@ describe("developer detail", () => {
   });
 
   it("waits 80ms before a tooltip appears, and never before it goes", async () => {
-    await developer();
-    const chip = find<HTMLElement>(".mk-chip-dev");
-    const tip = find<HTMLElement>(".mk-chip-dev .mk-tip");
+    await open();
+    const chip = find<HTMLElement>(".mk-name");
+    const tip = find<HTMLElement>(".mk-name .mk-tip");
 
     expect(getComputedStyle(tip).transitionDelay).toBe("0s, 0s");
     expect(getComputedStyle(tip).transitionDuration).toBe("0.15s, 0.15s");
@@ -287,6 +407,24 @@ describe("developer detail", () => {
     await vi.waitFor(() => expect(getComputedStyle(tip).transitionDelay).toBe("0.08s"));
     chip.blur();
     await vi.waitFor(() => expect(getComputedStyle(tip).transitionDelay).toBe("0s, 0s"));
+  });
+
+  it("says in words what a name is worth, which nothing else on the row does", async () => {
+    await open();
+    const tips = all(".mk-name .mk-tip").map((one) => one.textContent ?? "");
+
+    expect(tips.length).toBeGreaterThan(0);
+    expect(tips.some((text) => text.includes("verified"))).toBe(true);
+    expect(tips.some((text) => text.includes("typed a name into Maple"))).toBe(true);
+  });
+
+  /** The row's leaf is the mark, so its fill is a status and not a person. */
+  it("says what the row's own leaf means, which is where the comment is at", async () => {
+    await open();
+    const tips = all(".mk-rowleaf .mk-tip").map((one) => one.textContent ?? "");
+
+    expect(tips.length).toBeGreaterThan(0);
+    expect(tips.some((text) => text.startsWith("Open —"))).toBe(true);
   });
 });
 
@@ -369,7 +507,8 @@ describe("the query string", () => {
     await render(mount());
 
     await open();
-    expect(all(".mk-chip-dev").length).toBeGreaterThan(0);
+    const block = await read();
+    expect(labels(block)).toContain("Found again by");
   });
 
   it("arms the pick a link asks for, without anything being pressed", async () => {

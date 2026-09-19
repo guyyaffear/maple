@@ -138,15 +138,14 @@ function emojiCss(): string {
 .mk-emoji-open {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: var(--mk-r-xs);
   background: transparent;
-  color: var(--mk-faint);
+  color: var(--mk-muted);
   font: inherit;
-  font-size: 14px;
-  line-height: 1;
+  line-height: 0;
   cursor: pointer;
   transition:
     background-color var(--mk-dur-swap) var(--mk-ease-swap),
@@ -255,6 +254,12 @@ function contextAndShots(): string {
   word-break: break-all;
 }
 
+/* One pair to a row, not two: these values are sentences, and the context
+   badge's four columns cut them to a word each. */
+.mk-detail {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 /* Dashed, because nobody asked for what is inside it: the shot arrives on its
    own at pick time, and a dashed edge is how this surface already says
    "provisional" — it is what an unsent comment's mark is drawn with. */
@@ -293,7 +298,26 @@ function contextAndShots(): string {
 
 .mk-shot-said svg {
   flex: none;
-  color: var(--mk-accent);
+}
+
+/* What Maple noticed on its own, in the one warm colour nothing a reviewer
+   did uses. No fill and no solid edge: a filled panel in a warm colour reads
+   as an error, and nothing is wrong when this shows. The dashed border was
+   already how this surface says "provisional"; it only changes colour. */
+.mk-shots[data-mk-maple] {
+  border-color: color-mix(in oklab, var(--mk-maple) 55%, transparent);
+}
+
+.mk-shot-said[data-mk-maple],
+.mk-ctx dd[data-mk-maple] {
+  color: var(--mk-maple);
+  font-weight: 550;
+}
+
+/* The same, for a fact the panel raises rather than one the comment carries. */
+.mk-ctx dd[data-mk-maple] em {
+  color: color-mix(in oklab, var(--mk-maple) 78%, var(--mk-muted));
+  font-weight: 450;
 }
 `.trim();
 }

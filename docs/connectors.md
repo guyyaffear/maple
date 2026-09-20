@@ -66,10 +66,11 @@ it is filling it in.
 `✓` implemented · `—` not implemented · `~` implemented with a caveat, explained
 below the table.
 
-| Connector            | list | append | setStatus | watch | putBlob | getUrl | getReplayLink | fetchEvents | resolveUser |
-| -------------------- | ---- | ------ | --------- | ----- | ------- | ------ | ------------- | ----------- | ----------- |
-| `github` (default)   | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           |
-| `memory` (reference) | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           |
+| Connector            | list | append | setStatus | watch | putBlob | getUrl | getReplayLink | fetchEvents | resolveUser | publish | read |
+| -------------------- | ---- | ------ | --------- | ----- | ------- | ------ | ------------- | ----------- | ----------- | ------- | ---- |
+| `github` (store)     | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           | —       | —    |
+| `github` (gate)      | —    | —      | —         | —     | —       | —      | —             | —           | —           | ✓       | ✓    |
+| `memory` (reference) | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           | ✓       | ✓    |
 | `datadog`            | ~    | ✓      | ~         | —     | —       | —      | ~             | ✓           | ~           |
 
 The reference connector lives in `@maple-kit/core/testing` and exists so the

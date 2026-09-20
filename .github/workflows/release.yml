@@ -27,8 +27,8 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Point npm at the public registry
-        # Writes the registry and the auth line into the runner's ~/.npmrc.
-        # The project .npmrc pins the same registry; this adds the credential.
+        # Still needed without a token: OIDC has to know which registry it is
+        # exchanging for. The credential is gone; the registry name is not.
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -56,7 +56,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Push the tags changeset publish just wrote
         # changesets/action only pushes tags for packages it recognised in the

@@ -100,11 +100,22 @@ credentials.
 
 Repository permissions, and nothing else:
 
-| Permission      | Access         | Why it is needed                                                            |
-| --------------- | -------------- | --------------------------------------------------------------------------- |
-| `Issues`        | Read and write | A pull-request conversation comment is an issue comment. This is the write. |
-| `Pull requests` | Read-only      | Resolving a branch or commit to the pull request its comments belong to.    |
-| `Metadata`      | Read-only      | Mandatory; GitHub grants it to every App.                                   |
+| Permission      | Access         | Why it is needed                                                                                                                                      |
+| --------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Pull requests` | Read and write | Every call Maple makes: listing, posting, reading and editing a comment, and resolving a branch or commit to the pull request its comments belong to. |
+| `Metadata`      | Read-only      | Mandatory; GitHub grants it to every App.                                                                                                             |
+
+That is the whole set. Two permissions.
+
+**`Issues` is not needed, although the endpoints look like it.** Maple stores a
+comment as a pull-request conversation comment, and a pull-request conversation
+comment _is_ an issue comment, so every call goes to
+`/repos/{owner}/{repo}/issues/…`. It is tempting to conclude the App needs
+`Issues: Read and write`. It does not: GitHub lists all four of those endpoints
+— list, create, read and update — under **both** `Issues` and `Pull requests`,
+and Maple only ever comments on a pull request. Granting `Issues` would hand
+every reviewer's token write access to every issue in the repository, for
+nothing.
 
 In particular there is **no `Contents` permission**. Maple never reads or writes
 repository code. An attacker holding a reviewer's token cannot read the source,
@@ -121,10 +132,10 @@ App carries is a permission every reviewer's token carries.
 
 Those two jobs want opposite things:
 
-| App      | Permissions                           | Authenticates as | Where its token lives           |
-| -------- | ------------------------------------- | ---------------- | ------------------------------- |
-| Comments | `Issues`, `Pull requests`, `Metadata` | the reviewer     | a cookie on the preview         |
-| Gate     | `Checks`                              | itself           | server-side, never in a preview |
+| App      | Permissions                 | Authenticates as | Where its token lives           |
+| -------- | --------------------------- | ---------------- | ------------------------------- |
+| Comments | `Pull requests`, `Metadata` | the reviewer     | a cookie on the preview         |
+| Gate     | `Checks`                    | itself           | server-side, never in a preview |
 
 The comment flow needs a _user_ token — that is the whole point of Device Flow,
 so a comment is authored by the reviewer's own account. The gate needs

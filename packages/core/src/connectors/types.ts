@@ -12,14 +12,15 @@ import type {
   Comment,
   CommentResolution,
   CommentStatus,
+  GateVerdict,
   MapleUser,
   MediaBlob,
   MediaRef,
   NewComment,
 } from "../types.js";
 
-/** The four kinds of backend Maple knows how to talk to. */
-export type ConnectorKind = "store" | "media" | "observability" | "identity";
+/** The five kinds of backend Maple knows how to talk to. */
+export type ConnectorKind = "store" | "media" | "observability" | "identity" | "gate";
 
 /** Fields every connector carries, whatever its kind. */
 export interface ConnectorMeta {
@@ -93,6 +94,31 @@ export interface ReplayEvent {
   readonly detail?: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * Publishes whether a commit is clear to merge. The verdict is decided by
+ * `decideGate` in `@maple-kit/core/gate`; a gate connector only says it.
+ */
+export interface GateConnector extends ConnectorMeta {
+  publish(report: GateReport): Promise<void>;
+  /** What the gate currently says, where the forge can be read back. */
+  read?(target: GateTarget): Promise<GateVerdict | undefined>;
+}
+
+/** The commit a verdict is about. A gate is never about a branch alone. */
+export interface GateTarget {
+  /** Branch or pull-request identifier, the same one a store lists by. */
+  readonly branch: string;
+  /** The exact head commit, so a new push is a new decision. */
+  readonly sha: string;
+}
+
+/** A verdict on its way to a forge. */
+export interface GateReport extends GateTarget {
+  readonly verdict: GateVerdict;
+  /** Where a reviewer goes to resolve the comments, usually the preview. */
+  readonly reviewUrl?: string;
+}
+
 /** Answers "who is making this request?" from the host application's session. */
 export interface IdentityConnector extends ConnectorMeta {
   /** Null when the request carries no session; Maple then offers the guest flow. */
@@ -107,4 +133,4 @@ export interface IdentityRequest {
 
 /** Any connector, whatever its kind. */
 export type AnyConnector =
-  IdentityConnector | MediaConnector | ObservabilityConnector | StoreConnector;
+  GateConnector | IdentityConnector | MediaConnector | ObservabilityConnector | StoreConnector;

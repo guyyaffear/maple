@@ -14,6 +14,7 @@ export const CONNECTOR_METHODS = {
   media: ["putBlob", "getUrl", "remove"],
   observability: ["getReplayLink", "fetchEvents"],
   identity: ["resolveUser"],
+  gate: ["publish", "read"],
 } as const satisfies Record<ConnectorKind, readonly string[]>;
 
 /** The methods a connector of each kind must define to be usable at all. */
@@ -22,6 +23,7 @@ export const REQUIRED_METHODS = {
   media: ["putBlob", "getUrl"],
   observability: ["getReplayLink"],
   identity: ["resolveUser"],
+  gate: ["publish"],
 } as const satisfies Record<ConnectorKind, readonly string[]>;
 
 /** The method names valid for a given connector kind. */

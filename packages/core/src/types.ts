@@ -9,6 +9,30 @@
 /** A comment's position in the review lifecycle. */
 export type CommentStatus = "open" | "resolved" | "needs_reverify" | "orphaned";
 
+/** What a gate says about a surface. `neutral` is "I cannot tell", not "fine". */
+export type GateConclusion = "blocked" | "clear" | "neutral";
+
+/**
+ * Why the gate reached its conclusion. A reason can be branched on; a summary
+ * sentence cannot, and the two neutrals need different answers from a person.
+ */
+export type GateReason =
+  "all-resolved" | "comments-open" | "no-comments" | "status-untracked" | "unreadable";
+
+/** One gate decision about one commit. */
+export interface GateVerdict {
+  readonly conclusion: GateConclusion;
+  readonly reason: GateReason;
+  /** One line, for the check's own title. */
+  readonly title: string;
+  /** Markdown detail: which comments are open, numbered as the table numbers them. */
+  readonly summary: string;
+  /** Comments holding the gate. Zero whenever the conclusion is not `blocked`. */
+  readonly open: number;
+  /** Comments on the surface, whatever their status. */
+  readonly total: number;
+}
+
 /** How confident Maple is that the author is who the comment says they are. */
 export type IdentityProvenance = "server" | "client" | "guest";
 

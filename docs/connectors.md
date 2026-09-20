@@ -34,7 +34,8 @@ capabilitiesOf("store", myStore(options));
 
 Maple degrades around a missing optional method rather than failing. A store
 without `setStatus` keeps status client-side, and the CI gate reports `neutral`
-instead of blocking.
+instead of blocking — `decideGate` takes `statusTracked` for exactly that, and
+`docs/gate.md` says why neutral is not the same as clear.
 
 `setStatus` takes an optional third argument, a `CommentResolution` — the commit
 an agent says addressed the comment, an optional note, and the time the write
@@ -44,7 +45,7 @@ the call, because the status is the part the gate reads.
 Omitting a **required** method is an error, raised at construction time by
 `createCommentStore` rather than on the first request.
 
-## The four kinds
+## The five kinds
 
 Run `maple connectors` to print this from the code.
 
@@ -54,6 +55,7 @@ Run `maple connectors` to print this from the code.
 | `media`         | `putBlob`, `getUrl` | `remove`             |
 | `observability` | `getReplayLink`     | `fetchEvents`        |
 | `identity`      | `resolveUser`       | —                    |
+| `gate`          | `publish`           | `read`               |
 
 A backend can be more than one kind. One object may implement `StoreConnector`
 and `IdentityConnector` at once; Maple checks the methods it needs for the role

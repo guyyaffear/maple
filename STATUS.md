@@ -20,8 +20,9 @@ pull request enforcing it: identity through the route, and the gate.
 | The reviewer writes it          | `@maple-kit/ui`, `@maple-kit/react`     | ✅ marks, ring, island, composer, detail        |
 | It is posted as them            | `core/auth`, `core/route`               | ✅ Device Flow, through the route, per reviewer |
 | It is stored                    | `core/connectors/github`                | ✅ default store, contract-clean                |
-| It reaches the pull request     | `core/export`                           | ✅ table over a visible fence                   |
+| It reaches the pull request     | `core/export`                           | ✅ table over a visible fence, with a Shot link |
 | An agent reads and resolves it  | `@maple-kit/mcp`                        | ✅ four tools, plus the Stop hook               |
+| It holds the merge open         | `core/gate`, `core/connectors`          | ✅ `decideGate` and `maple/visual-review`       |
 
 ## What US1 added
 
@@ -136,9 +137,6 @@ jobs, one approval and signed commits.
 - **The Next codemod.** `app/api/maple/[...maple]/route.ts` is three lines a
   person can write today; the codemod that writes it is convenience, and the
   example does not have one checked in yet.
-- **The CI gate and the check run.** Nothing stops a pull request merging with
-  comments still open. The `GateConnector` kind has to be defined before the
-  GitHub one is written, or the check-run API ends up inside core.
 - **The CLI's comment commands.** `maple connectors` is all that exists.
   `list|inspect|reply|resolve|open` come with the TUI decision.
 - **Replies.** Decided, not deferred: one body per comment. `parentId` is
@@ -148,6 +146,9 @@ jobs, one approval and signed commits.
   the path end to end — but a deployment still has to bring a bucket. Where it
   brings none, the strip says so rather than offering a screenshot it would
   drop. `docs/screenshots.md` is the whole path.
+- **Anything that calls the gate.** `decideGate` and `githubGate` are built and
+  tested; no action, route or workflow invokes either, so nothing yet stops a
+  pull request merging with comments still open.
 - **Eval cases.** Still no AI path to score.
 
 ## What is now known that was not
@@ -186,20 +187,36 @@ failure — a build that does not tag — and none of them raises anything.
     screenshot through a UTF-8 string, and it arrives as an image no decoder
     opens.
 
-## What US2 needs next
+## What US2 has, and what it still needs
 
-In dependency order:
+The gate's two halves are built. `decideGate` in `@maple-kit/core/gate` turns a
+surface's comments into a `GateVerdict`, and `githubGate` publishes it as
+`maple/visual-review` — held at `in_progress` while a comment is open, because
+a required check passes only on `success`, `skipped` or `neutral`, so an open
+run blocks as hard as a failure and can still be exited with no new push.
+`GateConnector` is a fifth connector kind, with its own contract suite whose
+central assertion is the property that sank Chromatic: a gate that blocks must
+be able to stop blocking on the same commit. `docs/gate.md` is the design.
+
+Nothing calls either of them yet. In dependency order:
 
 1. **A second GitHub App for the gate.** The registered one carries `Checks`,
-   `Contents` and `Merge queues` for a gate that does not exist yet, and a
+   `Contents` and `Merge queues` for a gate that did not exist, and a
    user-to-server token is bounded by the app's permissions — so today every
    reviewer's token can read the source of every installed repository. The
    comment app carries `Issues`, `Pull requests` and `Metadata` and nothing
    else; the gate authenticates as itself and never needs a user token.
    `docs/github-auth.md` has the reasoning.
-2. **A `GateConnector` kind.** The store is vendor-agnostic and the gate is not:
-   `maple/visual-review` is a GitHub check run, GitLab uses external status
-   checks, and Bitbucket's enforcement is Premium-only. Defining the kind before
-   writing the GitHub one keeps the check-run API out of core.
-3. **The check run itself**, held at `in_progress` while comments are open, with
-   `merge_group` auto-passing and `integration_id` pinned.
+2. **The action has to call them.** `maple-action` carries its own copy of the
+   decision, written before core had one, and it cannot import
+   `@maple-kit/core` because nothing is published to npm. Publishing core is
+   the unblock; until then the two can drift, and the action's is the one CI
+   would run.
+3. **Reporting on every pull request** — forks, Dependabot and anything with no
+   preview included — concluding `neutral`. A required check that skips some
+   pull requests is a required check somebody deletes.
+4. **`merge_group.checks_requested` passing immediately**, and `integration_id`
+   pinned in the ruleset.
+5. **Carrying resolutions across a new commit** by thread id, flipping a
+   comment to `needs_reverify` where the diff touches the anchored route or
+   component.

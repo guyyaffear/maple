@@ -71,6 +71,15 @@ rather than by reading the documentation:
   or anything on `localhost` — renders as a broken image on the pull request.
   The blob store has to be publicly readable, or the link is worth nothing.
 
+And one rule that follows from the connector contract rather than from GitHub:
+**do not hand `githubStore` a connector whose `getUrl` is a signed, expiring
+URL.** That is what most of them are — it is why `getUrl` exists at all, and
+why the media route redirects rather than writing a URL down. A comment
+outlives a presign by months. The durable form of the link is Maple's own
+`GET {base}/media/{key}`, which mints a fresh one on every read, so a
+deployment behind a real blob store passes the store a connector that returns
+_that_ rather than the connector it gave the route.
+
 A media connector that cannot answer costs the table its link and nothing more.
 The comment still posts and the fence still carries the `MediaRef`, because
 losing a reviewer's comment over a screenshot is the worse of the two failures.

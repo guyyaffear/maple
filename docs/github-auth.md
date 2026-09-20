@@ -110,25 +110,41 @@ In particular there is **no `Contents` permission**. Maple never reads or writes
 repository code. An attacker holding a reviewer's token cannot read the source,
 cannot push, and cannot open a pull request.
 
-### One App or two
+### Two Apps, and why that is a security decision
 
-It is tempting to register one App for everything, and the first one here was.
-It should not stay that way, and the reason is the paragraph above.
+**Register two Apps: one for comments, one for the gate.** Using one App for
+both is not a shortcut, it is a vulnerability.
 
-A user-to-server token is bounded by the App's permissions. An App that also
-carries the merge gate's `Checks: Read and write`, and the `Contents: Read-only`
-the gate wants for reading the commit a comment was anchored against, hands
-**every reviewer's token** those same permissions. The claim that a stolen token
-cannot read the source stops being true, and it stops being true quietly:
-nothing about linking a reviewer changes, and no error is raised.
+The mechanism is one sentence: **a user-to-server token is bounded by the App's
+permissions, not by what the reviewer is doing with it.** Every permission the
+App carries is a permission every reviewer's token carries.
 
-So: the App a preview environment points at carries the three permissions above
-and no others. The gate authenticates as itself with an installation token and
-never needs a user token at all, so when it is built it gets its own App. Two
-Apps is one more thing to install and it keeps a sentence true that is otherwise
-worth nothing.
+Those two jobs want opposite things:
 
-Until the gate exists, the narrow set is the whole set.
+| App      | Permissions                           | Authenticates as | Where its token lives           |
+| -------- | ------------------------------------- | ---------------- | ------------------------------- |
+| Comments | `Issues`, `Pull requests`, `Metadata` | the reviewer     | a cookie on the preview         |
+| Gate     | `Checks`                              | itself           | server-side, never in a preview |
+
+The comment flow needs a _user_ token — that is the whole point of Device Flow,
+so a comment is authored by the reviewer's own account. The gate needs
+`Checks: Read and write` and authenticates **as itself** with an installation
+token; it never wants a user token at all.
+
+Put both sets on one App and every reviewer is now carrying a token that can
+write check runs and read your source. The claim that a stolen Maple token
+cannot reach your code stops being true — and it stops being true **silently**.
+Nothing about linking a reviewer changes, no permission is re-requested, and no
+error is raised anywhere. The blast radius of one phished reviewer goes from
+"comments they could write anyway" to "a read of every repository the App is
+installed on", and nothing in the product says so.
+
+The cost of two Apps is one extra installation, once. That is the whole price.
+
+**Do not let the comment App carry the gate's permissions in advance.** An App
+holding `Checks` and `Contents` for a gate that is not built yet has all of the
+exposure and none of the benefit. Permissions are cheap to add when the gate
+arrives and expensive to have been carrying in the meantime.
 
 ## Two settings that decide whether this works
 

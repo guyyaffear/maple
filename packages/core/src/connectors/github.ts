@@ -10,9 +10,9 @@
 import { exportMarkdown, parseFence } from "../export/markdown.js";
 import { findPull } from "./github-pull.js";
 
-import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
+import type { Comment, CommentResolution, CommentStatus, MediaRef, NewComment } from "../types.js";
 import type { PullCache, PullLookup, PullReader } from "./github-pull.js";
-import type { CommentPage, ListQuery, StoreConnector } from "./types.js";
+import type { CommentPage, ListQuery, MediaConnector, StoreConnector } from "./types.js";
 
 /** Everything the connector needs to reach a repository. */
 export interface GitHubStoreOptions {
@@ -37,6 +37,11 @@ export interface GitHubStoreOptions {
    * a per-reviewer credential needs. Left out, every call asks again.
    */
   readonly cache?: PullCache;
+  /**
+   * Turns an attachment into a URL the pull-request table links to. Left out,
+   * a screenshot stays a `MediaRef` nothing human-readable points at.
+   */
+  readonly media?: MediaConnector;
 }
 
 const DEFAULT_BASE = "https://api.github.com";
@@ -176,11 +181,11 @@ async function append(api: Client, comment: NewComment): Promise<Comment> {
   const draft: Comment = { ...comment, id: "", status: comment.status ?? "open" };
   const created = await api.request<IssueComment>(
     `/repos/${api.options.owner}/${api.options.repo}/issues/${String(pull)}/comments`,
-    { method: "POST", body: JSON.stringify({ body: bodyFor(draft) }) },
+    { method: "POST", body: JSON.stringify({ body: await bodyFor(api, draft) }) },
   );
 
   const stored: Comment = { ...draft, id: idOf(pull, created.body.id) };
-  await patch(api, created.body.id, bodyFor(stored));
+  await patch(api, created.body.id, await bodyFor(api, stored));
   return stored;
 }
 
@@ -202,7 +207,7 @@ async function setStatus(
   if (!stored) throw new Error(`Comment ${id} carries no Maple fence.`);
 
   const updated: Comment = { ...stored, id, status, ...(resolution ? { resolution } : {}) };
-  await patch(api, issueId, bodyFor(updated));
+  await patch(api, issueId, await bodyFor(api, updated));
   return updated;
 }
 
@@ -214,8 +219,33 @@ async function patch(api: Client, issueId: number, body: string): Promise<void> 
 }
 
 /** One comment per issue comment, so GitHub's own threading and notifications work. */
-function bodyFor(comment: Comment): string {
-  return exportMarkdown([comment], { branch: comment.branch }).markdown;
+async function bodyFor(api: Client, comment: Comment): Promise<string> {
+  const shot = await shotFor(api, comment);
+  const screenshots = shot === undefined ? undefined : new Map([[comment.id, shot]]);
+
+  return exportMarkdown([comment], {
+    branch: comment.branch,
+    ...(screenshots ? { screenshots } : {}),
+  }).markdown;
+}
+
+/**
+ * The comment's first image, as a URL. A connector that cannot answer costs
+ * the table its link and nothing else; docs/screenshots.md says why.
+ */
+async function shotFor(api: Client, comment: Comment): Promise<string | undefined> {
+  const ref = comment.attachments?.find(isImage);
+  if (!ref || !api.options.media) return undefined;
+
+  try {
+    return await api.options.media.getUrl(ref);
+  } catch {
+    return undefined;
+  }
+}
+
+function isImage(ref: MediaRef): boolean {
+  return ref.contentType.startsWith("image/");
 }
 
 function idOf(pull: number, issueId: number): string {

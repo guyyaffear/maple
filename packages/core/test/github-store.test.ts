@@ -7,7 +7,8 @@ import { sampleComment } from "../src/testing/fixtures.js";
 import { createGitHubFake, pullFor } from "./msw/github.js";
 import { createTestServer, useTestServer } from "./msw/server.js";
 
-import type { Comment, CommentResolution, CommentStatus } from "../src/types.js";
+import type { MediaConnector, StoreConnector } from "../src/connectors/types.js";
+import type { Comment, CommentResolution, CommentStatus, MediaRef } from "../src/types.js";
 
 const API = "https://api.github.com";
 const github = createGitHubFake();
@@ -191,5 +192,67 @@ describe("when GitHub says no", () => {
     );
 
     await expect(store().list({ branch: "feature/x" })).rejects.toThrow(/GitHub 502/);
+  });
+});
+
+describe("the screenshot the table links to", () => {
+  const shot: MediaRef = { connector: "bucket", key: "k1", contentType: "image/png" };
+
+  function withMedia(getUrl: MediaConnector["getUrl"]): StoreConnector {
+    const media: MediaConnector = {
+      name: "bucket",
+      putBlob: () => Promise.reject(new Error("not used")),
+      getUrl,
+    };
+    return githubStore({ owner: "maple-kit", repo: "app", token: "test-token", media });
+  }
+
+  it("gives the table a Shot column pointing at the hosted image", async () => {
+    const branch = "feature/shot";
+    const connector = withMedia(() => Promise.resolve("https://cdn.example.com/k1.png"));
+    await connector.append(sampleComment({ branch, attachments: [shot] }));
+
+    const [posted] = github.commentsOn(pullFor(branch));
+    expect(posted?.body).toContain("| # | Where | Comment | Viewport | Shot |");
+    expect(posted?.body).toContain("[view](https://cdn.example.com/k1.png)");
+  });
+
+  it("keeps the comment when the media connector cannot answer", async () => {
+    const branch = "feature/shot-down";
+    const connector = withMedia(() => Promise.reject(new Error("bucket is down")));
+    const stored = await connector.append(sampleComment({ branch, attachments: [shot] }));
+
+    const [posted] = github.commentsOn(pullFor(branch));
+    expect(posted?.body).not.toContain("Shot");
+    expect(parseFence(posted!.body)?.comments[0]?.attachments).toEqual([shot]);
+    expect(stored.id).toMatch(/^gh_\d+_\d+$/);
+  });
+
+  it("offers no link for a data URL, which GitHub strips anyway", async () => {
+    const branch = "feature/shot-data";
+    const connector = withMedia(() => Promise.resolve("data:image/png;base64,iVBORw0KGgo="));
+    await connector.append(sampleComment({ branch, attachments: [shot] }));
+
+    expect(github.commentsOn(pullFor(branch))[0]?.body).not.toContain("Shot");
+  });
+
+  it("ignores an attachment that is not an image", async () => {
+    const branch = "feature/shot-pdf";
+    const pdf: MediaRef = { connector: "bucket", key: "k2", contentType: "application/pdf" };
+    const connector = withMedia(() => Promise.resolve("https://cdn.example.com/k2.pdf"));
+    await connector.append(sampleComment({ branch, attachments: [pdf] }));
+
+    expect(github.commentsOn(pullFor(branch))[0]?.body).not.toContain("Shot");
+  });
+
+  it("links the shot on a status change too, not only on the first write", async () => {
+    const branch = "feature/shot-resolve";
+    const connector = withMedia(() => Promise.resolve("https://cdn.example.com/k1.png"));
+    const stored = await connector.append(sampleComment({ branch, attachments: [shot] }));
+    await connector.setStatus!(stored.id, "resolved");
+
+    expect(github.commentsOn(pullFor(branch))[0]?.body).toContain(
+      "[view](https://cdn.example.com/k1.png)",
+    );
   });
 });

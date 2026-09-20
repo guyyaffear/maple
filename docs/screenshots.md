@@ -51,6 +51,30 @@ because a browser refuses to follow a redirect to one. Only a development
 connector answers with one — `memoryMedia` in `@maple-kit/core/testing` does,
 which is how the Vite example shows the whole path without a bucket.
 
+## Where it shows on the pull request
+
+`exportMarkdown` takes a `screenshots` map of comment id to URL and gives the
+table a **Shot** column. `githubStore` fills it from `GitHubStoreOptions.media`:
+given a media connector, it resolves the comment's first image attachment and
+links it. Given none, the ref stays in the fence and the column is absent —
+there is no half-link.
+
+Two rules shape this, and both were established by posting to a real repository
+rather than by reading the documentation:
+
+- **A `data:` image is stripped.** GitHub's sanitiser returns `<img alt="shot">`
+  with no `src` at all, so `exportMarkdown` drops anything that is not
+  `http(s)`. `memoryMedia` therefore produces no Shot column, which is correct:
+  it has nothing GitHub could fetch.
+- **An `https:` image is proxied through camo**, meaning GitHub's own servers
+  fetch it. A URL only a signed-in reviewer can load — an auth-gated preview,
+  or anything on `localhost` — renders as a broken image on the pull request.
+  The blob store has to be publicly readable, or the link is worth nothing.
+
+A media connector that cannot answer costs the table its link and nothing more.
+The comment still posts and the fence still carries the `MediaRef`, because
+losing a reviewer's comment over a screenshot is the worse of the two failures.
+
 ## When there is no screenshot
 
 There are three ways not to have one, they are not the same thing, and all

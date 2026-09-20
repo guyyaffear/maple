@@ -57,3 +57,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Push the tags changeset publish just wrote
+        # changesets/action only pushes tags for packages it recognised in the
+        # publish output, and it looks for a "New tag:" line that
+        # @changesets/cli 3 no longer prints — it draws a spinner instead. So
+        # the action sees nothing published and 0.1.0 shipped untagged.
+        #
+        # `changeset publish` does create the tags locally, in this checkout.
+        # Pushing them here is what makes them exist. A run that published
+        # nothing has no new tags and this is a no-op.
+        run: git push origin --tags

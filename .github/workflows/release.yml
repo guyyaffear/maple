@@ -45,8 +45,14 @@ jobs:
         with:
           version: pnpm changeset version
           publish: pnpm release
-          commit: "chore: version packages"
           title: "chore: version packages"
+          # A block scalar, so the trailer survives into the commit message.
+          # The `dco` check walks every commit on the version pull request and
+          # changesets/action would otherwise commit with no sign-off at all.
+          commit: |
+            chore: version packages
+
+            Signed-off-by: N1TZANKL <63898112+N1TZANKL@users.noreply.github.com>
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"

@@ -24,6 +24,7 @@
     "./client": "./dist/client/index.js",
     "./connectors": "./dist/connectors/index.js",
     "./export": "./dist/export/index.js",
+    "./gate": "./dist/gate/index.js",
     "./logger": "./dist/logger/index.js",
     "./loader": "./dist/loader/index.js",
     "./next": "./dist/next/index.js",

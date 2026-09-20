@@ -8,6 +8,7 @@ export default defineConfig({
     "src/client/index.ts",
     "src/connectors/index.ts",
     "src/export/index.ts",
+    "src/gate/index.ts",
     "src/loader/index.ts",
     "src/next/index.ts",
     "src/logger/index.ts",

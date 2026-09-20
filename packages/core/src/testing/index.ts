@@ -1,4 +1,8 @@
 export { SAMPLE_CONTEXT, sampleComment, storedComment } from "./fixtures.js";
+export { runGateContract } from "./gate-contract.js";
+export type { GateContractOptions, GateContractSubject } from "./gate-contract.js";
+export { memoryGate } from "./memory-gate.js";
+export type { MemoryGate, MemoryGateOptions } from "./memory-gate.js";
 export { memoryMedia } from "./memory-media.js";
 export type { MemoryMediaOptions } from "./memory-media.js";
 export { memoryStore } from "./memory-store.js";

@@ -9,6 +9,7 @@ export type {
   GateConnector,
   GateReport,
   GateTarget,
+  GitHubGateOptions,
   IdentityConnector,
   IdentityRequest,
   ListQuery,
@@ -21,7 +22,9 @@ export type {
 export {
   assertUsable,
   capabilitiesOf,
+  CHECK_NAME,
   CONNECTOR_METHODS,
+  githubGate,
   MissingCapabilityError,
   missingRequirements,
   REQUIRED_METHODS,

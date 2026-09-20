@@ -88,6 +88,12 @@ function point(node: HTMLElement, over: boolean): void {
   );
 }
 
+/** The mark the overlay currently holds a peek on, for a failure to name. */
+function peeked(): string {
+  const node = root().querySelector<HTMLElement>(".mk-mark[data-mk-peeked='true']");
+  return node?.getAttribute("aria-label") ?? "nothing";
+}
+
 async function ring(): Promise<HTMLElement> {
   await vi.waitFor(() => expect(root().querySelector(".mk-ring")).not.toBeNull());
   return find<HTMLElement>(".mk-ring");
@@ -233,13 +239,20 @@ describe("clicking a mark", () => {
     await click(1);
     await vi.waitFor(() => expect(root().querySelector(".mk-read")).not.toBeNull());
 
-    point(await mark(2), true);
+    const other = await mark(2);
+    // The rest of this test is a lie if the addresses ever came out the other
+    // way round, and an author is the cheapest way to say which mark this is.
+    expect(other.getAttribute("aria-label")).toContain("by Grace");
+    point(other, true);
 
     // Both inside the retry: the ring reaches `hovered` a frame before its
     // label catches up, so reading the name after the wait reads the old one.
+    // The peeked mark rides along in the value so a failure names its cause.
     await vi.waitFor(() => {
       expect(find(".mk-ring").getAttribute("data-mk-state")).toBe("hovered");
-      expect(find(".mk-ring-name").textContent).toBe("a passage in the gate notice");
+      expect(`${String(find(".mk-ring-name").textContent)} · peeked ${peeked()}`).toBe(
+        "a passage in the gate notice · peeked Comment 2 by Grace, Open",
+      );
     });
   });
 });

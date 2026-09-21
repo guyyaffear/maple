@@ -3,10 +3,18 @@
   <img src="docs/assets/wordmark.svg" alt="Maple" height="56">
 </picture>
 
-![The Maple overlay on a preview deployment: numbered pins on the page, a comment thread, and the context captured with each comment.](docs/assets/overlay.png)
+### [Introducing Maple →](https://blog.nitzan.fyi/introducing-maple) · [maple-kit.org](https://maple-kit.org)
 
 Visual review comments on deployed previews, written for people and read by
 agents.
+
+![The Maple overlay on a preview deployment of maple-kit.org: a reviewer has selected a line of the headline and is writing a comment on it, with the viewport width recorded alongside, and numbered pins sit on the demo page below.](docs/assets/overlay.png)
+
+> [!TIP]
+> That is **[maple-kit.org](https://maple-kit.org)** reviewing its own preview
+> deployment. The site is the fastest way to see what Maple does;
+> **[the intro post](https://blog.nitzan.fyi/introducing-maple)** says why it
+> exists and what already works.
 
 A reviewer points at something on a preview deployment and says what is wrong.
 Maple captures where they pointed, what they were looking at and who they are,

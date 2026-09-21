@@ -28,6 +28,11 @@ export interface GitHubGateOptions {
    * old name a required check nothing ever reports on again.
    */
   readonly name?: string;
+  /**
+   * This App's own id. Only the App that made a run may modify it, and
+   * `docs/gate.md` has the 403 that finding out cost.
+   */
+  readonly appId?: string | number;
 }
 
 /** The name a branch-protection ruleset requires. */
@@ -60,6 +65,8 @@ interface CheckRun {
   readonly conclusion: string | null;
   readonly external_id: string | null;
   readonly output: { readonly title: string | null; readonly summary: string | null } | null;
+  /** Who created it. Absent on a forge that does not report it. */
+  readonly app?: { readonly id: number } | null;
 }
 
 function createClient(options: GitHubGateOptions): Client {
@@ -171,11 +178,21 @@ async function read(api: Client, target: GateTarget): Promise<GateVerdict | unde
   };
 }
 
-/** The most recent run under this check's name on this commit, if any. */
+/**
+ * The most recent run this connector may act on. Told which App it is, it
+ * ignores everyone else's runs and supersedes them with one of its own.
+ */
 async function latest(api: Client, target: GateTarget): Promise<CheckRun | undefined> {
-  const path = `${repoPath(api)}/commits/${target.sha}/check-runs?check_name=${encodeURIComponent(api.check)}&filter=latest`;
+  const { appId } = api.options;
+  const filter = appId === undefined ? "latest" : "all";
+  const path =
+    `${repoPath(api)}/commits/${target.sha}/check-runs` +
+    `?check_name=${encodeURIComponent(api.check)}&filter=${filter}`;
+
   const { check_runs } = await api.request<{ check_runs: CheckRun[] }>(path);
-  return check_runs[0];
+  if (appId === undefined) return check_runs[0];
+
+  return check_runs.filter((run) => String(run.app?.id) === String(appId)).at(-1);
 }
 
 function conclusionOf(run: CheckRun): GateConclusion {

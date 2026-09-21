@@ -167,3 +167,31 @@ runtime may stop the process the moment the response is written, and a
 fire-and-forget publish would be lost exactly where Maple is most often
 deployed. Awaiting costs the reviewer a few hundred milliseconds and buys them a
 check that has settled by the time they look at it.
+
+### Two publishers, one check name
+
+The action publishes at push time and the route publishes at resolve time, and
+they are not the same GitHub identity. A workflow's `GITHUB_TOKEN` acts as the
+**GitHub Actions** App; the route acts as **Maple's gate App**. GitHub allows a
+check run to be modified only by the App that created it, and answers anything
+else with
+
+```
+403 Invalid app_id `15368` - check run can only be modified by the GitHub App
+that created it.
+```
+
+This was found by driving the loop by hand, not by a test, because every test
+until then had one publisher. `GitHubGateOptions.appId` is the fix: told which
+App it is, the gate ignores runs it does not own and posts a new one, which
+supersedes the other under the same name. The foreign run is left untouched
+rather than fought over.
+
+Without `appId` the behaviour is what it always was — patch the most recent run
+— which is correct when one publisher owns the check, and is why the option is
+optional rather than required.
+
+The alternative was to give the action the App's private key so that both
+halves publish as the same App. That is worse: it puts a signing key in CI for
+a job whose own `GITHUB_TOKEN` is already sufficient at push time, and the key
+is the one credential `docs/github-auth.md` argues hardest about.

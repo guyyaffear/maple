@@ -58,6 +58,76 @@ describe("the human table", () => {
   });
 });
 
+describe("the chrome around it", () => {
+  it("carries the wordmark inline in the line above the table, with a dark form", () => {
+    const [first] = exported([storedComment()]).split("\n");
+
+    expect(first).toContain("Comment written by Reviewer via <sub><picture>");
+    expect(first).toContain("(prefers-color-scheme: dark)");
+    expect(first).toContain('alt="Maple" height="20"');
+    expect(first?.endsWith("</picture></sub> :")).toBe(true);
+  });
+
+  it("keeps the picture on one line, since a blank line would end the HTML block", () => {
+    const first = exported([storedComment()]).split("\n")[0]!;
+    expect(first.split("<picture>")).toHaveLength(2);
+  });
+
+  it("names every author once, in the order they first appear", () => {
+    const by = (name: string, id: string): Comment =>
+      storedComment({ id, author: { id: name, name, provenance: "server" } });
+    const markdown = exported([by("Ada", "a"), by("Grace", "b"), by("Ada", "c")]);
+
+    expect(markdown).toContain("Comments written by Ada and Grace via <sub><picture>");
+  });
+
+  it("keeps the wordmark when nobody signed, rather than crediting nobody", () => {
+    const markdown = exported([
+      storedComment({ author: { id: "u", name: " ", provenance: "guest" } }),
+    ]);
+
+    expect(markdown).toContain("Comment collected via <sub><picture>");
+    expect(markdown).not.toContain("written by");
+  });
+
+  it("says what the fence is for, directly above it", () => {
+    const markdown = exported([storedComment()]);
+    const lead = markdown.indexOf("The full comment details in markdown, to copy into an agent:");
+
+    expect(lead).toBeGreaterThan(markdown.indexOf("| # |"));
+    expect(lead).toBeLessThan(markdown.indexOf("```maple"));
+  });
+
+  it("closes with the preview, the commit and a link back to the repository", () => {
+    const markdown = exported([storedComment({ commit: "a1b2c3d4e5f6a7b8" })]);
+    expect(
+      markdown.endsWith(
+        "<sub><code>preview.example.com @ a1b2c3d</code> · " +
+          'powered by <a href="https://github.com/maple-kit/maple">Maple</a></sub>',
+      ),
+    ).toBe(true);
+  });
+
+  it("stamps the preview alone when the comment carries no commit", () => {
+    const markdown = exported([storedComment()]);
+    expect(markdown).toContain("<code>preview.example.com</code> · powered by");
+  });
+
+  it("drops a stamp it cannot read rather than printing a broken one", () => {
+    const context = { ...SAMPLE_CONTEXT, url: "not a url" };
+    const markdown = exported([storedComment({ context })]);
+
+    expect(markdown).not.toContain("<code>");
+    expect(markdown).toContain("<sub>powered by");
+  });
+
+  it("costs the fence none of its budget", () => {
+    const result = exportMarkdown([storedComment()], { branch: BRANCH, budget: 8192 });
+    expect(result.bytes).toBeLessThan(result.markdown.length);
+    expect(result.overBudget).toBe(false);
+  });
+});
+
 describe("screenshots", () => {
   it("links a hosted screenshot", () => {
     const markdown = exported([storedComment()], {
@@ -255,14 +325,17 @@ describe("the byte budget", () => {
 });
 
 describe("a summary, with no fence", () => {
-  it("returns the table alone", () => {
+  it("returns the chrome and the table, and no fence", () => {
     const result = exportMarkdown([storedComment({ status: "open" })], {
       branch: BRANCH,
       fence: false,
     });
 
     expect(result.markdown).toContain("| # | Where | Comment | Viewport |");
+    expect(result.markdown).toContain("via <sub><picture>");
+    expect(result.markdown).toContain("powered by");
     expect(result.markdown).not.toContain("```maple");
+    expect(result.markdown).not.toContain("copy into an agent");
     expect(parseFence(result.markdown)).toBeUndefined();
   });
 

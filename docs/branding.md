@@ -67,3 +67,93 @@ the two files exist rather than one that adapts.
 
 Regenerate them from the token values in `packages/ui/src/tokens.ts` whenever
 those change; nothing checks that they still agree.
+
+## On a pull request
+
+Every body `exportMarkdown` writes is assembled in the same order: one line
+saying who wrote the comments and what wrote them down, the table, a line
+saying what the fence is, the fence, then a rule above the footer.
+
+````
+Comment written by Ada Lovelace via ⟨wordmark⟩:
+
+| # | Where | Comment | Viewport |
+…
+
+The full comment details in markdown, to copy into an agent:
+
+```maple
+…
+```
+
+---
+
+⟨preview.example.com @ a1b2c3d⟩ · powered by Maple
+````
+
+The chrome is not optional and takes no argument. A comment Maple posts is the
+only place most people ever see the project, and a flag deciding whether it is
+branded would be a flag nobody sets.
+
+- **The wordmark is the same `<picture>` pair the README uses**, served from
+  `raw.githubusercontent.com` on `main`, which is why moving or renaming
+  `docs/assets/wordmark.svg` breaks the mark on every comment already posted.
+  It is emitted on one line: a blank line inside an HTML block ends the block,
+  and the rest would render as literal markup.
+- **It sits in the sentence rather than above it.** A banner on its own line
+  reads as a header on the reviewer's comment, which is whose comment it is
+  not. In the sentence it reads as the byline it is.
+- **`<sub>` is how it is lowered**, because GitHub's sanitiser drops `style`
+  from a comment body and replaces it with its own. The word's baseline sits
+  two thirds down the image, so left on the text baseline the mark reads about
+  7 pixels high, and `align="middle"` overcorrects by the same amount: it puts
+  the word on the baseline and the leaf, which carries the eye, below the
+  line. `<sub>` lowers it by about 3 and is the half that looks level.
+- **The author line is derived, never stored.** It names each distinct
+  `comment.author.name` once, in first-appearance order. A set whose authors
+  are all blank says `collected via` instead, so the mark never drops out.
+- **The footer stamps the preview.** The host of `context.url` and the first
+  seven of `commit`, from the first comment in the set: a reviewer with three
+  previews open cannot tell them apart from the table. A URL that will not
+  parse costs the stamp and nothing else.
+- **The fence keeps its own budget.** `bytes` and `reduced` describe the fence
+  alone, so the chrome cannot push a comment into a reduction.
+
+## The App's logo
+
+`docs/assets/app-logo.png` is the avatar both GitHub Apps wear: the solid leaf
+at 92% of a transparent square, tilted its own 20 degrees, with a lowercase
+`m` in Caveat Brush cut out of it in `--mk-accent-sub` cream. Lowercase,
+because the wordmark's word is lowercase and a capital reads as a different
+mark; cut out rather than laid on, because at 20 pixels in a checks list the
+counter is the only thing that says the leaf is a letter at all.
+
+It is a manual upload under **Display information** — GitHub has no manifest
+field for a logo and no REST endpoint for an App's avatar — so the
+`setup-maple-org` skill asks for it at the step where a person is already on
+that page. The badge background beside it is `#465a2b`, the light accent.
+
+Regenerate it from `tools/logo-lab/index.html`, which draws `LEAF_SOLID` and
+the letter onto a canvas at any size and previews the result down to 20
+pixels. Open it, load the **Cut-out** preset, and these are the settings the
+file was rendered at, at 1024:
+
+```json
+{
+  "leafStyle": "solid",
+  "leafColor": "#465a2b",
+  "leafSize": 92,
+  "leafTilt": 20,
+  "mColor": "#fdf8e8",
+  "mSize": 27,
+  "mX": 0,
+  "mY": 1,
+  "mTilt": 0,
+  "mCase": "m",
+  "bgAlpha": 0
+}
+```
+
+```
+
+```

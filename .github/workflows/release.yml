@@ -56,11 +56,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
-          # TEMPORARY, for one run. npm registers a trusted publisher only
-          # against a package that already exists, so @maple-kit/classifier's
-          # first publish cannot use the tokenless path. Removed again, with
-          # the secret, on branch chore/restore-gate-changeset.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Push the tags changeset publish just wrote
         # changesets/action only pushes tags for packages it recognised in the

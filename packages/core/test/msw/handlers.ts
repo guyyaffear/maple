@@ -8,6 +8,8 @@
 
 import type { RequestHandler } from "msw";
 
+export { createAppFake } from "./github-app.js";
+export type { AppFake } from "./github-app.js";
 export { createGitHubFake, pullFor } from "./github.js";
 export type { GitHubFake } from "./github.js";
 export { createMapleFake, MAPLE_BASE, MAPLE_ORIGIN, mapleUnavailable } from "./maple.js";

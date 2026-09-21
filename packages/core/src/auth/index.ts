@@ -1,8 +1,12 @@
 /**
- * Signing a reviewer in from a preview host.
+ * How Maple authenticates to GitHub, both ways round.
  *
- * Everything here runs on the SDK route. A device code and a token are both
- * credentials, and neither belongs in a bundle the browser downloads.
+ * A reviewer signs in with Device Flow and comments as themselves; the gate
+ * App signs itself in and writes a check run as Maple. They are two Apps on
+ * purpose, and `docs/github-auth.md` is the reasoning.
+ *
+ * Everything here runs on the SDK route. A device code, a token and a private
+ * key are all credentials, and none belongs in a bundle the browser downloads.
  */
 
 export { PENDING_COOKIE, readGitHubSession, SESSION_COOKIE } from "./cookie.js";
@@ -19,3 +23,7 @@ export type {
   DeviceFlowOptions,
   DeviceToken,
 } from "./device-flow.js";
+
+export { createInstallationAuth, InstallationAuthError } from "./installation.js";
+
+export type { InstallationAuth, InstallationAuthOptions } from "./installation.js";

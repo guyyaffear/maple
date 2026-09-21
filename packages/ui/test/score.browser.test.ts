@@ -191,6 +191,17 @@ describe("the score card", () => {
 });
 
 describe("the kind chip", () => {
+  it("names the runner-up too when it is nearly as likely", async () => {
+    started();
+    await client.load();
+    client.openComposer(TARGET);
+    mount();
+    await type(WRITTEN);
+
+    client.setKind(undefined);
+    expect(shadow().querySelector(".mk-kind-word")?.textContent).not.toContain(" or ");
+  });
+
   it("shows what the classifier guessed", async () => {
     started();
     await client.load();

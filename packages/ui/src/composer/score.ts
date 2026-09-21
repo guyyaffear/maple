@@ -8,7 +8,7 @@
  * `docs/assist.md` is the design record.
  */
 
-import { COMMENT_KINDS } from "@maple-kit/core/connectors";
+import { COMMENT_KINDS, FALLBACK_KIND } from "@maple-kit/core/connectors";
 import { useMaple, useMapleClient } from "@maple-kit/react";
 import { createElement, forwardRef, Fragment } from "react";
 
@@ -32,8 +32,11 @@ export const KIND_LABEL = "What kind of comment this is";
 /** The option that hands the kind back to the classifier. */
 export const KIND_AUTO = "auto";
 
-/** Below this, a guess is drawn as two kinds rather than as one. */
-const UNSURE = 0.5;
+/**
+ * Name the runner-up too once it holds this much of the winner's probability:
+ * 0.64 against 0.35 is a close call, whatever a confidence number makes of it.
+ */
+const RUNNER_UP = 0.5;
 
 /** The card. Renders from `ComposerState` and holds nothing of its own. */
 export const MapleScoreCard = /** @__PURE__ */ forwardRef<HTMLElement, MapleScoreProps>(
@@ -89,7 +92,8 @@ function pillarRow(pillar: Pillar, score: PillarScore | undefined): ReactNode {
  * readable; the fill says how sure, so three pale slots are visibly a shrug.
  */
 function segment(index: number, share: number | undefined): ReactNode {
-  return createElement("i", { key: index, style: { "--mk-p": share ?? 0 } as CSSProperties });
+  const fill = Math.round((share ?? 0) * 1000) / 1000;
+  return createElement("i", { key: index, style: { "--mk-p": fill } as CSSProperties });
 }
 
 /** The sentence a screen reader gets, since it cannot see the segments. */
@@ -140,12 +144,17 @@ function KindChip(): ReactElement {
 function word(kind: KindGuess | null, chosen: CommentKind | undefined): string {
   if (chosen !== undefined) return chosen;
   if (kind === null) return "…";
-  if (kind.confidence >= UNSURE) return kind.kind;
 
-  const runnerUp = COMMENT_KINDS.filter((one) => one !== kind.kind).sort(
-    (a, b) => (kind.distribution[b] ?? 0) - (kind.distribution[a] ?? 0),
-  )[0];
-  return runnerUp === undefined ? kind.kind : `${kind.kind} or ${runnerUp}`;
+  const shares = COMMENT_KINDS.filter((one) => one !== kind.kind).map(
+    (one) => [one, kind.distribution[one] ?? 0] as const,
+  );
+  const [next, share] = shares.reduce((best, one) => (one[1] > best[1] ? one : best), [
+    FALLBACK_KIND,
+    0,
+  ] as const);
+
+  const close = share >= (kind.distribution[kind.kind] ?? 1) * RUNNER_UP;
+  return close ? `${kind.kind} or ${next}` : kind.kind;
 }
 
 /** What the automatic option is called, once there is something to call it. */

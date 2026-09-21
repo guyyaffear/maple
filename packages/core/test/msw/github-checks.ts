@@ -22,6 +22,8 @@ export interface FakeRun {
   external_id: string | null;
   details_url?: string;
   output: { title: string | null; summary: string | null } | null;
+  /** Which App created it. GitHub lets only that App modify it again. */
+  app: { id: number };
 }
 
 /** A fake repository's check runs. */
@@ -31,7 +33,15 @@ export interface ChecksFake {
   runsOn(sha: string): readonly FakeRun[];
   /** Forgets every run, so one test cannot see another's. */
   reset(): void;
+  /** Which App the next create is attributed to. Defaults to {@link MAPLE_APP}. */
+  as(appId: number): void;
 }
+
+/** The App id the fake attributes a create to unless a test says otherwise. */
+export const MAPLE_APP = 900_001;
+
+/** GitHub Actions' own App, which is what a workflow's `GITHUB_TOKEN` acts as. */
+export const ACTIONS_APP = 15_368;
 
 /** `filter=all` lists every run; anything else means the most recent one. */
 function latestOnly(url: string): boolean {
@@ -42,6 +52,7 @@ function latestOnly(url: string): boolean {
 export function createChecksFake(owner = "maple-kit", repo = "app"): ChecksFake {
   let runs: FakeRun[] = [];
   let nextId = 500;
+  let acting = MAPLE_APP;
 
   const handlers: RequestHandler[] = [
     http.get(`${API}/repos/${owner}/${repo}/commits/:sha/check-runs`, ({ params, request }) => {
@@ -65,6 +76,7 @@ export function createChecksFake(owner = "maple-kit", repo = "app"): ChecksFake 
         conclusion: sent.conclusion ?? null,
         external_id: sent.external_id ?? null,
         output: sent.output ?? null,
+        app: { id: acting },
         ...(sent.details_url === undefined ? {} : { details_url: sent.details_url }),
       };
 
@@ -76,6 +88,19 @@ export function createChecksFake(owner = "maple-kit", repo = "app"): ChecksFake 
       const found = runs.find((run) => run.id === Number(params["id"]));
       if (!found) return HttpResponse.json({ message: "Not Found" }, { status: 404 });
 
+      // GitHub refuses a modification by any App but the one that created it,
+      // and says so with a 403 rather than a 404.
+      if (found.app.id !== acting) {
+        return HttpResponse.json(
+          {
+            message:
+              `Invalid app_id \`${String(acting)}\` - ` +
+              "check run can only be modified by the GitHub App that created it.",
+          },
+          { status: 403 },
+        );
+      }
+
       const sent = (await request.json()) as Partial<FakeRun>;
       Object.assign(found, sent, { id: found.id });
       return HttpResponse.json(found);
@@ -85,7 +110,11 @@ export function createChecksFake(owner = "maple-kit", repo = "app"): ChecksFake 
   return {
     handlers,
     runsOn: (sha) => runs.filter((run) => run.head_sha === sha),
+    as: (appId) => {
+      acting = appId;
+    },
     reset: () => {
+      acting = MAPLE_APP;
       runs = [];
       nextId = 500;
     },

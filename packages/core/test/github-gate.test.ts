@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { CHECK_NAME, githubGate } from "../src/connectors/github-gate.js";
 import { decideGate } from "../src/gate/decide.js";
 import { storedComment } from "../src/testing/fixtures.js";
-import { createChecksFake } from "./msw/github-checks.js";
+import { ACTIONS_APP, createChecksFake, MAPLE_APP } from "./msw/github-checks.js";
 import { createTestServer, useTestServer } from "./msw/server.js";
 
 const API = "https://api.github.com";
@@ -141,5 +141,71 @@ describe("when GitHub says no", () => {
     await expect(gate().publish({ ...at, verdict: blocked })).rejects.toThrow(
       /GitHub 403 .*not accessible by integration/,
     );
+  });
+});
+
+/**
+ * Found by running it, with two publishers GitHub will not let edit each
+ * other's runs. `docs/gate.md` is the case.
+ */
+describe("when another App already published under this name", () => {
+  function owned() {
+    return githubGate({
+      owner: "maple-kit",
+      repo: "app",
+      token: "gate-token",
+      appId: MAPLE_APP,
+    });
+  }
+
+  it("supersedes a foreign run rather than being refused by GitHub", async () => {
+    checks.as(ACTIONS_APP);
+    await gate().publish({ ...at, verdict: blocked });
+
+    checks.as(MAPLE_APP);
+    await owned().publish({ ...at, verdict: clear });
+
+    const runs = checks.runsOn(SHA);
+    expect(runs).toHaveLength(2);
+    expect(runs.at(-1)?.app.id).toBe(MAPLE_APP);
+    expect(runs.at(-1)?.conclusion).toBe("success");
+  });
+
+  it("leaves the other App's run exactly as it found it", async () => {
+    checks.as(ACTIONS_APP);
+    await gate().publish({ ...at, verdict: blocked });
+    const before = { ...checks.runsOn(SHA)[0] };
+
+    checks.as(MAPLE_APP);
+    await owned().publish({ ...at, verdict: clear });
+
+    expect(checks.runsOn(SHA)[0]).toEqual(before);
+  });
+
+  it("still updates its own run in flight rather than piling up new ones", async () => {
+    await owned().publish({ ...at, verdict: blocked });
+    await owned().publish({ ...at, verdict: clear });
+
+    const runs = checks.runsOn(SHA);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.status).toBe("completed");
+  });
+
+  it("reads back its own verdict and not the other App's", async () => {
+    checks.as(ACTIONS_APP);
+    await gate().publish({ ...at, verdict: blocked });
+
+    checks.as(MAPLE_APP);
+    await owned().publish({ ...at, verdict: clear });
+
+    expect((await owned().read?.(at))?.conclusion).toBe("clear");
+  });
+
+  it("without an appId behaves as it always did, and GitHub refuses it", async () => {
+    checks.as(ACTIONS_APP);
+    await gate().publish({ ...at, verdict: blocked });
+
+    checks.as(MAPLE_APP);
+    await expect(gate().publish({ ...at, verdict: clear })).rejects.toThrow(/403/u);
   });
 });

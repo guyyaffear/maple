@@ -14,7 +14,7 @@ export { CANCEL_LABEL, MapleActions, MapleActions as Actions, SEND_LABEL } from 
 export type { MapleActionsProps } from "./actions.js";
 export { ATTACH_WORDS, MapleAttachments, MapleAttachments as Attachments } from "./attachments.js";
 export type { MapleAttachmentsProps } from "./attachments.js";
-export { MapleContextBadge, MapleContextBadge as Context } from "./badge.js";
+export { CONTEXT_LABELS, MapleContextBadge, MapleContextBadge as Context } from "./badge.js";
 export type { MapleContextProps } from "./badge.js";
 export { COMPOSER_PLACEHOLDER, MapleBody, MapleBody as Body } from "./body.js";
 export type { MapleBodyProps } from "./body.js";
@@ -61,5 +61,13 @@ export {
 export type { EmojiGridProps, MapleEmojiProps } from "./picker-emoji.js";
 export { ComposerScopeError } from "./scope.js";
 export type { SheetDetent } from "./scope.js";
+export {
+  KIND_AUTO,
+  KIND_LABEL,
+  MapleScoreCard,
+  MapleScoreCard as Score,
+  SCORE_LABEL,
+} from "./score.js";
+export type { MapleScoreProps } from "./score.js";
 export { CLOSE_LABEL, DETAIL_ATTRIBUTE, MapleTarget, MapleTarget as Target } from "./target.js";
 export type { MapleTargetProps } from "./target.js";

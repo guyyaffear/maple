@@ -9,7 +9,7 @@
  */
 
 import type { Anchor } from "../anchor/types.js";
-import type { KindGuess, Pillar, PillarScore } from "../connectors/types.js";
+import type { CommentKind, KindGuess, Pillar, PillarScore } from "../connectors/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentContext, MapleUser, MediaRef, PickKind } from "../types.js";
 import type { MapleFailure } from "./failure.js";
@@ -82,6 +82,11 @@ export interface AssistState {
   readonly scores: readonly PillarScore[];
   /** Null until one arrives, and when nothing classifies. */
   readonly kind: KindGuess | null;
+  /**
+   * What the reviewer said it is. It beats {@link AssistState.kind} wherever
+   * both exist: a person looking at the page outranks a sentence classifier.
+   */
+  readonly chosenKind?: CommentKind;
 }
 
 /** The composer, whether or not it is showing. */
@@ -102,6 +107,11 @@ export interface ComposerState {
   readonly sending: boolean;
   /** Advice about what is written. Never blocks, delays or rewrites a send. */
   readonly assist: AssistState;
+  /**
+   * Whether the context card is showing everything it captured. It opens on a
+   * pick, closes itself on the first keystroke, and reopens only when asked.
+   */
+  readonly contextOpen: boolean;
 }
 
 /** Whether a pick is armed, and which one. */

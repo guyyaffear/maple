@@ -120,12 +120,19 @@ describe("clicking a comment", () => {
   /** Seven facts one to a line ran the card down half the panel to say a width. */
   it("lays the context out two pairs to a row, inset from the panel's edges", async () => {
     await openFirstRow();
-    const badge = find<HTMLElement>(".mk-ctx");
-    const style = getComputedStyle(badge);
+    const grid = getComputedStyle(find<HTMLElement>(".mk-ctx"));
+    const card = getComputedStyle(find<HTMLElement>(".mk-ctx-card"));
 
-    expect(style.gridTemplateColumns.split(" ")).toHaveLength(4);
-    expect(Number.parseFloat(style.marginLeft)).toBeGreaterThan(12);
-    expect(Number.parseFloat(style.paddingLeft)).toBeGreaterThan(9);
+    expect(grid.gridTemplateColumns.split(" ")).toHaveLength(4);
+    expect(Number.parseFloat(grid.paddingLeft)).toBeGreaterThan(9);
+    expect(Number.parseFloat(card.marginLeft)).toBeGreaterThan(12);
+  });
+
+  /** A stored comment is not being typed beside, so nothing folds it away. */
+  it("does not offer to fold a comment's own context", async () => {
+    await openFirstRow();
+
+    expect(root().querySelector(".mk-ctx-head")).toBeNull();
   });
 
   it("offers no field: one body per comment, so there is nothing to type into", async () => {

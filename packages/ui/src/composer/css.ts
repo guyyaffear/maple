@@ -209,23 +209,110 @@ function emojiCss(): string {
 `.trim();
 }
 
-/** What the page looked like, and the screenshot taken of it. */
-function contextAndShots(): string {
+/** How the comment reads, and what kind it looks like. */
+function scoreCard(): string {
   return `
-/* Two pairs to a row: seven facts one per line ran the card down half the
-   panel. Labels keep their own column, so every value still lines up. */
-.mk-ctx {
+/* The judgement, in the slot the context card folded out of. Rows are laid out
+   first and filled second, so nothing below moves as they land. */
+.mk-score {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 7px 10px;
+  grid-template-columns: auto 68px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 9px;
   margin: 2px 16px 4px;
-  padding: 11px 13px;
+  padding: 10px 11px;
   border: 1px solid var(--mk-line);
   border-radius: var(--mk-r-sm);
   background: var(--mk-sunk);
 }
 
-.mk-ctx dt {
+/* The same line box empty as full: the rung arrives after the bar, and a row
+   that grows when its words land moves the field somebody is typing in. */
+.mk-score-rung {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mk-fg);
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One slot per rung, each filled by the probability it took. Equal widths keep
+   *which* rung readable and the fill carries how sure it was, which is why the
+   bar needs no key beside it: three pale slots are visibly a shrug. */
+.mk-score-bar {
+  display: flex;
+  gap: 2px;
+  height: 5px;
+  margin: 5px 0;
+}
+
+.mk-score-bar i {
+  flex: 1;
+  border-radius: 999px;
+  background: color-mix(
+    in oklab,
+    var(--mk-accent) calc(var(--mk-p, 0) * 100%),
+    var(--mk-line-firm)
+  );
+  transition: background-color var(--mk-dur-swap) var(--mk-ease-swap);
+}
+
+/* Judging is the rows present and empty: a spinner per pillar is five things
+   moving beside a field somebody is typing in. */
+.mk-score[data-mk-status="judging"] .mk-score-bar i {
+  background: var(--mk-line);
+}
+
+`.trim();
+}
+
+/** The kind chip, which is a control wearing a pill. */
+function kindChip(): string {
+  return `
+/* The select covers the pill, so the whole chip is the hit area. */
+.mk-kind {
+  position: relative;
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-bottom: 3px;
+  border-radius: var(--mk-r-xs);
+  background: var(--mk-accent-sub);
+  color: var(--mk-accent);
+}
+
+.mk-kind-word {
+  display: block;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.mk-kind[data-mk-chosen="true"] {
+  background: var(--mk-accent);
+  color: var(--mk-accent-ink);
+}
+
+.mk-kind-pick {
+  position: absolute;
+  inset: -6px -4px;
+  width: calc(100% + 8px);
+  border: 0;
+  opacity: 0;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+.mk-kind:has(.mk-kind-pick:focus-visible) {
+  outline: 2px solid var(--mk-accent);
+  outline-offset: 2px;
+}
+
+.mk-ctx dt,
+.mk-score-name {
   align-self: baseline;
   color: var(--mk-faint);
   font-size: 9px;
@@ -319,6 +406,74 @@ function contextAndShots(): string {
   color: color-mix(in oklab, var(--mk-maple) 78%, var(--mk-muted));
   font-weight: 450;
 }
+`.trim();
+}
+
+/** What the page looked like, and the screenshot taken of it. */
+function contextAndShots(): string {
+  return `
+/* It folds rather than vanishes: the width is the one fact read off it, so
+   the summary keeps that line in both states. */
+.mk-ctx-card {
+  margin: 2px 16px 4px;
+  border: 1px solid var(--mk-line);
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-sunk);
+  overflow: hidden;
+}
+
+.mk-ctx-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 0;
+  background: none;
+  color: var(--mk-muted);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.mk-ctx-head:hover {
+  color: var(--mk-fg);
+}
+
+/* Two borders rather than an icon: one control does not earn a second svg. */
+.mk-ctx-caret {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(1px) rotate(-135deg);
+  transition: transform var(--mk-dur-swap) var(--mk-ease-surface);
+}
+
+.mk-ctx-card[data-mk-open="false"] .mk-ctx-caret {
+  transform: translateY(-1px) rotate(45deg);
+}
+
+.mk-ctx-card[data-mk-open="false"] .mk-ctx {
+  display: none;
+}
+
+/* Two pairs to a row: seven facts one per line ran the card down half the
+   panel. Labels keep their own column, so every value still lines up. */
+.mk-ctx {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 7px 10px;
+  padding: 11px;
+}
+
+.mk-ctx-head + .mk-ctx {
+  padding-top: 3px;
+}
+
 `.trim();
 }
 
@@ -432,6 +587,10 @@ function partsCss(): string {
 ${emojiCss()}
 
 ${contextAndShots()}
+
+${scoreCard()}
+
+${kindChip()}
 
 .mk-leave {
   position: absolute;

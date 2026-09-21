@@ -91,6 +91,20 @@ export default tseslint.config(
   },
 
   {
+    // The classifier package is the one place on the Effect v4 line, and its
+    // whole public surface is one connector. Keeping Effect under internal/
+    // is what makes that true of the built types, not only of index.ts.
+    files: ["packages/classifier/src/**/*.ts"],
+    ignores: ["packages/classifier/src/internal/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [{ group: ["effect", "effect/*", "@effect/*"], message: EFFECT_IS_INTERNAL }] },
+      ],
+    },
+  },
+
+  {
     // The two packages that render, and their source rather than their tests:
     // a test probe reassigns a module variable on purpose to observe a render.
     files: ["packages/react/src/**/*.{ts,tsx}", "packages/ui/src/**/*.{ts,tsx}"],

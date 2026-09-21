@@ -1,0 +1,133 @@
+import { DEFAULT_PILLARS } from "@maple-kit/core/connectors";
+import { runClassifierContract } from "@maple-kit/core/testing";
+import { delay, http, HttpResponse } from "msw";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+
+import { jevClassifier } from "../src/index.js";
+import { createTestServer, useTestServer } from "./msw/server.js";
+import { createSystemOneFake } from "./msw/systemone.js";
+
+const fake = createSystemOneFake();
+const server = createTestServer(...fake.handlers);
+
+useTestServer(server, { afterAll, afterEach, beforeAll });
+afterEach(() => fake.reset());
+
+/** The connector every test here builds, against the fake endpoint. */
+function connector(options: Partial<Parameters<typeof jevClassifier>[0]> = {}) {
+  return jevClassifier({ apiKey: "test-key", ...options });
+}
+
+runClassifierContract({
+  create: () => Promise.resolve({ connector: connector() }),
+  name: "jev",
+});
+
+describe("jevClassifier", () => {
+  it("carries every pillar and the kind in one request each", async () => {
+    const jev = connector();
+
+    await jev.score?.({ body: "The Save button is cut off." });
+    expect(fake.asked).toHaveLength(1);
+    expect(Object.keys(fake.asked[0]?.questions ?? {})).toEqual(
+      DEFAULT_PILLARS.map((pillar) => `pillar:${pillar.id}`),
+    );
+
+    await jev.classify?.({ body: "The Save button is cut off." });
+    expect(fake.asked).toHaveLength(2);
+    expect(Object.keys(fake.asked[1]?.questions ?? {})).toEqual(["kind"]);
+  });
+
+  it("sends the comment as the whole state, and the flagship alias", async () => {
+    await connector().score?.({ body: "the sav" });
+
+    expect(fake.asked[0]?.state).toEqual({ comment: "the sav" });
+    expect(fake.asked[0]?.model).toBe("jev-latest");
+  });
+
+  it("asks a score question per pillar and a choice for the kind", async () => {
+    await connector().score?.({ body: "x" });
+    await connector().classify?.({ body: "x" });
+
+    expect(fake.asked[0]?.questions["pillar:specific"]?.type).toBe("score");
+    expect(fake.asked[0]?.questions["pillar:specific"]?.criteria).toHaveLength(3);
+    expect(fake.asked[1]?.questions["kind"]?.type).toBe("choice");
+    expect(Object.keys(fake.asked[1]?.questions["kind"]?.criteria as object)).toContain("praise");
+  });
+
+  it("returns jev's own probabilities rather than a spread around a level", async () => {
+    const scores = await connector().score?.({ body: "x", pillars: ["specific"] });
+
+    expect(scores?.[0]?.distribution).toEqual([0.15, 0.7, 0.15]);
+    expect(scores?.[0]?.level).toBe(1);
+    expect(scores?.[0]?.confidence).toBeCloseTo(0.6, 10);
+  });
+
+  it("asks a model and a base url a deployment chose", async () => {
+    const local = createSystemOneFake("http://localhost:8080/v1/systemone");
+    server.use(...local.handlers);
+
+    await connector({ baseUrl: "http://localhost:8080/v1", model: "jev-preview" }).classify?.({
+      body: "x",
+    });
+
+    expect(local.asked).toHaveLength(1);
+    expect(local.asked[0]?.model).toBe("jev-preview");
+    expect(fake.asked).toHaveLength(0);
+  });
+
+  it("scores only the pillars a host configured", async () => {
+    const only = [DEFAULT_PILLARS[0]!];
+    const jev = connector({ pillars: only });
+
+    expect(jev.pillars).toEqual(only);
+    expect(await jev.score?.({ body: "x" })).toHaveLength(1);
+  });
+
+  it("reports a refused request as a plain error naming the connector", async () => {
+    fake.failNext(401, { detail: "InvalidKey" });
+
+    await expect(connector().classify?.({ body: "x" })).rejects.toThrow(/^Classifier "jev"/);
+    expect(await connector().classify?.({ body: "x" })).toBeDefined();
+  });
+
+  it("reports a rate limit and an overload the same way, without retrying", async () => {
+    for (const status of [429, 529]) {
+      fake.failNext(status);
+      await expect(connector().score?.({ body: "x" })).rejects.toThrow(/could not score/);
+    }
+    expect(fake.asked).toHaveLength(0);
+  });
+
+  it("opens no request at all for a keystroke already superseded", async () => {
+    const aborted = AbortSignal.abort();
+
+    await expect(connector().classify?.({ body: "x", signal: aborted })).rejects.toThrow();
+    expect(fake.asked).toHaveLength(0);
+  });
+
+  it("abandons a judgement in flight when the next keystroke arrives", async () => {
+    const slow = createSystemOneFake("https://slow.example/v1/systemone");
+    server.use(
+      ...slow.handlers,
+      http.post("https://slow.example/v1/systemone", async () => {
+        await delay(200);
+        return HttpResponse.json({ answers: {}, model: "jev-1.13.0" });
+      }),
+    );
+
+    const controller = new AbortController();
+    const judging = connector({ baseUrl: "https://slow.example/v1" }).score?.({
+      body: "x",
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    await expect(judging).rejects.toThrow();
+  });
+
+  it("costs nothing until something is judged", () => {
+    expect(() => connector({ apiKey: "" })).not.toThrow();
+    expect(fake.asked).toHaveLength(0);
+  });
+});

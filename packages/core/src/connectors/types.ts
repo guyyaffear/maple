@@ -218,6 +218,11 @@ export interface KindGuess {
 export interface ClassifierRequest {
   /** The comment as it stands, which while typing is usually mid-sentence. */
   readonly body: string;
+  /**
+   * Abandons the judgement when the next keystroke makes it stale. A
+   * connector reaching a network honours it; a local one may ignore it.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /** A scoring request, optionally narrowed to some of the pillars. */

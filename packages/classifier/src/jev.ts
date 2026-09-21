@@ -1,0 +1,113 @@
+/**
+ * The jev classifier: Maple's assist tier backed by a System One model.
+ *
+ * One request carries every pillar's question and the kind's together, which
+ * is what makes scoring a comment as it is typed affordable at all. jev reads
+ * the comment once and answers each question against it in parallel.
+ */
+
+import { DEFAULT_PILLARS, selectPillars } from "@maple-kit/core/connectors";
+
+import { openSystemOne } from "./internal/systemone.js";
+import {
+  KIND_KEY,
+  kindGuessFrom,
+  kindQuestion,
+  pillarKey,
+  pillarQuestion,
+  pillarScoreFrom,
+  stateFor,
+} from "./questions.js";
+
+import type { Answer, Question } from "./questions.js";
+import type {
+  ClassifierConnector,
+  ClassifierRequest,
+  KindGuess,
+  Pillar,
+  PillarScore,
+  ScoreRequest,
+} from "@maple-kit/core/connectors";
+
+/** How a deployment reaches a System One model. */
+export interface JevClassifierOptions {
+  /** Read on the server, never in a browser. `docs/assist.md` says why. */
+  readonly apiKey: string;
+  /**
+   * The API root `/systemone` is appended to, defaulting to TypeSafe's own.
+   * Request-compatible reimplementations make local a configuration choice.
+   */
+  readonly baseUrl?: string | undefined;
+  /** An alias or a pinned version. Defaults to the flagship alias. */
+  readonly model?: string | undefined;
+  /** What to judge against. Defaults to Maple's five. */
+  readonly pillars?: readonly Pillar[] | undefined;
+}
+
+/** The alias, not a pinned version: `typesafe/jev-1.13` is another listing's id. */
+const DEFAULT_MODEL = "jev-latest";
+
+/** Builds the connector. Nothing is requested until something is scored. */
+export function jevClassifier(options: JevClassifierOptions): ClassifierConnector {
+  const pillars = options.pillars ?? DEFAULT_PILLARS;
+  const connector: ClassifierConnector = {
+    name: "jev",
+    pillars,
+
+    async classify(request: ClassifierRequest): Promise<KindGuess> {
+      const answers = await ask(connector, "classify", request, { [KIND_KEY]: kindQuestion() });
+      return kindGuessFrom(answerAt(answers, KIND_KEY));
+    },
+
+    async score(request: ScoreRequest): Promise<readonly PillarScore[]> {
+      const asked = selectPillars(connector, request.pillars);
+      const questions: Record<string, Question> = {};
+      for (const pillar of asked) questions[pillarKey(pillar)] = pillarQuestion(pillar);
+
+      const answers = await ask(connector, "score", request, questions);
+      return asked.map((pillar) => pillarScoreFrom(pillar, answerAt(answers, pillarKey(pillar))));
+    },
+  };
+
+  const open = once(() =>
+    openSystemOne({
+      apiKey: options.apiKey,
+      baseUrl: options.baseUrl,
+      model: options.model ?? DEFAULT_MODEL,
+    }),
+  );
+
+  /** Sends one question map and hands back the answers, keyed as they were asked. */
+  function ask(
+    self: ClassifierConnector,
+    operation: string,
+    request: ClassifierRequest,
+    questions: Readonly<Record<string, Question>>,
+  ): Promise<Readonly<Record<string, Answer>>> {
+    return open().ask({
+      connector: self.name,
+      operation,
+      questions,
+      signal: request.signal,
+      state: stateFor(request.body),
+    });
+  }
+
+  return connector;
+}
+
+/**
+ * An answer that must be there: a missing key means a broken provider rather
+ * than a comment that could not be judged.
+ */
+function answerAt(answers: Readonly<Record<string, Answer>>, key: string): Answer {
+  const answer = answers[key];
+  if (answer === undefined) throw new Error(`jev returned no answer for "${key}".`);
+  return answer;
+}
+
+/** Defers the first call and reuses its result, so a connector costs nothing unused. */
+function once<T>(build: () => T): () => T {
+  let value: T | undefined;
+  return () => (value ??= build());
+}

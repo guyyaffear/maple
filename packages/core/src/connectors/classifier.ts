@@ -125,6 +125,23 @@ export const COMMENT_KINDS: readonly CommentKind[] = [
 /** What a comment is when nothing else fits. An absence, never a judgement. */
 export const FALLBACK_KIND: CommentKind = "other";
 
+/**
+ * What each kind means, in the words a model is asked to judge against.
+ *
+ * It lives beside the vocabulary rather than in a provider, so two providers
+ * cannot quietly recognise two different sets of `bug`.
+ */
+export const COMMENT_KIND_DESCRIPTIONS: Readonly<Record<CommentKind, string>> = {
+  bug: "Reports something behaving or rendering wrongly: broken, misaligned, erroring, not doing what it should.",
+  copy: "About the words on the screen — wording, tone, spelling, punctuation, a label — rather than behaviour.",
+  other: "None of the other kinds fit, or there is not yet enough written to tell which does.",
+  praise: "Approves of what is there and asks for no change.",
+  question:
+    "Asks for information or a decision, rather than reporting a fault or requesting a change.",
+  request:
+    "Asks for a change or an addition to what is there, without reporting that anything is broken.",
+};
+
 /** Raised when a classifier is asked for a pillar it was never configured with. */
 export class UnknownPillarError extends Error {
   override readonly name = "UnknownPillarError";

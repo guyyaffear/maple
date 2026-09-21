@@ -8,6 +8,16 @@ packages:
 # usually caught and unpublished within hours; waiting costs nothing.
 minimumReleaseAge: 4320
 
+# A scoped exception to minimumReleaseAge, not a relaxation of it. The Effect v4
+# release candidate and its TypeSafe provider are the only published build of
+# the jev provider, and the RC line republishes faster than three days, so the
+# guard refuses every version of it there has ever been. Only these two names
+# are excluded; everything else, `effect` v3 in packages/core included, still
+# waits. Revisit when Effect v4 reaches a stable release.
+minimumReleaseAgeExclude:
+  - "effect"
+  - "@effect/ai-typesafe"
+
 # .npmrc sets ignore-scripts=true. Packages that genuinely need a build step at
 # install time are allowed back one at a time, with a reason.
 onlyBuiltDependencies:

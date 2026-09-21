@@ -157,13 +157,15 @@ describe("the score card", () => {
     mount();
     await type(WRITTEN);
 
-    const bar = card()?.querySelector(".mk-score-bar");
-    const fills = [...(bar?.querySelectorAll("i") ?? [])].map(
-      (one) => getComputedStyle(one).backgroundColor,
-    );
+    // The fill transitions, so it is polled: reading it once races the first
+    // frame, which is the judging colour on every rung and passes the wrong way.
+    const fills = () =>
+      [...(card()?.querySelector(".mk-score-bar")?.querySelectorAll("i") ?? [])].map(
+        (one) => getComputedStyle(one).backgroundColor,
+      );
 
-    expect(fills[0]).toBe(fills[1]);
-    expect(fills.at(-1)).not.toBe(fills[0]);
+    await expect.poll(() => fills().at(-1) !== fills()[0]).toBe(true);
+    expect(fills()[0]).toBe(fills()[1]);
   });
 
   it("says its level and how sure it is, to a reader who cannot see the bar", async () => {

@@ -9,6 +9,7 @@ export {
 } from "./capabilities.js";
 export type { CapabilityReport, ConnectorMethod } from "./capabilities.js";
 export {
+  COMMENT_KIND_DESCRIPTIONS,
   COMMENT_KINDS,
   DEFAULT_PILLARS,
   FALLBACK_KIND,

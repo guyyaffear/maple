@@ -149,6 +149,19 @@ importers:
         specifier: 8.3.0
         version: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
 
+  packages/classifier:
+    dependencies:
+      '@maple-kit/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@effect/ai-typesafe':
+        specifier: 4.0.0-rc.117
+        version: 4.0.0-rc.117(effect@4.0.0-rc.117)
+      effect:
+        specifier: 4.0.0-rc.117
+        version: 4.0.0-rc.117
+
   packages/cli:
     dependencies:
       '@maple-kit/core':
@@ -462,6 +475,11 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@effect/ai-typesafe@4.0.0-rc.117':
+    resolution: {integrity: sha512-/cjCfCXEXS+vGDL8TUiYdPRwCDtyJyRiLe5+Z4IAOJgSnMebfSR4eHOhNstpZpW19wksM+BdFiZV3VNZI6g3pA==}
+    peerDependencies:
+      effect: ^4.0.0-rc.117
 
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
@@ -1629,6 +1647,9 @@ packages:
 
   effect@3.20.0:
     resolution: {integrity: sha512-qMLfDJscrNG8p/aw+IkT9W7fgj50Z4wG5bLBy0Txsxz8iUHjDIkOgO3SV0WZfnQbNG2VJYb0b+rDLMrhM4+Krw==}
+
+  effect@4.0.0-rc.117:
+    resolution: {integrity: sha512-UUyi9QiOW4nySFIBM3KnYbNMd9EZliOdKfBcyLD0mPMPheO2fkuXS5y0opjWc9oqzlJxPQICEGm8gGw3kh9j/w==}
 
   electron-to-chromium@1.5.428:
     resolution: {integrity: sha512-1JxbaFJj1bRKurj1uY3l4xxpU9kOUAUjcIgApj0qu1Pao5GhoIWI8iL0BeMYJ2njig1hBx0A7eKD9VGjH9wlHw==}
@@ -3607,6 +3628,10 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
+  '@effect/ai-typesafe@4.0.0-rc.117(effect@4.0.0-rc.117)':
+    dependencies:
+      effect: 4.0.0-rc.117
+
   '@emnapi/runtime@1.11.3':
     dependencies:
       tslib: 2.8.1
@@ -4625,6 +4650,8 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
+
+  effect@4.0.0-rc.117: {}
 
   electron-to-chromium@1.5.428: {}
 

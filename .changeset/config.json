@@ -3,7 +3,14 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [
-    ["@maple-kit/core", "@maple-kit/cli", "@maple-kit/mcp", "@maple-kit/react", "@maple-kit/ui"]
+    [
+      "@maple-kit/core",
+      "@maple-kit/classifier",
+      "@maple-kit/cli",
+      "@maple-kit/mcp",
+      "@maple-kit/react",
+      "@maple-kit/ui"
+    ]
   ],
   "linked": [],
   "access": "public",

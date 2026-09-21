@@ -169,10 +169,54 @@ the surface.
 
 ## Where the model tier goes
 
-Not in `@maple-kit/core`. The provider lives in a separate package so core
+Not in `@maple-kit/core`. The provider lives in `@maple-kit/classifier` so core
 stays on Effect v3, and it is reached **from the SDK route and never from the
 browser** — a model credential does not belong anywhere a reviewer can read it,
 and routing through the same origin is what keeps `connect-src` unchanged.
 
 The seam is the connector, not a vendor SDK, which is why a hosted model and a
 local one differ by configuration rather than by architecture.
+
+## The jev provider
+
+`jevClassifier()` is the first implementation. It peers on the Effect v4
+release candidate, which carries the TypeSafe provider; core does not move, and
+Effect appears nowhere on the package's boundary.
+
+**Every pillar's question and the kind's travel in one request.** The System
+One endpoint takes a `state` and a _named map_ of questions, reads the state
+once and answers each question against it in parallel. That is what makes
+scoring on a keystroke affordable at all: five pillars and the kind is a single
+call of roughly 1,300 input tokens.
+
+A pillar becomes a `score` question and the kind becomes a `choice`, because
+those are what the answers mean:
+
+| Maple                      | jev                                                    |
+| -------------------------- | ------------------------------------------------------ |
+| `Pillar.instruction`       | the question's `instructions`, plus the framing below  |
+| `PillarLevel`              | one entry of the `score` question's ordered `criteria` |
+| `PillarScore.level`        | the level index that took the most probability         |
+| `PillarScore.distribution` | jev's own per-level probabilities                      |
+| `CommentKind`              | one option of the `choice` question's `criteria`       |
+
+Two sentences are appended to every pillar's instruction, and both were arrived
+at by asking the model and reading the answers. Without the first, a model
+judges whether the reported problem is real rather than how the comment reads.
+Without the second, it marks a comment that is still being typed down for being
+half a sentence — which is every comment this feature ever sees.
+
+**The probabilities are jev's own.** `scoreAtPosition` exists for a backend
+with none; this one has them, and re-deriving a spread from a position would
+throw away the thing worth carrying. The single adjustment is arithmetic: jev
+rounds to two places, so three near-equal levels arrive summing to 0.99, and
+the contract a surface relies on is that they sum to one.
+
+**There are no retries.** This runs on a keystroke. A retry holds the request
+open past the moment its answer was wanted, and the next keystroke is a better
+retry than any schedule. `ClassifierRequest.signal` abandons a judgement the
+next keystroke made stale, and a request is never opened for a signal that has
+already aborted.
+
+`baseUrl` is the API root, defaulting to TypeSafe's own. Request-compatible
+reimplementations exist, so hosted or local stays a configuration choice.

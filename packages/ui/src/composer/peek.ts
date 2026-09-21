@@ -21,13 +21,23 @@ interface Held {
   readonly altKey?: boolean;
   readonly shiftKey?: boolean;
   readonly target?: unknown;
+  readonly composedPath?: () => readonly unknown[];
+}
+
+/**
+ * What was typed into. A shadow root retargets `target` to its host, and this
+ * listens on `window`, so every composer key arrives looking like a `div`.
+ */
+function origin(event: Held): unknown {
+  const path = event.composedPath?.();
+  return path !== undefined && path.length > 0 ? path[0] : event.target;
 }
 
 /** True while Space means "show me the page" and not "type a space". */
 export function peeks(event: Held): boolean {
   if (event.code !== PEEK_CODE && event.key !== " ") return false;
   if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false;
-  return !isEditable(event.target);
+  return !isEditable(origin(event));
 }
 
 /** What the hook attaches to. `window` satisfies it. */

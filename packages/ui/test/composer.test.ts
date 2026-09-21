@@ -119,6 +119,26 @@ describe("hold-to-peek's guard", () => {
     ["a textarea", { code: "Space", key: " ", target: { tagName: "TEXTAREA" } }, false],
     ["an input", { code: "Space", key: " ", target: { tagName: "INPUT" } }, false],
     ["a contenteditable", { code: "Space", key: " ", target: { isContentEditable: true } }, false],
+    [
+      "a textarea the shadow root retargeted to its host",
+      {
+        code: "Space",
+        key: " ",
+        target: { tagName: "DIV" },
+        composedPath: () => [{ tagName: "TEXTAREA" }, { tagName: "DIV" }],
+      },
+      false,
+    ],
+    [
+      "a bare space outside the overlay, with a path",
+      {
+        code: "Space",
+        key: " ",
+        target: { tagName: "BODY" },
+        composedPath: () => [{ tagName: "BODY" }],
+      },
+      true,
+    ],
   ])("answers %s with %j", (_what, event, expected) => {
     expect(peeks(event)).toBe(expected);
   });

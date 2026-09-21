@@ -6,6 +6,7 @@
  * through an adapter, and a Worker.
  */
 
+export type { AssistAnswer, AssistOptions, AssistRate } from "./assist.js";
 export type { GitHubAuthOptions, GitHubState } from "./auth.js";
 export type { GateResolver } from "./gate.js";
 

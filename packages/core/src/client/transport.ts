@@ -8,6 +8,8 @@
  * 500 without importing anything of ours.
  */
 
+import type { Pillar } from "../connectors/types.js";
+import type { AssistAnswer } from "../route/assist.js";
 import type { Comment, CommentStatus, MapleUser, MediaRef } from "../types.js";
 import type { PostedComment, ResolutionClaim } from "./types.js";
 
@@ -61,6 +63,8 @@ export interface Identity {
   readonly github?: { readonly linked: boolean; readonly login?: string };
   /** Whether this deployment has anywhere to keep a screenshot. */
   readonly media?: boolean;
+  /** Absent when nothing judges a comment. The pillars a card renders. */
+  readonly assist?: { readonly pillars: readonly Pillar[] };
 }
 
 /** The route, as the controller sees it. */
@@ -71,6 +75,8 @@ export interface Transport {
   setStatus(id: string, status: CommentStatus, resolution?: ResolutionClaim): Promise<Comment>;
   /** Null user when the host application has no session for this request. */
   me(): Promise<Identity>;
+  /** Judges the comment as it stands. Aborts with the signal, never retries. */
+  assist(body: string, signal: AbortSignal): Promise<AssistAnswer>;
   /** Puts an image where the media connector keeps them. */
   putMedia(blob: Blob, contentType: string): Promise<MediaRef>;
   /** A URL for an `img`, which the route redirects from. Builds no request. */
@@ -97,6 +103,8 @@ export function createTransport(options: TransportOptions): Transport {
         body: JSON.stringify({ status, ...(resolution === undefined ? {} : { resolution }) }),
       }),
     me: () => call<Identity>("/me", {}),
+    assist: (body, signal) =>
+      call<AssistAnswer>("/assist", { method: "POST", body: JSON.stringify({ body }), signal }),
     putMedia: (blob, contentType) =>
       call<MediaRef>("/media", {
         method: "POST",

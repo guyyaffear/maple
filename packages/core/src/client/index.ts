@@ -7,6 +7,13 @@
  * and `Error` subclasses, never Effect.
  */
 
+export {
+  ASSIST_DEBOUNCE_MS,
+  ASSIST_IDLE,
+  ASSIST_MIN_LENGTH,
+  createAssistRunner,
+} from "./assist.js";
+export type { AssistRunner, AssistRunnerOptions } from "./assist.js";
 export { createMapleClient } from "./controller.js";
 export type { ClientView, MapleClient, MapleClientOptions } from "./controller.js";
 export { createDraftKeeper, DRAFT_DEBOUNCE_MS, DRAFT_LIFETIME_MS, draftIdFor } from "./drafts.js";
@@ -61,6 +68,8 @@ export { createTransport, DEFAULT_BASE_PATH, MapleRequestError } from "./transpo
 export type { Identity, LinkAttempt, LinkStart, Transport, TransportOptions } from "./transport.js";
 export { COMMENT_FILTERS, CORNERS, DETAILS, THEME_PREFERENCES } from "./types.js";
 export type {
+  AssistConfig,
+  AssistState,
   ClientState,
   CommentFilter,
   GitHubLink,

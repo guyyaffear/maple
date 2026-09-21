@@ -9,6 +9,7 @@
 
 import { MapleStoreError } from "../errors.js";
 import { fnv1a32 } from "../lib/fnv1a.js";
+import { createAssist } from "./assist.js";
 import { endLink, finishLink, githubState, linkFailure, startLink } from "./auth.js";
 import { gateFor, publishGate } from "./gate.js";
 
@@ -22,6 +23,7 @@ import type {
 } from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
 import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
+import type { Assist, AssistOptions } from "./assist.js";
 import type { GitHubAuthOptions } from "./auth.js";
 import type { GateResolver } from "./gate.js";
 
@@ -63,6 +65,11 @@ export interface RouteOptions {
    * `/auth/github` endpoints answer 404 and `/me` reports no link state.
    */
   readonly githubAuth?: GitHubAuthOptions;
+  /**
+   * Judges the comment being typed. Absent, `/assist` answers 404 and nothing
+   * about the composer changes: the whole tier is off unless switched on.
+   */
+  readonly assist?: AssistOptions;
   /** Defaults to `/api/maple`. */
   readonly basePath?: string;
   /** Where failures are reported. Silent when absent. */
@@ -84,8 +91,19 @@ const COMMIT = /^[0-9a-f]{7,40}$/;
 const COLOR_SLOTS = 10;
 
 /** Creates the request handler. Web-standard in, web-standard out. */
+/** Everything built once, when the handler is, rather than per request. */
+interface Mount {
+  readonly options: RouteOptions;
+  /** Undefined when no classifier is configured: the whole tier is off. */
+  readonly assist: Assist | undefined;
+}
+
 export function createMapleHandler(options: RouteOptions): (request: Request) => Promise<Response> {
   const base = options.basePath ?? DEFAULT_BASE_PATH;
+  const mount: Mount = {
+    options,
+    assist: options.assist === undefined ? undefined : createAssist(options.assist),
+  };
 
   return async function handle(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -93,7 +111,7 @@ export function createMapleHandler(options: RouteOptions): (request: Request) =>
     if (route === undefined) return json({ error: "Not found" }, 404);
 
     try {
-      return await dispatch(options, request, route, url);
+      return await dispatch(mount, request, route, url);
     } catch (error) {
       return failure(options.logger, error);
     }
@@ -101,11 +119,13 @@ export function createMapleHandler(options: RouteOptions): (request: Request) =>
 }
 
 async function dispatch(
-  options: RouteOptions,
+  mount: Mount,
   request: Request,
   route: string,
   url: URL,
 ): Promise<Response> {
+  const { options } = mount;
+  if (route === "/assist") return judge(mount, request);
   if (route === "/auth/github") return link(options, request);
   if (route === "/media" || route.startsWith("/media/")) return media(options, request, route, url);
 
@@ -114,7 +134,7 @@ async function dispatch(
 
   const allowed = methodAllowed(route, one !== null, request.method);
   if (!allowed) return json({ error: "Method not allowed" }, 405);
-  if (route === "/me") return whoAmI(options, request);
+  if (route === "/me") return whoAmI(mount, request);
 
   const store = await storeFor(options, request);
   if (!store) return json({ error: "This reviewer has no store to write to" }, 401);
@@ -350,13 +370,34 @@ function stamp(claim: { sha: string; note?: string }): CommentResolution {
   };
 }
 
-async function whoAmI(options: RouteOptions, request: Request): Promise<Response> {
+async function whoAmI(mount: Mount, request: Request): Promise<Response> {
+  const { assist, options } = mount;
   const user = await options.identity?.resolveUser(identityRequest(request));
   const auth = options.githubAuth;
   const github = auth ? await githubState(auth, Object.fromEntries(request.headers)) : undefined;
   const media = (await mediaFor(options, request)) !== null;
 
-  return json({ user: user ?? null, media, ...(github === undefined ? {} : { github }) }, 200);
+  return json(
+    {
+      user: user ?? null,
+      media,
+      ...(github === undefined ? {} : { github }),
+      ...(assist === undefined ? {} : { assist: { pillars: assist.pillars } }),
+    },
+    200,
+  );
+}
+
+/**
+ * The comment being typed, judged. The session it is counted against is the
+ * reviewer's own id, so one person's typing cannot spend another's budget.
+ */
+async function judge(mount: Mount, request: Request): Promise<Response> {
+  const { assist, options } = mount;
+  if (!assist) return json({ error: "Not found" }, 404);
+
+  const user = await options.identity?.resolveUser(identityRequest(request));
+  return assist.respond(request, user?.id ?? "anonymous", options.logger);
 }
 
 /** The identity connector sees headers and a URL, and nothing else. */

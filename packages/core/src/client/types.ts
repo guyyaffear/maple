@@ -9,6 +9,7 @@
  */
 
 import type { Anchor } from "../anchor/types.js";
+import type { KindGuess, Pillar, PillarScore } from "../connectors/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentContext, MapleUser, MediaRef, PickKind } from "../types.js";
 import type { MapleFailure } from "./failure.js";
@@ -74,6 +75,15 @@ export interface ComposerTarget {
   readonly context?: CommentContext;
 }
 
+/** What is known about the comment being written, and how sure Maple is. */
+export interface AssistState {
+  /** `judging` is a judgement asked for, not a judgement withheld. */
+  readonly status: "idle" | "judging" | "ready";
+  readonly scores: readonly PillarScore[];
+  /** Null until one arrives, and when nothing classifies. */
+  readonly kind: KindGuess | null;
+}
+
 /** The composer, whether or not it is showing. */
 export interface ComposerState {
   readonly open: boolean;
@@ -90,6 +100,8 @@ export interface ComposerState {
   /** There is something unsent. The only thing `beforeunload` is keyed off. */
   readonly dirty: boolean;
   readonly sending: boolean;
+  /** Advice about what is written. Never blocks, delays or rewrites a send. */
+  readonly assist: AssistState;
 }
 
 /** Whether a pick is armed, and which one. */
@@ -149,6 +161,17 @@ export interface ClientState {
    * strip says so rather than offering one and dropping it.
    */
   readonly media: boolean;
+  /**
+   * What this deployment can say about a comment being written. Null when no
+   * classifier is configured, or when the viewer switched the tier off.
+   */
+  readonly assist: AssistConfig | null;
+}
+
+/** What a surface needs before it can draw a judgement. */
+export interface AssistConfig {
+  /** In the order to show them. Empty when the connector only classifies. */
+  readonly pillars: readonly Pillar[];
 }
 
 /**

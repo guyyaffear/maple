@@ -27,6 +27,7 @@ export const MAPLE_DEFAULTS = {
   shortcut: COMMENT_SHORTCUT,
   allowUrlOverride: true,
   theme: "auto",
+  assist: true,
 } as const;
 
 /** What an application sets on the component. Every one of them is optional. */
@@ -43,6 +44,11 @@ export interface MapleProps {
   readonly shortcut?: string;
   /** Whether the query string may turn Maple **on**. Off is always allowed. */
   readonly allowUrlOverride?: boolean;
+  /**
+   * Whether a comment is judged as it is typed. Only ever advice, and only
+   * ever when the route has a classifier: this cannot switch one on.
+   */
+  readonly assist?: boolean;
 }
 
 /** What a link asked for. Absent fields were not in the query string. */
@@ -57,6 +63,8 @@ export interface MapleQuery {
   readonly comment?: string;
   /** `?maple-new=` — arm this pick the moment the overlay is up. */
   readonly pick?: PickKind;
+  /** `?maple-assist=off` — judge nothing on this visit. */
+  readonly assist?: boolean;
 }
 
 /** What the viewer settled on last time, on this origin. */
@@ -64,6 +72,7 @@ export interface StoredPreferences {
   readonly detail?: Detail;
   readonly position?: Corner;
   readonly theme?: ThemePreference;
+  readonly assist?: boolean;
 }
 
 /** Everything a surface needs before it renders anything. */
@@ -75,6 +84,7 @@ export interface MapleConfig {
   readonly hideResolved: boolean;
   readonly shortcut: string;
   readonly allowUrlOverride: boolean;
+  readonly assist: boolean;
   /** Select it, scroll to it and draw its ring. */
   readonly comment?: string;
   readonly pick?: PickKind;
@@ -134,6 +144,7 @@ export function parseMapleQuery(search: string): MapleQuery {
     theme: oneOf(query.get("maple-theme"), THEME_PREFERENCES),
     comment: comment === null || comment === "" ? undefined : comment,
     pick: oneOf(query.get("maple-new"), PICKS),
+    assist: switched(query.get("maple-assist")),
   });
 }
 
@@ -171,6 +182,7 @@ export function resolveConfig(input: ConfigInput = {}): MapleConfig {
     hideResolved: props?.hideResolved ?? MAPLE_DEFAULTS.hideResolved,
     shortcut: props?.shortcut ?? MAPLE_DEFAULTS.shortcut,
     allowUrlOverride,
+    assist: query?.assist ?? input.stored?.assist ?? props?.assist ?? MAPLE_DEFAULTS.assist,
     ...present({ comment: query?.comment, pick: query?.pick }),
   };
 }
@@ -214,6 +226,7 @@ function sanitised(stored: StoredPreferences): StoredPreferences {
     detail: oneOf(stored.detail ?? null, DETAILS),
     position: oneOf(stored.position ?? null, CORNERS),
     theme: oneOf(stored.theme ?? null, THEME_PREFERENCES),
+    assist: typeof stored.assist === "boolean" ? stored.assist : undefined,
   });
 }
 

@@ -9,6 +9,7 @@
 
 import { http, HttpResponse } from "msw";
 
+import type { Pillar, PillarScore } from "../../src/connectors/types.js";
 import type { Comment, CommentStatus, MapleUser, NewComment } from "../../src/types.js";
 import type { RequestHandler } from "msw";
 
@@ -24,6 +25,8 @@ export interface MapleFake {
   /** Everything posted so far, newest last. */
   comments(): readonly Comment[];
   seed(...comments: Comment[]): void;
+  /** Every comment `POST /assist` was asked to judge, oldest first. */
+  judged(): readonly string[];
 }
 
 /** How the fake answers `GET /me`. */
@@ -34,18 +37,34 @@ export interface MapleFakeOptions {
   readonly pageSize?: number;
   /** Whether the route keeps screenshots. True unless a suite says otherwise. */
   readonly media?: boolean;
+  /** The pillars `/me` reports. Absent means this deployment judges nothing. */
+  readonly pillars?: readonly Pillar[];
 }
 
 /** Builds the fake. */
 export function createMapleFake(options: MapleFakeOptions = {}): MapleFake {
   const stored: Comment[] = [];
+  const judged: string[] = [];
   const user = options.user === undefined ? { id: "u_7", name: "Reviewer" } : options.user;
   let next = 0;
 
   return {
     comments: () => stored,
+    judged: () => judged,
     seed: (...comments) => stored.push(...comments),
     handlers: [
+      http.post(`${MAPLE_BASE}/assist`, async ({ request }) => {
+        const asked = (await request.json()) as { body: string };
+        judged.push(asked.body);
+        return HttpResponse.json({
+          scores: (options.pillars ?? []).map(topOf),
+          kind: {
+            kind: "bug",
+            distribution: { bug: 1, copy: 0, other: 0, praise: 0, question: 0, request: 0 },
+            confidence: 1,
+          },
+        });
+      }),
       http.get(`${MAPLE_BASE}/comments`, ({ request }) => page(stored, request, options.pageSize)),
       http.post(`${MAPLE_BASE}/comments`, async ({ request }) => {
         const posted = (await request.json()) as NewComment;
@@ -62,7 +81,11 @@ export function createMapleFake(options: MapleFakeOptions = {}): MapleFake {
         return HttpResponse.json(stored[found]);
       }),
       http.get(`${MAPLE_BASE}/me`, () =>
-        HttpResponse.json({ user, media: options.media !== false }),
+        HttpResponse.json({
+          user,
+          media: options.media !== false,
+          ...(options.pillars === undefined ? {} : { assist: { pillars: options.pillars } }),
+        }),
       ),
       http.post(`${MAPLE_BASE}/media`, ({ request }) => {
         next += 1;
@@ -71,6 +94,17 @@ export function createMapleFake(options: MapleFakeOptions = {}): MapleFake {
         return HttpResponse.json(ref, { status: 201 });
       }),
     ],
+  };
+}
+
+/** The top rung, certainly: a fake answers the same way every time on purpose. */
+function topOf(pillar: Pillar): PillarScore {
+  const level = pillar.levels.length - 1;
+  return {
+    pillar: pillar.id,
+    level,
+    distribution: pillar.levels.map((_, index) => (index === level ? 1 : 0)),
+    confidence: 1,
   };
 }
 

@@ -115,3 +115,55 @@ nobody rediscovers it by breaking it.
   exact hang is what sank Chromatic.
 - **Pin `integration_id` in the ruleset**, or anyone with push access can forge
   a green status under the same check name.
+
+## Publishing from the route
+
+The action publishes at push time. That alone leaves the gate one-way: a
+reviewer who resolves the last comment waits for a commit nobody needs to make,
+which is the exact failure `runGateContract` exists to protect against. So the
+route publishes too, after a status changes.
+
+`RouteOptions.gate` takes a `GateConnector` or a resolver, chosen per request
+the way `store` and `media` already are. The logic lives in `src/route/gate.ts`
+rather than inside `handler.ts`, because a dispatch function is not where a
+second subject belongs.
+
+### Where the commit comes from
+
+The route's `setStatus` arm is handed a comment id and a status. A gate needs a
+commit, so one has to be found, and there were three places to find it.
+
+**The store names it**, through an optional `head(branch)`. That was the choice,
+and the reason is blast radius rather than elegance. The alternative that costs
+nothing is for the browser to send the commit — but the gate App holds
+`Checks: write` across every repository it is installed on, and letting a page
+choose the target hands a reviewer's session the power to publish a verdict on
+any commit it can name. The two Apps exist to keep reviewer-controlled input
+away from that credential; taking the sha from the request would give it back
+over a different wire.
+
+A resolver on `RouteOptions` was the third option. It keeps the sha server-side
+too, but every host then reimplements the same pull-request lookup Maple already
+does, each getting the caching subtly wrong in its own way.
+
+The sha is read at publish time and never cached. A pull request's **number**
+lasts its whole life, which is why `findPull` caches that; its **head** lasts
+until the next push, and a cached one is how a check run lands on the commit
+before last.
+
+A store with no `head` publishes nothing, and says so through the logger. So
+does a branch with no open pull request. A verdict on a guessed commit reads as
+an answer, which is worse than silence.
+
+### A gate publish must never fail a resolve
+
+By the time the gate is published the status change has already happened. The
+reviewer did the thing; the check is a report about it. `publishGate` therefore
+catches everything and logs it, and the route answers 200 either way — the
+failure costs the check update and nothing else.
+
+This is also why the publish is awaited rather than left floating. A serverless
+runtime may stop the process the moment the response is written, and a
+fire-and-forget publish would be lost exactly where Maple is most often
+deployed. Awaiting costs the reviewer a few hundred milliseconds and buys them a
+check that has settled by the time they look at it.

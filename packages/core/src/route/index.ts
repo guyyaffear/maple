@@ -7,6 +7,8 @@
  */
 
 export type { GitHubAuthOptions, GitHubState } from "./auth.js";
+export type { GateResolver } from "./gate.js";
+
 export { createMapleHandler, DEFAULT_BASE_PATH } from "./handler.js";
 
 export type { MediaResolver, RouteOptions, StoreResolver } from "./handler.js";

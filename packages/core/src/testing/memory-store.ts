@@ -16,6 +16,11 @@ export interface MemoryStoreOptions {
   readonly name?: string;
   /** Omit `setStatus`, to exercise the append-only path. Defaults to false. */
   readonly appendOnly?: boolean;
+  /**
+   * The head commit per branch. Given one the store reports `head`; without
+   * one the method is absent, which is the case a gate publish has to survive.
+   */
+  readonly heads?: Readonly<Record<string, string>>;
 }
 
 /** Cursors are just the offset, encoded so callers cannot do arithmetic on them. */
@@ -76,10 +81,15 @@ export function memoryStore(options: MemoryStoreOptions = {}): StoreConnector {
     return Promise.resolve(updated);
   }
 
+  function head(branch: string): Promise<string | undefined> {
+    return Promise.resolve(options.heads?.[branch]);
+  }
+
   return {
     name: options.name ?? "memory",
     list,
     append,
     ...(options.appendOnly === true ? {} : { setStatus }),
+    ...(options.heads === undefined ? {} : { head }),
   };
 }

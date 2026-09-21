@@ -57,6 +57,7 @@ export function githubStore(options: GitHubStoreOptions): StoreConnector {
     list: (query) => list(api, query),
     append: (comment) => append(api, comment),
     setStatus: (id, status, resolution) => setStatus(api, id, status, resolution),
+    head: (branch) => head(api, branch),
   };
 }
 
@@ -75,6 +76,11 @@ interface Paged<T> {
 interface IssueComment {
   readonly id: number;
   readonly body: string;
+}
+
+/** One pull request, trimmed to the one field the gate needs from it. */
+interface PullDetail {
+  readonly head: { readonly sha: string };
 }
 
 function createClient(options: GitHubStoreOptions): Client {
@@ -140,6 +146,16 @@ function reader(api: Client): PullReader {
     repo: api.options.repo,
     get: async <T>(path: string) => (await api.request<T>(path)).body,
   };
+}
+
+/** Read fresh every time: the pull request's number is cacheable and its sha is not. */
+async function head(api: Client, branch: string): Promise<string | undefined> {
+  const pull = await pullFor(api, branch);
+  if (pull === undefined) return undefined;
+
+  const path = `/repos/${api.options.owner}/${api.options.repo}/pulls/${String(pull)}`;
+  const { body } = await api.request<PullDetail>(path);
+  return body.head.sha;
 }
 
 async function list(api: Client, query: ListQuery): Promise<CommentPage> {

@@ -79,6 +79,14 @@ export function createGitHubFake(owner = "maple-kit", repo = "app"): GitHubFake 
       return HttpResponse.json(known ? [{ number: pullFor(branch), head: { ref: branch } }] : []);
     }),
 
+    http.get(`${API}/repos/${owner}/${repo}/pulls/:number`, ({ params }) => {
+      const pull = Number(params["number"]);
+      const found = [...commits].find(([, branch]) => pullFor(branch) === pull);
+      if (!found) return HttpResponse.json({ message: "Not Found" }, { status: 404 });
+
+      return HttpResponse.json({ number: pull, head: { ref: found[1], sha: found[0] } });
+    }),
+
     http.get(`${API}/repos/${owner}/${repo}/issues/:pull/comments`, ({ params, request }) => {
       const url = new URL(request.url);
       const pull = Number(params["pull"]);

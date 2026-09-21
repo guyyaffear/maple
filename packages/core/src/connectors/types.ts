@@ -60,6 +60,11 @@ export interface StoreConnector extends ConnectorMeta {
   list(query: ListQuery): Promise<CommentPage>;
   append(comment: NewComment): Promise<Comment>;
   setStatus?(id: string, status: CommentStatus, resolution?: CommentResolution): Promise<Comment>;
+  /**
+   * The commit a surface points at now, or undefined where the backend cannot
+   * say. A gate is about a commit, never a branch; `docs/gate.md` says why.
+   */
+  head?(branch: string): Promise<string | undefined>;
   /** Long-poll for comments newer than `cursor`. Resolves empty on timeout. */
   watch?(query: ListQuery, signal: AbortSignal): Promise<CommentPage>;
 }

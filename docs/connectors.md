@@ -29,7 +29,7 @@ second place to declare them, so the two cannot disagree.
 import { capabilitiesOf } from "@maple-kit/core/connectors";
 
 capabilitiesOf("store", myStore(options));
-// { list: true, append: true, setStatus: false, watch: false }
+// { list: true, append: true, setStatus: false, head: false, watch: false }
 ```
 
 Maple degrades around a missing optional method rather than failing. A store
@@ -49,14 +49,14 @@ Omitting a **required** method is an error, raised at construction time by
 
 Run `maple connectors` to print this from the code.
 
-| Kind            | Required            | Optional             |
-| --------------- | ------------------- | -------------------- |
-| `store`         | `list`, `append`    | `setStatus`, `watch` |
-| `media`         | `putBlob`, `getUrl` | `remove`             |
-| `observability` | `getReplayLink`     | `fetchEvents`        |
-| `identity`      | `resolveUser`       | —                    |
-| `gate`          | `publish`           | `read`               |
-| `classifier`    | —                   | `score`, `classify`  |
+| Kind            | Required            | Optional                     |
+| --------------- | ------------------- | ---------------------------- |
+| `store`         | `list`, `append`    | `setStatus`, `head`, `watch` |
+| `media`         | `putBlob`, `getUrl` | `remove`                     |
+| `observability` | `getReplayLink`     | `fetchEvents`                |
+| `identity`      | `resolveUser`       | —                            |
+| `gate`          | `publish`           | `read`                       |
+| `classifier`    | —                   | `score`, `classify`          |
 
 `classifier` is the one kind that requires nothing: both of its methods are
 optional, so one defining neither is inert rather than invalid. `docs/assist.md`
@@ -72,13 +72,13 @@ it is filling it in.
 `✓` implemented · `—` not implemented · `~` implemented with a caveat, explained
 below the table.
 
-| Connector            | list | append | setStatus | watch | putBlob | getUrl | getReplayLink | fetchEvents | resolveUser | publish | read | score | classify |
-| -------------------- | ---- | ------ | --------- | ----- | ------- | ------ | ------------- | ----------- | ----------- | ------- | ---- | ----- | -------- |
-| `github` (store)     | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           | —       | —    | —     | —        |
-| `github` (gate)      | —    | —      | —         | —     | —       | —      | —             | —           | —           | ✓       | ✓    | —     | —        |
-| `memory` (reference) | ✓    | ✓      | ✓         | —     | —       | —      | —             | —           | —           | ✓       | ✓    | ✓     | ✓        |
-| `keyword` (baseline) | —    | —      | —         | —     | —       | —      | —             | —           | —           | —       | —    | ✓     | ✓        |
-| `datadog`            | ~    | ✓      | ~         | —     | —       | —      | ~             | ✓           | ~           | —       | —    | —     | —        |
+| Connector            | list | append | setStatus | head | watch | putBlob | getUrl | getReplayLink | fetchEvents | resolveUser | publish | read | score | classify |
+| -------------------- | ---- | ------ | --------- | ---- | ----- | ------- | ------ | ------------- | ----------- | ----------- | ------- | ---- | ----- | -------- |
+| `github` (store)     | ✓    | ✓      | ✓         | ✓    | —     | —       | —      | —             | —           | —           | —       | —    | —     | —        |
+| `github` (gate)      | —    | —      | —         | —    | —     | —       | —      | —             | —           | —           | ✓       | ✓    | —     | —        |
+| `memory` (reference) | ✓    | ✓      | ✓         | ✓    | —     | —       | —      | —             | —           | —           | ✓       | ✓    | ✓     | ✓        |
+| `keyword` (baseline) | —    | —      | —         | —    | —     | —       | —      | —             | —           | —           | —       | —    | ✓     | ✓        |
+| `datadog`            | ~    | ✓      | ~         | —    | —     | —       | —      | ~             | ✓           | ~           | —       | —    | —     | —        |
 
 The reference connector lives in `@maple-kit/core/testing` and exists so the
 contract suite has something to run against. It is not for production.
@@ -108,11 +108,12 @@ comments are what an agent reads.
 
 ### What it costs
 
-| Method      | How                                                                   | Cost                                                                |
-| ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `list`      | `GET /issues/{pull}/comments`, paged by GitHub's `Link` header.       | One extra call to find the pull request, unless a `cache` holds it. |
-| `append`    | `POST` the comment, then `PATCH` it with the id GitHub just assigned. | Two writes. The id cannot be known before the comment exists.       |
-| `setStatus` | `GET` the comment, rewrite its fence, `PATCH` it back.                | Two calls, and it preserves fields a newer Maple may have written.  |
+| Method      | How                                                                   | Cost                                                                 |
+| ----------- | --------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `list`      | `GET /issues/{pull}/comments`, paged by GitHub's `Link` header.       | One extra call to find the pull request, unless a `cache` holds it.  |
+| `append`    | `POST` the comment, then `PATCH` it with the id GitHub just assigned. | Two writes. The id cannot be known before the comment exists.        |
+| `setStatus` | `GET` the comment, rewrite its fence, `PATCH` it back.                | Two calls, and it preserves fields a newer Maple may have written.   |
+| `head`      | `GET /pulls/{pull}` for its head sha.                                 | One call per gate publish. The sha is never cached; a push moves it. |
 
 A comment id is `gh_<pull>_<commentId>`, so `setStatus` needs nothing it was not
 given: no index, no cache, and it works in a process that never ran `list`.

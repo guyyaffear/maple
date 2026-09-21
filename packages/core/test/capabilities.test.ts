@@ -17,6 +17,7 @@ describe("capability detection", () => {
       list: true,
       append: true,
       setStatus: true,
+      head: false,
       watch: false,
     });
   });

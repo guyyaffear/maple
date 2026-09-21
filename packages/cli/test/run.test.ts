@@ -49,7 +49,7 @@ describe("run", () => {
     expect(parsed).toContainEqual({
       kind: "store",
       required: ["list", "append"],
-      optional: ["setStatus", "watch"],
+      optional: ["setStatus", "head", "watch"],
     });
   });
 

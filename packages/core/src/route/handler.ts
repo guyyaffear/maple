@@ -10,8 +10,10 @@
 import { MapleStoreError } from "../errors.js";
 import { fnv1a32 } from "../lib/fnv1a.js";
 import { endLink, finishLink, githubState, linkFailure, startLink } from "./auth.js";
+import { gateFor, publishGate } from "./gate.js";
 
 import type {
+  GateConnector,
   IdentityConnector,
   IdentityRequest,
   ListQuery,
@@ -21,6 +23,7 @@ import type {
 import type { Logger } from "../logger/types.js";
 import type { Comment, CommentResolution, CommentStatus, NewComment } from "../types.js";
 import type { GitHubAuthOptions } from "./auth.js";
+import type { GateResolver } from "./gate.js";
 
 /**
  * Chooses the store for one request. The shape a per-reviewer credential
@@ -50,6 +53,11 @@ export interface RouteOptions {
   readonly media?: MediaConnector | MediaResolver;
   /** Resolves the reviewer from the request. Without one, comments are guest-written. */
   readonly identity?: IdentityConnector;
+  /**
+   * Where the merge verdict goes after a status changes. Without one a resolve
+   * is recorded and nothing is reported.
+   */
+  readonly gate?: GateConnector | GateResolver;
   /**
    * Signs a reviewer in to GitHub with Device Flow. Absent, the three
    * `/auth/github` endpoints answer 404 and `/me` reports no link state.
@@ -111,7 +119,7 @@ async function dispatch(
   const store = await storeFor(options, request);
   if (!store) return json({ error: "This reviewer has no store to write to" }, 401);
 
-  if (one) return setStatus(store, request, one[1]!);
+  if (one) return setStatus(options, store, request, one[1]!);
   return request.method === "GET"
     ? listComments(store, url)
     : appendComment(options, store, request);
@@ -270,7 +278,12 @@ function colorSlotFor(id: string): number {
   return fnv1a32(id) % COLOR_SLOTS;
 }
 
-async function setStatus(store: StoreConnector, request: Request, id: string): Promise<Response> {
+async function setStatus(
+  options: RouteOptions,
+  store: StoreConnector,
+  request: Request,
+  id: string,
+): Promise<Response> {
   const change = (await readJson(request)) as
     { status?: unknown; resolution?: unknown } | undefined;
   const status = change?.status;
@@ -287,7 +300,31 @@ async function setStatus(store: StoreConnector, request: Request, id: string): P
   if (!update) return json({ error: "This store cannot change a status" }, 501);
 
   const resolution = claimed === undefined ? undefined : stamp(claimed);
-  return json(await update(id, status as CommentStatus, resolution), 200);
+  const updated = await update(id, status as CommentStatus, resolution);
+
+  await reportGate(options, store, request, updated.branch);
+  return json(updated, 200);
+}
+
+/**
+ * Awaited, not left floating: a serverless runtime may stop the process as the
+ * response is written, and `publishGate` never throws.
+ */
+async function reportGate(
+  options: RouteOptions,
+  store: StoreConnector,
+  request: Request,
+  branch: string,
+): Promise<void> {
+  const gate = await gateFor(options.gate, identityRequest(request));
+  if (!gate) return;
+
+  const context = {
+    store,
+    gate,
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
+  };
+  await publishGate(context, branch, new URL(request.url).origin);
 }
 
 /** What a client may claim about a resolution: the commit, and optionally why. */

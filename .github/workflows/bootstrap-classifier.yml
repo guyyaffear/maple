@@ -48,3 +48,13 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Say what is staged, if anything
+        # `npm publish` printed `+ @maple-kit/classifier@0.5.0` and the registry
+        # answered 404 for four minutes afterwards, so a publish here can land in
+        # staging without saying so. This is the only way to see it, and it runs
+        # whether the publish reported success or failed over a staged version.
+        if: always()
+        run: npm stage list @maple-kit/classifier
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -400,14 +400,24 @@
         </div>
         <div class="swatches" id="leafSwatches"></div>
         <div class="row" style="margin-top: 10px">
-          <label for="leafSize">Size</label>
-          <input type="range" id="leafSize" min="60" max="100" step="1" value="92" />
+          <label for="leafSize">Fill</label>
+          <input type="range" id="leafSize" min="50" max="100" step="1" value="100" />
           <output for="leafSize"></output>
         </div>
         <div class="row">
           <label for="leafTilt">Tilt</label>
           <input type="range" id="leafTilt" min="-30" max="45" step="1" value="20" />
           <output for="leafTilt"></output>
+        </div>
+        <div class="row">
+          <label for="strokeWidth">Stroke</label>
+          <input type="range" id="strokeWidth" min="0" max="12" step="0.5" value="3.5" />
+          <output for="strokeWidth"></output>
+        </div>
+        <div class="row">
+          <label for="strokeColor">Stroke ink</label>
+          <input type="color" id="strokeColor" value="#fdf8e8" />
+          <output></output>
         </div>
       </fieldset>
 
@@ -505,7 +515,7 @@
       leafColor: "#465a2b",
       mColor: "#fdf8e8",
       bgAlpha: 0,
-      mSize: 40,
+      mSize: 34,
       mCase: "M",
     },
     Badge: {
@@ -543,12 +553,14 @@
   const state = {
     leafStyle: "solid",
     leafColor: "#465a2b",
-    leafSize: 92,
+    leafSize: 100,
     leafTilt: 20,
+    strokeWidth: 3.5,
+    strokeColor: "#fdf8e8",
     mColor: "#fdf8e8",
-    mSize: 40,
+    mSize: 34,
     mX: 0,
-    mY: 1,
+    mY: 0,
     mTilt: 0,
     mCase: "M",
     bgColor: "#fdf8e8",
@@ -557,8 +569,18 @@
   };
 
   const $ = (id) => document.getElementById(id);
-  const SLIDERS = ["leafSize", "leafTilt", "mSize", "mX", "mY", "mTilt", "bgAlpha", "radius"];
-  const COLORS = ["leafColor", "mColor", "bgColor"];
+  const SLIDERS = [
+    "leafSize",
+    "leafTilt",
+    "strokeWidth",
+    "mSize",
+    "mX",
+    "mY",
+    "mTilt",
+    "bgAlpha",
+    "radius",
+  ];
+  const COLORS = ["leafColor", "strokeColor", "mColor", "bgColor"];
   const TARGETS = ["hero", "p128", "p64", "p32", "p20", "c1", "c2"];
 
   function roundedRect(ctx, size, radiusPercent) {
@@ -570,6 +592,86 @@
     ctx.arcTo(0, size, 0, 0, r);
     ctx.arcTo(0, 0, size, 0, r);
     ctx.closePath();
+  }
+
+  // The leaf's view box is padded so its tips cannot clip; its ink is smaller
+  // than that, and by a different amount at every tilt. Measuring it is what
+  // lets `leafSize` mean "how much of the square the leaf fills".
+  const INK = new Map();
+  const PROBE = 400;
+
+  function leafPath(ctx) {
+    ctx.translate(-BOX.x, -BOX.y);
+    ctx.translate(32, 32);
+    ctx.rotate((state.leafTilt * Math.PI) / 180);
+    ctx.translate(-32, -32);
+  }
+
+  function inkBox(style, tilt) {
+    const key = `${style}:${tilt}`;
+    const cached = INK.get(key);
+    if (cached) return cached;
+
+    const probe = document.createElement("canvas");
+    probe.width = probe.height = PROBE;
+    const ctx = probe.getContext("2d");
+    const unit = PROBE / BOX.size;
+    ctx.scale(unit, unit);
+    leafPath(ctx);
+    ctx.fillStyle = "#000";
+    ctx.fill(PATHS[style], "evenodd");
+
+    const image = ctx.getImageData(0, 0, PROBE, PROBE);
+    const box = alphaBounds(image, PROBE);
+    const mass = centreOfMass(image, PROBE);
+    const measured = {
+      x: box.left / unit,
+      y: box.top / unit,
+      width: (box.right - box.left + 1) / unit,
+      height: (box.bottom - box.top + 1) / unit,
+      massX: mass.x / unit,
+      massY: mass.y / unit,
+    };
+    INK.set(key, measured);
+    return measured;
+  }
+
+  /**
+   * Where the leaf's weight actually is. The ink box's centre is not it: the
+   * stem hangs off one corner, so a letter centred in the box reads off centre
+   * in the leaf, which is the thing a reader sees.
+   */
+  function centreOfMass(image, side) {
+    let total = 0,
+      sumX = 0,
+      sumY = 0;
+    for (let y = 0; y < side; y++) {
+      for (let x = 0; x < side; x++) {
+        const alpha = image.data[(y * side + x) * 4 + 3];
+        if (alpha <= 8) continue;
+        total += alpha;
+        sumX += x * alpha;
+        sumY += y * alpha;
+      }
+    }
+    return total === 0 ? { x: side / 2, y: side / 2 } : { x: sumX / total, y: sumY / total };
+  }
+
+  function alphaBounds(image, side) {
+    let left = side,
+      top = side,
+      right = -1,
+      bottom = -1;
+    for (let y = 0; y < side; y++) {
+      for (let x = 0; x < side; x++) {
+        if (image.data[(y * side + x) * 4 + 3] <= 8) continue;
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        bottom = y;
+      }
+    }
+    return { left, top, right, bottom };
   }
 
   function draw(canvas) {
@@ -586,22 +688,33 @@
       ctx.restore();
     }
 
-    const leaf = (size * state.leafSize) / 100;
-    const scale = leaf / BOX.size;
+    const ink = inkBox(state.leafStyle, state.leafTilt);
+    const stroke = (Math.max(ink.width, ink.height) * state.strokeWidth) / 100;
+    const span = Math.max(ink.width, ink.height) + stroke;
+    const scale = (size * state.leafSize) / 100 / span;
+    const centreX = ink.x + ink.width / 2;
+    const centreY = ink.y + ink.height / 2;
 
     ctx.save();
-    ctx.translate((size - leaf) / 2, (size - leaf) / 2);
+    ctx.translate(size / 2, size / 2);
     ctx.scale(scale, scale);
-    ctx.translate(-BOX.x, -BOX.y);
-    ctx.translate(32, 32);
-    ctx.rotate((state.leafTilt * Math.PI) / 180);
-    ctx.translate(-32, -32);
+    ctx.translate(-centreX, -centreY);
+    leafPath(ctx);
     ctx.fillStyle = state.leafColor;
     ctx.fill(PATHS[state.leafStyle], "evenodd");
+    if (stroke > 0) {
+      ctx.lineWidth = stroke;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = state.strokeColor;
+      ctx.stroke(PATHS[state.leafStyle]);
+    }
     ctx.restore();
 
     ctx.save();
-    ctx.translate(size / 2 + (size * state.mX) / 100, size / 2 + (size * state.mY) / 100);
+    ctx.translate(
+      size / 2 + (ink.massX - centreX) * scale + (size * state.mX) / 100,
+      size / 2 + (ink.massY - centreY) * scale + (size * state.mY) / 100,
+    );
     ctx.rotate((state.mTilt * Math.PI) / 180);
     ctx.fillStyle = state.mColor;
     ctx.font = `${(size * state.mSize) / 100}px "Caveat Brush", cursive`;

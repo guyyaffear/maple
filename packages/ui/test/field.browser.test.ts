@@ -254,3 +254,34 @@ describe("the attachment strip", () => {
     expect(strip.querySelector("input")).toBeNull();
   });
 });
+
+/**
+ * Retargeting is the thing under test, and a plain object cannot show it: the
+ * guard is handed a `div` for every key typed into the composer.
+ */
+describe("Space, from inside the shadow root", () => {
+  function space(node: EventTarget): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", {
+      key: " ",
+      code: "Space",
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    node.dispatchEvent(event);
+    return event;
+  }
+
+  it("types a space rather than peeking, so a comment can hold two words", async () => {
+    await open();
+    field().focus();
+
+    expect(space(field()).defaultPrevented).toBe(false);
+  });
+
+  it("still peeks when the key lands on the page behind the overlay", async () => {
+    await open();
+
+    expect(space(document.body).defaultPrevented).toBe(true);
+  });
+});

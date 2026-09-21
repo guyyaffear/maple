@@ -16,6 +16,7 @@ import {
   MapleComposer,
   MapleContextBadge,
   MapleDetail,
+  MapleScoreCard,
   MapleTarget,
 } from "./composer/index.js";
 import {
@@ -119,6 +120,7 @@ function composer(leave: LeaveAsk | undefined, shots: MapleProps["attachments"])
     createElement(MapleTarget, { key: "target" }),
     createElement(MapleBody, { key: "body" }),
     createElement(MapleDetail, { key: "detail" }),
+    createElement(MapleScoreCard, { key: "score" }),
     createElement(MapleContextBadge, { key: "context" }),
     createElement(MapleAttachments, { key: "attachments", ...shots }),
     createElement(MapleNotice, { key: "notice", during: SEND_CALLS }),

@@ -22,6 +22,7 @@ import { opensComposer } from "./shortcut.js";
 import { themeFrom, watchTheme } from "./theme.js";
 import { createTransport } from "./transport.js";
 
+import type { CommentKind } from "../connectors/types.js";
 import type { Logger } from "../logger/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentStatus, MediaRef } from "../types.js";
@@ -165,6 +166,10 @@ export interface MapleClient {
    * cannot switch on a deployment that configured no classifier.
    */
   setAssist(on: boolean): void;
+  /** Shows or hides everything the context card captured. */
+  setContextOpen(open: boolean): void;
+  /** The reviewer's own label for this comment. Nothing restores the guess. */
+  setKind(kind: CommentKind | undefined): void;
 
   setStatus(id: string, status: CommentStatus, resolution?: ResolutionClaim): Promise<Comment>;
 
@@ -184,6 +189,7 @@ const CLOSED: ComposerState = {
   dirty: false,
   sending: false,
   assist: ASSIST_IDLE,
+  contextOpen: true,
 };
 
 const UNARMED: PickState = { armed: false };
@@ -244,7 +250,9 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
     openComposer: (target) => openComposer(runtime, target),
     viewComment: (id) => viewComment(runtime, id),
     resumeDraft: (id) => resumeDraft(runtime, id),
-    setBody: (body) => write(runtime, { body }),
+    setBody: (body) => write(runtime, { body, contextOpen: false }),
+    setContextOpen: (contextOpen) => composer(runtime, { contextOpen }),
+    setKind: (kind) => chooseKind(runtime, kind),
     attach: (ref) => write(runtime, { attachments: [...runtime.state.composer.attachments, ref] }),
     detach: (key) =>
       write(runtime, {
@@ -558,6 +566,7 @@ function openComposer(runtime: Runtime, target: ComposerTarget): void {
       dirty: existing !== undefined,
       sending: false,
       assist: ASSIST_IDLE,
+      contextOpen: true,
     },
   });
   runtime.guard?.setDirty(runtime.state.composer.dirty);
@@ -589,6 +598,7 @@ function viewComment(runtime: Runtime, id: string): void {
       body: comment.body,
       attachments: comment.attachments ?? [],
       assist: ASSIST_IDLE,
+      contextOpen: true,
       dirty: false,
       sending: false,
     },
@@ -637,6 +647,20 @@ function write(runtime: Runtime, change: Partial<ComposerState>): void {
   runtime.guard?.setDirty(true);
 
   if (change.body !== undefined && runtime.state.assist) runtime.assist.ask(change.body);
+}
+
+/** The reviewer's own label, or nothing to hand the kind back to the guess. */
+function chooseKind(runtime: Runtime, kind: CommentKind | undefined): void {
+  const { assist } = runtime.state.composer;
+  const next = kind === undefined ? withoutChoice(assist) : { ...assist, chosenKind: kind };
+  composer(runtime, { assist: next });
+}
+
+/** Absent and undefined are not the same under `exactOptionalPropertyTypes`. */
+function withoutChoice(assist: AssistState): AssistState {
+  const rest = { ...assist };
+  delete rest.chosenKind;
+  return rest;
 }
 
 /**

@@ -170,6 +170,8 @@ export const REDUCED_MOTION_TOKENS: Readonly<Record<string, string>> = {
  * generated rule: a rule per reviewer is a stylesheet that grows with the team.
  */
 export const RUNTIME_TOKENS: readonly string[] = [
+  // One rung's share of a pillar's probability, on that rung's own slot.
+  "--mk-p",
   "--mk-slot",
   "--mk-slot-ink",
   "--mk-pin",

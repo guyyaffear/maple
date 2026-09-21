@@ -311,19 +311,19 @@ describe("the context badge", () => {
     });
   });
 
-  it("is a labelled list, so its values line up in one column", async () => {
+  it("is a labelled list inside its card, so its values line up in one column", async () => {
     started();
     await open();
-    const badge = root().querySelector<HTMLElement>(".probe-page");
+    const list = root().querySelector<HTMLElement>(".probe-page .mk-ctx");
 
-    expect(badge?.tagName).toBe("DL");
-    expect(getComputedStyle(badge!).display).toBe("grid");
+    expect(list?.tagName).toBe("DL");
+    expect(getComputedStyle(list!).display).toBe("grid");
   });
 
   it("sets every width in tabular figures, because they change in place", async () => {
     started();
     await open();
-    const value = root().querySelector<HTMLElement>(".probe-page dd");
+    const value = root().querySelector<HTMLElement>(".probe-page .mk-ctx dd");
 
     expect(getComputedStyle(value!).fontVariantNumeric).toContain("tabular-nums");
   });

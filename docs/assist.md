@@ -220,3 +220,38 @@ already aborted.
 
 `baseUrl` is the API root, defaulting to TypeSafe's own. Request-compatible
 reimplementations exist, so hosted or local stays a configuration choice.
+
+## The surface
+
+The card sits in the slot the context card folds out of, and everything it
+draws comes from `ComposerState`.
+
+**A pillar is one slot per rung, filled by the probability that rung took.**
+Equal widths keep _which_ rung it is readable; the fill says how sure it was.
+Three pale slots are visibly a shrug and one solid slot is an answer, which is
+what makes the confidence legible with no key beside it. A number printed
+beside a bar _is_ a key, and a key is a thing a reviewer stops reading.
+
+The rows are laid out before there is anything to put in them, so nothing under
+the card moves as the scores land. There is no spinner per pillar: five things
+moving beside a field somebody is typing in is worse than five still ones.
+
+**The kind is a control.** A reviewer's own label beats any classifier, so the
+chip starts on the guess and is never stuck on it. A guess the classifier was
+unsure of names both kinds it was torn between — _bug or request_ — which says
+so without a number. The choice lives in `ComposerState`; carrying it onto the
+posted comment changes `Comment` and the markdown fence, and is its own
+decision.
+
+**The context card collapses rather than disappears.** It is on screen while
+the comment is written because it is half of what Maple has and a comment box
+does not, and the first keystroke is the moment attention moved to the words.
+Folded, it keeps the width — the one fact anyone reads off it — and it reopens
+only when a reviewer asks. A stored comment's context does not fold at all:
+nothing is being typed beside it.
+
+**The whole tier is off unless it is switched on.** `?maple-assist=off` joins
+the chain the interface already has — query string, then the viewer's stored
+preference, then props, then the default — and `setAssist` is the viewer's own
+switch. With no classifier configured the route has no `/assist`, `/me` says
+nothing about it, and the composer draws exactly what it drew before.

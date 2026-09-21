@@ -13,6 +13,10 @@ function here(path: string): string {
  * a test run never depends on a prior build or tests stale output.
  */
 const alias = [
+  {
+    find: /^@maple-kit\/classifier$/,
+    replacement: here("./packages/classifier/src/index.ts"),
+  },
   { find: /^@maple-kit\/core$/, replacement: here("./packages/core/src/index.ts") },
   { find: /^@maple-kit\/core\/(.*)$/, replacement: here("./packages/core/src/$1/index.ts") },
   { find: /^@maple-kit\/react$/, replacement: here("./packages/react/src/index.ts") },
@@ -28,7 +32,7 @@ export default defineConfig({
         test: {
           name: "node",
           environment: "node",
-          include: ["packages/*/test/**/*.test.ts", "evals/**/*.test.ts"],
+          include: ["packages/*/test/**/*.test.ts", "evals/**/*.eval.test.ts"],
           exclude: ["**/*.browser.test.ts", "**/*.browser.test.tsx"],
         },
       },

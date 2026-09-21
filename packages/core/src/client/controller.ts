@@ -11,6 +11,7 @@
 import { kindOf } from "../anchor/kind.js";
 import { labelFor } from "../anchor/label.js";
 import { pageIsTagged } from "../overlay/tagged.js";
+import { ASSIST_IDLE, createAssistRunner } from "./assist.js";
 import { createDraftKeeper, draftIdFor } from "./drafts.js";
 import { detailOf, failureFrom } from "./failure.js";
 import { openCount, visibleComments } from "./filters.js";
@@ -24,6 +25,7 @@ import { createTransport } from "./transport.js";
 import type { Logger } from "../logger/types.js";
 import type { Draft } from "../overlay/drafts.js";
 import type { Comment, CommentStatus, MediaRef } from "../types.js";
+import type { AssistRunner } from "./assist.js";
 import type { DraftKeeper } from "./drafts.js";
 import type { MapleFailure } from "./failure.js";
 import type { LinkRun } from "./link.js";
@@ -40,6 +42,8 @@ import type { MapleConfig, MapleProps } from "./preferences.js";
 import type { ThemeView, ThemeWatch } from "./theme.js";
 import type { Transport } from "./transport.js";
 import type {
+  AssistConfig,
+  AssistState,
   ClientState,
   CommentFilter,
   ComposerState,
@@ -156,6 +160,11 @@ export interface MapleClient {
   closeComposer(): void;
   discardDraft(): void;
   send(): Promise<Comment>;
+  /**
+   * Whether a comment is judged as it is typed, remembered per origin. It
+   * cannot switch on a deployment that configured no classifier.
+   */
+  setAssist(on: boolean): void;
 
   setStatus(id: string, status: CommentStatus, resolution?: ResolutionClaim): Promise<Comment>;
 
@@ -174,6 +183,7 @@ const CLOSED: ComposerState = {
   attachments: [],
   dirty: false,
   sending: false,
+  assist: ASSIST_IDLE,
 };
 
 const UNARMED: PickState = { armed: false };
@@ -188,6 +198,11 @@ interface Runtime {
   readonly config: MapleConfig;
   readonly transport: Transport;
   readonly drafts: DraftKeeper;
+  readonly assist: AssistRunner;
+  /** What the route said it can judge. Null until `/me` has answered. */
+  judges: AssistConfig | null;
+  /** Whether the viewer wants judging at all, whatever the route offers. */
+  assistOn: boolean;
   readonly listeners: Set<(state: ClientState) => void>;
   readonly now: () => number;
   guard: NavigationGuard | undefined;
@@ -235,7 +250,8 @@ export function createMapleClient(options: MapleClientOptions): MapleClient {
       write(runtime, {
         attachments: runtime.state.composer.attachments.filter((ref) => ref.key !== key),
       }),
-    closeComposer: () => composer(runtime, { open: false }),
+    closeComposer: () => closeComposer(runtime),
+    setAssist: (on) => setAssist(runtime, on),
     discardDraft: () => discardDraft(runtime),
     send: () => send(runtime),
 
@@ -256,11 +272,17 @@ function runtimeFor(options: MapleClientOptions): Runtime {
     ...(options.debounceMs === undefined ? {} : { debounceMs: options.debounceMs }),
   });
 
-  return {
+  const runtime: Runtime = {
     options,
     config,
     transport: createTransport(options),
     drafts,
+    assist: createAssistRunner({
+      judge: (body, signal) => runtime.transport.assist(body, signal),
+      onChange: (assist) => judged(runtime, assist),
+    }),
+    judges: null,
+    assistOn: config.assist,
     listeners: new Set(),
     now: options.now ?? Date.now,
     guard: undefined,
@@ -289,8 +311,11 @@ function runtimeFor(options: MapleClientOptions): Runtime {
       error: null,
       tagged: true,
       media: false,
+      assist: null,
     }),
   };
+
+  return runtime;
 }
 
 /** Where a preference is kept, which is where a draft is kept. */
@@ -334,6 +359,12 @@ function patch(runtime: Runtime, change: Partial<ClientState>): void {
 
 function composer(runtime: Runtime, change: Partial<ComposerState>): void {
   patch(runtime, { composer: { ...runtime.state.composer, ...change } });
+}
+
+/** The draft stays; the judgement does not. Nothing off-screen is worth a call. */
+function closeComposer(runtime: Runtime): void {
+  runtime.assist.cancel();
+  composer(runtime, { open: false, assist: ASSIST_IDLE });
 }
 
 /**
@@ -409,6 +440,7 @@ function destroy(runtime: Runtime): void {
   runtime.theme?.stop();
   runtime.release?.();
   runtime.link?.cancel();
+  runtime.assist.cancel();
   runtime.drafts.destroy();
   runtime.listeners.clear();
   runtime.guard = undefined;
@@ -455,15 +487,23 @@ async function load(runtime: Runtime): Promise<void> {
 }
 
 /** A route that cannot say who this is means a guest, not a failed load. */
-async function whoAmI(runtime: Runtime): Promise<Pick<ClientState, "github" | "media" | "user">> {
+async function whoAmI(
+  runtime: Runtime,
+): Promise<Pick<ClientState, "assist" | "github" | "media" | "user">> {
   try {
     const identity = await runtime.transport.me();
-    return { user: identity.user, github: linkOf(identity.github), media: identity.media === true };
+    runtime.judges = identity.assist ? { pillars: identity.assist.pillars } : null;
+    return {
+      user: identity.user,
+      github: linkOf(identity.github),
+      media: identity.media === true,
+      assist: assistFrom(runtime),
+    };
   } catch (error) {
     runtime.options.logger?.warn("Could not identify the reviewer; offering the guest flow.", {
       error: String(error),
     });
-    return { user: null, github: { state: "unsupported" }, media: false };
+    return { user: null, github: { state: "unsupported" }, media: false, assist: null };
   }
 }
 
@@ -517,9 +557,13 @@ function openComposer(runtime: Runtime, target: ComposerTarget): void {
       attachments: existing?.attachments ?? [],
       dirty: existing !== undefined,
       sending: false,
+      assist: ASSIST_IDLE,
     },
   });
   runtime.guard?.setDirty(runtime.state.composer.dirty);
+
+  runtime.assist.cancel();
+  if (runtime.state.assist && existing) runtime.assist.ask(existing.body);
 }
 
 /**
@@ -544,6 +588,7 @@ function viewComment(runtime: Runtime, id: string): void {
       },
       body: comment.body,
       attachments: comment.attachments ?? [],
+      assist: ASSIST_IDLE,
       dirty: false,
       sending: false,
     },
@@ -590,6 +635,34 @@ function write(runtime: Runtime, change: Partial<ComposerState>): void {
   runtime.drafts.save(draftFrom(runtime, next));
   patch(runtime, { composer: next, drafts: runtime.drafts.list() });
   runtime.guard?.setDirty(true);
+
+  if (change.body !== undefined && runtime.state.assist) runtime.assist.ask(change.body);
+}
+
+/**
+ * A judgement arrived, or was abandoned. It lands on the composer that asked
+ * for it and nowhere else: a closed composer is judging nothing.
+ */
+function judged(runtime: Runtime, assist: AssistState): void {
+  if (!runtime.state.composer.open) return;
+  patch(runtime, { composer: { ...runtime.state.composer, assist } });
+}
+
+/** What the route can judge, once the viewer has been asked about it too. */
+function assistFrom(runtime: Runtime): AssistConfig | null {
+  return runtime.assistOn ? runtime.judges : null;
+}
+
+/** Turning it off abandons whatever was in flight rather than letting it land. */
+function setAssist(runtime: Runtime, on: boolean): void {
+  runtime.assistOn = on;
+  writePreferences(
+    { ...readMapleConfig(runtime.options, storageOf(runtime.options)), assist: on },
+    storageOf(runtime.options),
+  );
+
+  runtime.assist.cancel();
+  patch(runtime, { assist: assistFrom(runtime) });
 }
 
 function draftFrom(runtime: Runtime, state: WritableComposer): Draft {
@@ -606,6 +679,7 @@ function draftFrom(runtime: Runtime, state: WritableComposer): Draft {
 function discardDraft(runtime: Runtime): void {
   const { draftId } = runtime.state.composer;
   if (draftId !== undefined) runtime.drafts.discard(draftId);
+  runtime.assist.cancel();
 
   patch(runtime, { composer: CLOSED, drafts: runtime.drafts.list() });
   runtime.guard?.setDirty(false);

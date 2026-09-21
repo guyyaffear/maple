@@ -1,0 +1,212 @@
+[
+  {
+    "id": "assist-001",
+    "by": "reviewer",
+    "body": "The Star authors card sits alone at the top of the page and everything below it is empty — on a 900px viewport two thirds of the screen is blank. Either centre the card vertically or give the page something else to hold.",
+    "kind": "request",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-002",
+    "by": "reviewer",
+    "body": "the starred author chips wrap into three rows that don't line up",
+    "kind": "bug",
+    "pillars": { "specific": 1, "actionable": 0, "concise": 2 }
+  },
+  {
+    "id": "assist-003",
+    "by": "reviewer",
+    "body": "Add is enabled before anything is typed in the author search, so clicking it does nothing and gives no reason. Disable it until the field has a value.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-004",
+    "by": "reviewer",
+    "body": "the little × for removing a starred author is about 8px and sits right against the handle — I keep missing it. Make the hit area the full chip height.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 2, "located": 2 }
+  },
+  {
+    "id": "assist-005",
+    "by": "reviewer",
+    "body": "this page feels empty",
+    "kind": "other",
+    "pillars": { "specific": 0, "actionable": 0, "concise": 2, "standalone": 0, "located": 0 }
+  },
+  {
+    "id": "assist-006",
+    "by": "maintainer",
+    "body": "In a tag row the description and the keywords line are the same size, weight and colour, so they read as one paragraph and the word \"keywords:\" does all the separating. Set the keywords line in the muted foreground, or in the mono face the rest of the app uses.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-007",
+    "by": "reviewer",
+    "body": "The Description field in the New tag form is showing its example text in full black, so I thought the form was already filled in. It is a placeholder — grey it out.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-008",
+    "by": "reviewer",
+    "body": "Could we drop one of the two counts in the tags header? \"Your tags (139)\" and \"Static 10 / Dynamic 129\" say the same thing twice.",
+    "kind": "request",
+    "pillars": { "specific": 2, "actionable": 2, "concise": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-009",
+    "by": "reviewer",
+    "body": "Delete sits right next to Edit on every tag row with nothing between them, and delete is the red one. One slip and a tag with five hundred likes on it is gone. Move it behind an overflow menu, or ask first.",
+    "kind": "request",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-010",
+    "by": "reviewer",
+    "body": "the STATIC badge is so small and grey I didn't see it until I went looking for it",
+    "kind": "bug",
+    "pillars": { "specific": 1, "actionable": 0, "concise": 2 }
+  },
+  {
+    "id": "assist-011",
+    "by": "reviewer",
+    "body": "why is the tag colour a hex field rather than a swatch picker?",
+    "kind": "question",
+    "pillars": { "specific": 2, "actionable": 0, "concise": 2, "standalone": 2 }
+  },
+  {
+    "id": "assist-012",
+    "by": "reviewer",
+    "body": "The helper text under Keywords and under Author handles is grey on white at what looks like 11px. I can only read it by leaning in.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 0, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-013",
+    "by": "reviewer",
+    "body": "love that the new tag form explains what the description is actually for",
+    "kind": "praise",
+    "pillars": { "actionable": 0, "concise": 2 }
+  },
+  {
+    "id": "assist-014",
+    "by": "reviewer",
+    "body": "Likes is the only stat tile with no second line under its number, so the row of five is ragged along the bottom. Give it one, or drop the others.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-015",
+    "by": "reviewer",
+    "body": "The Tagging coverage card is a heading, a percentage, one bar, and then three hundred pixels of nothing before the card ends. Beside Top tags, which is full, it reads as broken.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-016",
+    "by": "reviewer",
+    "body": "webdev, unknown-resource and celebrity are three different bars in Top tags and all three are the same red-orange. I can't tell them apart without reading the labels.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 0, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-017",
+    "by": "reviewer",
+    "body": "Tags over time is cut off by the fold — all you get is a heading, a dropdown and the top of one orange bar.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 0, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-018",
+    "by": "reviewer",
+    "body": "can the Last year dropdown remember what I picked?",
+    "kind": "request",
+    "pillars": { "specific": 2, "concise": 2, "standalone": 2 }
+  },
+  {
+    "id": "assist-019",
+    "by": "reviewer",
+    "body": "the numbers on the right of each bar are doing a lot of work here, nice",
+    "kind": "praise",
+    "pillars": { "actionable": 0, "concise": 2 }
+  },
+  {
+    "id": "assist-020",
+    "by": "reviewer",
+    "body": "something's off about the spacing on this one",
+    "kind": "other",
+    "pillars": { "specific": 0, "actionable": 0, "concise": 2, "standalone": 0, "located": 0 }
+  },
+  {
+    "id": "assist-021",
+    "by": "reviewer",
+    "body": "The avatar in the header is a broken image on every page — you get the little torn-page icon where the photo should be.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 0, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-022",
+    "by": "reviewer",
+    "body": "The search field and the contains dropdown are fused into one pill with no divider, so the dropdown reads as part of the placeholder until you click it.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-023",
+    "by": "reviewer",
+    "body": "Show more is set in the same weight and colour as the tweet body, so it doesn't read as something you can click. Make it the accent colour.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-024",
+    "by": "reviewer",
+    "body": "the two columns end at different heights and it looks untidy",
+    "kind": "bug",
+    "pillars": { "specific": 1, "actionable": 0, "concise": 2 }
+  },
+  {
+    "id": "assist-025",
+    "by": "reviewer",
+    "body": "Only some cards have the footer bar with the tag chip and the timestamp — the ones with no tag just stop. The border above it appears and disappears down the column.",
+    "kind": "bug",
+    "pillars": { "specific": 2, "actionable": 0, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-026",
+    "by": "reviewer",
+    "body": "Is \"awaiting tags\" the same thing as \"untagged\"? The header says nought awaiting tags and the Untagged filter beside it has plenty in it.",
+    "kind": "question",
+    "pillars": { "specific": 2, "actionable": 0, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-027",
+    "by": "reviewer",
+    "body": "The Likes header prints 8165 with no separator while every number on Insights is formatted as 8,165. Pick one.",
+    "kind": "copy",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-028",
+    "by": "reviewer",
+    "body": "Can we get the like and repost counts onto tabular figures? They jiggle as you scroll past cards whose numbers have different digit counts.",
+    "kind": "request",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  },
+  {
+    "id": "assist-029",
+    "by": "reviewer",
+    "body": "broken, see screenshot",
+    "kind": "other",
+    "pillars": { "specific": 0, "actionable": 0, "concise": 2, "standalone": 0, "located": 0 }
+  },
+  {
+    "id": "assist-030",
+    "by": "reviewer",
+    "body": "I'd change the wording on the Actions button — Actions tells me nothing about what is in the menu. Bulk actions, or Manage, would.",
+    "kind": "copy",
+    "pillars": { "specific": 2, "actionable": 2, "standalone": 2, "located": 2 }
+  }
+]

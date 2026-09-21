@@ -1,0 +1,16 @@
+{
+  "name": "@maple-kit/evals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Eval sets and scorers for every AI path in Maple",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "eval": "vitest run --project node evals",
+    "eval:watch": "vitest --project node evals"
+  },
+  "dependencies": {
+    "@maple-kit/classifier": "workspace:*",
+    "@maple-kit/core": "workspace:*"
+  }
+}

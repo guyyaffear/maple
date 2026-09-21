@@ -343,6 +343,7 @@ describe("what a link asked for", () => {
         detail: "developer",
         theme: "dark",
         hideResolved: false,
+        assist: false,
         shortcut: "c",
         allowUrlOverride: true,
         comment: "c_9",

@@ -18,6 +18,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
+      "@maple-kit/classifier": ["./packages/classifier/src/index.ts"],
       "@maple-kit/core": ["./packages/core/src/index.ts"],
       "@maple-kit/core/anchor": ["./packages/core/src/anchor/index.ts"],
       "@maple-kit/core/auth": ["./packages/core/src/auth/index.ts"],

@@ -3,6 +3,11 @@
 Maple's mark is a leaf and the word `maple`, drawn together. Both are path
 data in `packages/ui/src/marks/`, and neither is a font at runtime.
 
+There are two leaves and they are not interchangeable. `leaf.ts` is the
+comment mark: one silhouette in one colour, because `marks/shape.ts` draws it
+in four forms that all depend on that. `pixel-leaf.ts` is the brand mark, and
+only the lockup draws it.
+
 ## Why a path and not a webfont
 
 The overlay renders inside a shadow root. `@font-face` is a document-level
@@ -34,39 +39,99 @@ caller sizing by height gets the width for free.
 
 ## In the island
 
-![The island's header before and after, in light and dark: the leaf beside the word "Comments", and the leaf beside the word "maple".](assets/island-wordmark.png)
+![The island's header: the pixel leaf beside the word "maple", the branch pill, the filters row, and below them a comment row whose own mark is the outlined comment leaf carrying the number 6.](assets/island-wordmark.png)
+
+Both leaves are in that one picture. The lockup carries the brand mark and the
+row carries the comment mark, and they are not the same drawing.
+
+## The pixel leaf
+
+`PIXEL_LEAF_SHADES` in `packages/ui/src/marks/pixel-leaf.ts` is artwork: 443
+cells in 33 colours, merged greedily into 263 rectangles and emitted darkest
+first, one `<path>` per colour inside one `<svg>`. `shape-rendering:
+crispEdges` is not optional. Without it the cells are smoothed into a blob at
+24 pixels and into a poster at 1024, which is the whole drawing gone.
+
+**Its 33 colours are its own and are not tokens.** They do not resolve against
+the theme, they do not change between light and dark, and they are not a
+second accent. Read as a ramp they run from `oklch(0.31 0.064 119)` to
+`oklch(0.78 0.151 108)`: the accent's own hue at the dark end, opening toward
+the yellow end as it lightens. That is the accent's hue opened, not a second
+one, which is why the drawing sits beside accent-coloured chrome without
+arguing with it.
+
+**It cannot be the comment mark.** Three signals never compete for the same
+pixel in `marks/index.ts`: a fill clipped at a waterline is how far through
+its life a comment is, the outline path filled rather than the silhouette
+stroked is how sure the anchor is, and `currentColor` is its status. A drawing
+in 33 fixed colours collapses all three: it cannot be recoloured, and clipped
+at a waterline it reads as nothing.
 
 ## The lockup
 
 `Wordmark` in `packages/ui/src/island/wordmark.ts` is the composite, and it is
 a composite rather than two parts because the two are only correct together.
 
+The leaf in the lockup is the pixel leaf, and the lockup is the only thing
+that draws it. All three numbers below were re-measured against it: the leaf
+it replaced was a 64-unit drawing rotated inside a 78-unit box, so only 0.82
+of its height was ever ink, and none of the old numbers survived a drawing
+that fills 0.93 of its box.
+
 - **One number sizes it.** `size` is the leaf's edge in pixels. The word is
-  `WORDMARK_WORD_SCALE` (0.86) of it: at parity the leaf overpowers a
-  lowercase word whose x-height is half its own box.
-- **No gap.** The leaf's own tips carry the air between the two. A gap on top
-  of them reads as a gap.
-- **The word rides up by one part in 38 of the leaf's edge.** The leaf's mass
-  sits below its box centre because the stem is the long end, so a
-  box-centred word reads high beside it. This is the same correction, in the
-  same direction, that `.mk-mark-n` makes for the number inside a mark. It is
-  written as a percentage of the word's own height, which is 0.86 of the
-  leaf's edge, so `1 / (38 * 0.86)` holds at every size.
+  `WORDMARK_WORD_SCALE` (0.90) of it: at parity the leaf overpowers a
+  lowercase word whose x-height is half its own box, and at the old 0.86 the
+  word reads short beside a leaf with this much ink in it.
+- **A gap of 0.2 of the leaf's edge.** The old leaf's own tips carried the air
+  between the two and the rule was no gap at all. This one ends where its box
+  ends, so butted against the word it reads as a collision.
+- **The word rides up by both centres of mass.** The rise is
+  `(0.5 - LEAF_MASS) * size + (WORD_MASS - 0.5) * height`, where `LEAF_MASS`
+  is 13.42 of the leaf's 28 and `WORD_MASS` is 0.5076 of the word's 94.22.
+  It changed direction: the old leaf's mass sat below its box centre because
+  the stem was the long end, this one's sits a little above it, and the word's
+  sits a little below its own. Both halves are the correction, so both are in
+  it. `wordmark.ts` computes it; nothing in `css.ts` restates it.
 
 ## In the README
 
-`docs/assets/wordmark.svg` and `wordmark-dark.svg` are the same drawing with
-the token colours resolved to hex, paired in a `<picture>`. GitHub strips
-inline SVG from Markdown and does not evaluate `oklch()` in a linked image, so
-the two files exist rather than one that adapts.
+`docs/assets/wordmark.svg` and `wordmark-dark.svg` are the lockup on one grid,
+paired in a `<picture>`. GitHub strips inline SVG from Markdown and does not
+evaluate `oklch()` in a linked image, so the two files exist rather than one
+that adapts. Only the word differs between them: `#1a1d23` (`--mk-fg`) light
+and `#f6f7f9` dark. The leaf is the same in both, because it is artwork and
+has no light and dark.
 
-|       | leaf                      | word                  |
-| ----- | ------------------------- | --------------------- |
-| light | `#465a2b` (`--mk-accent`) | `#1a1d23` (`--mk-fg`) |
-| dark  | `#a6bb72` (`--mk-accent`) | `#f6f7f9` (`--mk-fg`) |
+The structure is the one thing to get right. The leaf is 33 `<path>` elements
+in the root `<svg>`, which carries `shape-rendering="crispEdges"`, and the word
+is a nested `<svg>` of its own that sets `shape-rendering="auto"` back. Letting
+`crispEdges` reach the word is the easy mistake: the curves go to stairs.
 
-Regenerate them from the token values in `packages/ui/src/tokens.ts` whenever
-those change; nothing checks that they still agree.
+The grid is the leaf's own 28 cells. The view box is `0 0 87.145 28`: the leaf
+at 28, a gap of 5.6, then the word at 53.545 by 25.2, nested at `y` 0.6285,
+which is the box centre less the rise. Those are the lockup's numbers from
+`island/wordmark.ts` at `size` 28, and they are the only thing that keeps the
+file and the component agreeing. The README draws it at `height="56"`, which
+is two device pixels a cell.
+
+Regenerate it whenever the lockup's numbers or `--mk-fg` change; nothing checks
+that they still agree.
+
+`docs/assets/card.svg` and `card-dark.svg` are the README's opening card, and
+they are the same card `maple-kit.org` puts "Open source" in: a 10 pixel
+radius, a `--mk-line-firm` hairline, a `--mk-accent-sub` field, 30 of padding,
+and the leaf bleeding out of the bottom right corner at 16 per cent. The
+lockup is its title and the product's one sentence is its body, so the card
+carries the name and the description together and the README's own first line
+is the link row under it.
+
+Two things about it are not obvious. The body is live text in a system font
+stack rather than outlines, because outlining a sentence that will be reworded
+is a trap, and the `<img>` alt repeats it for anyone the image does not reach.
+The bleeding leaf takes `fill-opacity` on each path rather than `opacity` on
+the group: a group opacity composites the drawing through one offscreen buffer
+and softens every cell, and the cells never overlap, so the two are the same
+picture.
 
 ## On a pull request
 
@@ -121,56 +186,25 @@ branded would be a flag nobody sets.
 
 ## The App's logo
 
-`docs/assets/app-logo.png` is the avatar both GitHub Apps wear: the solid leaf
-filling a transparent square edge to edge, tilted its own 20 degrees, outlined
-in cream, with a lowercase `m` in Caveat Brush cut out of it in the same cream.
-The outline is what holds the leaf off a dark surface behind it, and it
-disappears harmlessly into a cream badge plate. Lowercase,
-because the wordmark's word is lowercase and a capital reads as a different
-mark; cut out rather than laid on, because at 20 pixels in a checks list the
-counter is the only thing that says the leaf is a letter at all.
+`docs/assets/app-logo.png` is the avatar both GitHub Apps wear: the pixel leaf
+on its own, 1024 square on a transparent ground, well inside GitHub's 1 MB
+limit. It is the 28-cell drawing enlarged by nearest neighbour and nothing
+else, so a cell is a cell and the mark is the same mark at every size it is
+shrunk to.
 
-It is a manual upload under **Display information** — GitHub has no manifest
-field for a logo and no REST endpoint for an App's avatar — so the
+Regenerate it by painting `PIXEL_LEAF_SHADES` into a 28 by 28 RGBA grid, one
+cell per unit with the view box's leading row accounted for, and resampling to
+1024 with a nearest-neighbour filter. Any other filter smooths the cells and
+the drawing is gone.
+
+It is a manual upload under **Display information**, because GitHub has no
+manifest field for a logo and no REST endpoint for an App's avatar, so the
 `setup-maple-org` skill asks for it at the step where a person is already on
-that page. The badge background beside it is `#fdf8e8`, the cream, and not the
-accent: GitHub fills a circle behind the square logo with that colour, so the
-accent would be the leaf's own green and the leaf would vanish into its plate.
-At sixteen pixels, in the corner of a reviewer's avatar, that is the whole
-mark gone.
+that page. The badge background beside it stays `#fdf8e8`, the cream: GitHub
+fills a circle behind the square logo with that colour, and the accent would
+put the leaf's own green behind the leaf. At sixteen pixels, in the corner of
+a reviewer's avatar, that is the whole mark gone.
 
-`leafSize` is a percentage of the **ink**, not of the view box: the leaf's box
-is padded so its tips cannot clip when it rotates, and the ink inside it is
-only about 68% of that box, by a different amount at every tilt. The lab
-measures the ink and fits to it, so `100` means the leaf touches all four
-edges and `92` used to mean 63%. The `m` is anchored on the leaf's centre of
-**mass** rather than on its box, because the stem hangs off one corner: a
-letter centred in the box reads off centre in the leaf, which is the only
-centre a reader sees. `mX` and `mY` are offsets from that, and both are zero.
-
-Regenerate it from `tools/logo-lab/index.html`, which draws `LEAF_SOLID` and
-the letter onto a canvas at any size and previews the result down to 20
-pixels. Open it, load the **Cut-out** preset, and these are the settings the
-file was rendered at, at 1024:
-
-```json
-{
-  "leafStyle": "solid",
-  "leafColor": "#465a2b",
-  "leafSize": 100,
-  "leafTilt": 20,
-  "strokeWidth": 3.5,
-  "strokeColor": "#fdf8e8",
-  "mColor": "#fdf8e8",
-  "mSize": 34,
-  "mX": 0,
-  "mY": 0,
-  "mTilt": 0,
-  "mCase": "m",
-  "bgAlpha": 0
-}
-```
-
-```
-
-```
+`tools/logo-lab/index.html` drew the avatar this replaced, from `LEAF_SOLID`
+and a cut-out `m`. It still draws the comment mark, which is what it was built
+for; it does not draw this one, and the pixel leaf is not a shape it can take.

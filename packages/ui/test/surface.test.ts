@@ -129,8 +129,8 @@ describe("the icons", () => {
     ({ path }) => path.includes(join("src", "icons")) && !/(index|icon|crossfade)\.ts$/.test(path),
   );
 
-  it("ships twelve of them", () => {
-    expect(icons).toHaveLength(12);
+  it("ships thirteen of them", () => {
+    expect(icons).toHaveLength(13);
   });
 
   it("gives each one its own module, so importing one drags in one", () => {

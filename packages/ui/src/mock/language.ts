@@ -48,6 +48,7 @@ export const MOCK_COPY = {
   field: "Find a call",
   sentence: "Say a state, like “no items yet”",
   unnamed: "That doesn't name a state this page's data can be in.",
+  real: "Real",
   escape: "Esc",
   routePrefix: "Calls on",
   nothingRecorded: "Nothing recorded on this page yet. Use the page, then open this again.",

@@ -1,5 +1,121 @@
 # @maple-kit/ui
 
+## 0.10.0
+
+### Minor Changes
+
+- a02a975: Three body states join `empty`, `one` and `many`: `long` (every text as long
+  as the page could receive, from its own characters, and every number at its
+  widest), `sparse` (everything that may be missing is missing) and `mixed` (a
+  list covering every enum value, both booleans, null and set, absent and
+  present, short and long text). `MOCK_STATES` lists them last, the recipe stays
+  version 2, and the mock box shows a button for each.
+
+  **Breaking:** a 0.9.0 reader refuses a recipe naming one of them, as it refuses
+  any state it does not know. They ship in the same release as the version-2
+  recipe, which no released reader has seen either.
+
+  `MOCK_PLAN_STATES` is now its own list rather than `MOCK_STATES` plus `none`,
+  and `MockPlanState` is its element type: the plan does not pick the three new
+  states until its evals measure them.
+
+- 50f80c9: The mock box sets flags and who the page is shown as. `createMockClient()`
+  lists the flags the page evaluated (`state.flags`), reads the host's identity
+  rules (`state.identity`), drafts both (`draftFlags`, `draftAs`, with
+  `setFlag`, `setRole` and `setPermission`), counts the writes that reached the
+  server under `as` (`state.writes`), and applies a recipe that names flags or
+  `as` with no call. `MockHandle.identity()` reads the rules once, from the
+  options or the route.
+
+  `MapleMock` draws them in a panel loaded as a separate chunk, only on a page
+  with identity rules or evaluated flags, and its banner says "Showing as …. The
+  server still acts as you."
+
+  **Breaking:** `MockClientState` has five new fields, so a hand-built state
+  must set them, and `clear()` also empties the draft's flags and identity.
+
+- decec98: A mock plan sets flags and who the page is shown as. `MockPlanRequest` takes
+  the page's `flags` (`{ key, type, variants? }`) and the host's `roles`, and
+  `MockPlan` answers one `PlannedFlag` per flag and a `PlannedRole`. The route
+  adds the roles from its own identity rules, drops a flag with no values, and
+  keeps an answer to what was listed. `readPlan` carries named flags and a role
+  on each suggestion, or as a suggestion of their own. The keyword planner reads
+  them without ever taking a key from the sentence, `jevClassifier` asks for them
+  in a second request so the state and calls are judged as before, the box sends
+  the flags it saw and applies a layered chip, and `maple mock plan` prints them.
+  `plannedFlag` and `flagValues` are exported from `@maple-kit/core/connectors`,
+  and `memoryClassifier` takes `planFlags` and `planRole`.
+
+  **Breaking:** `MockSuggestion.state` is optional, since a chip may name only a
+  flag or a role, and `createMockPlanner` takes the route's mock schemas rather
+  than a shapes lookup.
+
+- 7ace7e4: `MapleMock` draws a plan's suggestions as at most two chips under its field,
+  and one line when the sentence names no state. The field's placeholder says it
+  takes a sentence where the route plans one.
+- 4acc6db: The mock box tags each call with the rung its shape came from: OpenAPI, router
+  types, a validator, introspection or a recording. `SHAPE_LABELS` holds the words.
+- 5fc5eb1: `<MapleMock />` at the new `@maple-kit/ui/mock` entry: Maple Mock's box and a
+  banner that only Turn off removes, opened with `m`. On its own it mounts a
+  shadow host of its own with `MOCK_CSS`; inside `<Maple />` it is already there
+  as `Maple.Mock`, and it draws nothing on a page where no transport is
+  installed. The adopted stylesheet's budget rises from 14 KB to 15 KB for the
+  box's rules.
+
+### Patch Changes
+
+- dbca0e8: The mock box draws a row's name as a label, in the muted colour, and turns it
+  to the foreground once the row is set. A row's choices sit in a sunk track and
+  the chosen one is filled, so what is set reads apart from what could be.
+  Section names are set in the sans face and only code names stay monospace.
+- d6bab1f: The mock box keeps a call's name at least 160 px wide and wraps its nine
+  state buttons onto their own line, and onto two at phone width, where they do
+  not fit beside it. Before, nine buttons squeezed the name to nothing.
+- 1c0bd7b: The mock box scrolls its calls and the "Shown as" and "Flags" panel together,
+  between the field and the footer, so a short window no longer squeezes the
+  calls to a sliver. The suggestion's row is held open from the first word, so
+  an answer landing moves nothing under it, and taking a suggestion scrolls the
+  rows it set into view.
+- a8759e5: The mock banner is as wide as its words, up to the viewport, rather than half
+  of it, and who the page is shown as wraps instead of being cut off: "The
+  server still acts as you." is always read in full.
+- b972444: `@maple-kit/ui/mock` no longer reaches `Slot`, so the mock box alone is 6.4 KB
+  gzipped with everything it loads, down from 7.0 KB.
+- Updated dependencies [0606059]
+- Updated dependencies [4493ac7]
+- Updated dependencies [2271457]
+- Updated dependencies [5d832df]
+- Updated dependencies [4b8e7c9]
+- Updated dependencies [1cb2f6f]
+- Updated dependencies [d9ff194]
+- Updated dependencies [a02a975]
+- Updated dependencies [50f80c9]
+- Updated dependencies [7ace7e4]
+- Updated dependencies [5fc5eb1]
+- Updated dependencies [4493ac7]
+- Updated dependencies [7ff6fd9]
+- Updated dependencies [b66c3c0]
+- Updated dependencies [13fe029]
+- Updated dependencies [59e5de3]
+- Updated dependencies [a939399]
+- Updated dependencies [a93dc26]
+- Updated dependencies [eccf75c]
+- Updated dependencies [decec98]
+- Updated dependencies [c597ef7]
+- Updated dependencies [2d13012]
+- Updated dependencies [4acc6db]
+- Updated dependencies [c62cad0]
+- Updated dependencies [2abe3f0]
+- Updated dependencies [5fc5eb1]
+- Updated dependencies [264e019]
+- Updated dependencies [9591b2d]
+- Updated dependencies [4acc6db]
+- Updated dependencies [2abe3f0]
+- Updated dependencies [4ae5179]
+  - @maple-kit/core@0.10.0
+  - @maple-kit/mock@0.10.0
+  - @maple-kit/react@0.10.0
+
 ## 0.9.0
 
 ### Minor Changes

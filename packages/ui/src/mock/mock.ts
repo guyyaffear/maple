@@ -23,6 +23,8 @@ import { createPortal } from "react-dom";
 
 import { MapleUiContext } from "../context.js";
 import { cx } from "../cx.js";
+import { CodeIcon } from "../icons/code.js";
+import { LinkIcon } from "../icons/link.js";
 import { SCHEME_ATTRIBUTE } from "../sheet-base.js";
 import {
   bannerSentence,
@@ -35,6 +37,7 @@ import {
 } from "./language.js";
 import { MOCK_CSS } from "./sheet.js";
 
+import type { IconComponent } from "../icons/icon.js";
 import type { OverlayHost } from "@maple-kit/core/overlay";
 import type { MockCallRow, MockClient, MockClientState } from "@maple-kit/mock/client";
 import type { ForwardedRef, ReactElement, ReactNode } from "react";
@@ -344,10 +347,13 @@ function Foot(props: { state: MockClientState; client: MockClient }): ReactEleme
     button(label(copied, "link", MOCK_COPY.copyLink), copy("link"), {
       key: "link",
       disabled: empty,
+      icon: LinkIcon,
     }),
     button(label(copied, "recipe", MOCK_COPY.copyRecipe), copy("recipe"), {
       key: "recipe",
       disabled: empty,
+      icon: CodeIcon,
+      quiet: true,
     }),
     createElement("span", { key: "spacer", className: "mk-mock-spacer" }),
     button(MOCK_COPY.apply, () => client.apply(), {
@@ -363,11 +369,16 @@ function label(copied: Copied | undefined, what: Copy, idle: string): string {
   return copied.ok ? MOCK_COPY.copied : MOCK_COPY.copyFailed;
 }
 
-function button(
-  text: string,
-  onClick: () => void,
-  flags: { key?: string; disabled?: boolean; primary?: boolean } = {},
-): ReactElement {
+interface ButtonFlags {
+  readonly key?: string;
+  readonly disabled?: boolean;
+  readonly primary?: boolean;
+  /** A secondary action: no border, so it reads apart from the one beside it. */
+  readonly quiet?: boolean;
+  readonly icon?: IconComponent;
+}
+
+function button(text: string, onClick: () => void, flags: ButtonFlags = {}): ReactElement {
   return createElement(
     "button",
     {
@@ -376,8 +387,10 @@ function button(
       className: "mk-mock-button mk-press",
       disabled: flags.disabled === true,
       "data-mk-primary": flags.primary === true ? "true" : undefined,
+      "data-mk-quiet": flags.quiet === true ? "true" : undefined,
       onClick,
     },
+    flags.icon && createElement(flags.icon, { key: "icon" }),
     text,
   );
 }

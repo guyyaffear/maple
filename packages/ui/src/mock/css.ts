@@ -282,6 +282,9 @@ function foot(): string {
 }
 
 .mk-mock-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 11px;
   border: 1px solid var(--mk-line-firm);
   border-radius: 999px;
@@ -291,6 +294,16 @@ function foot(): string {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.mk-mock-button[data-mk-quiet="true"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--mk-muted);
+}
+
+.mk-mock-button[data-mk-quiet="true"]:hover:not(:disabled) {
+  color: var(--mk-fg);
 }
 
 .mk-mock-button:disabled {
@@ -306,9 +319,7 @@ function foot(): string {
 }
 
 .mk-mock-button[data-mk-primary="true"]:disabled {
-  border-color: var(--mk-line-firm);
-  background: var(--mk-sunk);
-  color: var(--mk-faint);
+  opacity: 0.4;
 }
 `.trim();
 }

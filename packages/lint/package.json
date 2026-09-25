@@ -1,0 +1,43 @@
+{
+  "name": "@maple-kit/lint",
+  "version": "0.0.0",
+  "description": "Design-system lint for Maple: rendered-tier rules over a live preview",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maple-kit/maple.git",
+    "directory": "packages/lint"
+  },
+  "homepage": "https://github.com/maple-kit/maple/tree/main/packages/lint",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@maple-kit/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

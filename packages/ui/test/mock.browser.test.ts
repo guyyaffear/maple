@@ -426,12 +426,13 @@ describe("the box, reading a sentence", () => {
   }
 
   it("puts a clear reading straight into the calls, and Apply carries the sentence", async () => {
-    const { fake } = await typed("no reviews yet", planned({ empty: 0.8 }));
+    const { client, fake } = await typed("no reviews yet", planned({ empty: 0.8 }));
 
     await vi.waitFor(() =>
       expect(find(`.mk-mock-call[data-mk-mocked="true"]`)?.textContent).toContain("/api/reviews"),
     );
-    await vi.waitFor(() => expect(buttonNamed("Apply and reload").disabled).toBe(false));
+    // A slow typist gets a reading per pause; Apply carries the last one.
+    await vi.waitFor(() => expect(client.getState().request).toBe("no reviews yet"));
     buttonNamed("Apply and reload").click();
 
     const applied = new URL(String(fake.assign.mock.calls[0]?.[0]));
@@ -636,7 +637,7 @@ describe("the box, reading a sentence that names a role or a flag", () => {
     await vi.waitFor(() => expect(find(".mk-mock-layers")).not.toBeNull());
     await userEvent.type(find<HTMLInputElement>(".mk-mock-field")!, "as a barista, no new roaster");
 
-    await vi.waitFor(() => expect(buttonNamed("Apply and reload").disabled).toBe(false));
+    await vi.waitFor(() => expect(client.getState().request).toBe("as a barista, no new roaster"));
     buttonNamed("Apply and reload").click();
 
     const applied = new URL(String(fake.assign.mock.calls[0]?.[0]));

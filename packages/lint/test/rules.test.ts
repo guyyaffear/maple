@@ -24,8 +24,11 @@ const TOKENS = parseTokens(`
 `);
 
 /** A record that no rule has anything to say about, for one field to be changed. */
+const SELECTOR = "main:nth-of-type(1) > button:nth-of-type(1)";
+const SOURCE = "src/app/page.tsx:10:4";
+
 const BASE: StyleRecord = {
-  selector: "main:nth-of-type(1) > button:nth-of-type(1)",
+  anchor: { selector: SELECTOR },
   tag: "button",
   text: "Save",
   interactive: true,
@@ -45,7 +48,7 @@ const BASE: StyleRecord = {
 
 /** The record as a tagged build produces it, which is the usual case. */
 function record(over: Partial<StyleRecord> = {}): StyleRecord {
-  return { ...BASE, src: "src/app/page.tsx:10:4", ...over };
+  return { ...BASE, anchor: { source: SOURCE, selector: SELECTOR }, ...over };
 }
 
 /** The same record from a build that never ran the tagger. */
@@ -60,17 +63,14 @@ describe("the clean record", () => {
 
   it("anchors on the source rung when the tagger ran, and always on the selector", () => {
     const [found] = renderedFindings([record({ color: "#abcdef" })], TOKENS);
-    expect(found!.anchor).toEqual({
-      src: "src/app/page.tsx:10:4",
-      selector: "main:nth-of-type(1) > button:nth-of-type(1)",
-    });
+    expect(found!.anchor).toEqual({ source: SOURCE, selector: SELECTOR });
     expect(found!.tier).toBe("rendered");
   });
 
   it("falls back to the selector alone on an untagged build", () => {
     const [found] = renderedFindings([untagged({ color: "#abcdef" })], TOKENS);
-    expect(found!.anchor.src).toBeUndefined();
-    expect(found!.anchor.selector).toBe("main:nth-of-type(1) > button:nth-of-type(1)");
+    expect(found!.anchor.source).toBeUndefined();
+    expect(found!.anchor.selector).toBe(SELECTOR);
   });
 });
 

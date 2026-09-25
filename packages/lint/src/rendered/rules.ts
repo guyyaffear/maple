@@ -9,7 +9,7 @@
 import { colorKey, contrastRatio, over, parseColor } from "../color.js";
 import { type TokenSet } from "../tokens.js";
 
-import type { Finding, FindingAnchor, Severity } from "../types.js";
+import type { Finding, Severity } from "../types.js";
 import type { StyleRecord } from "./collect.js";
 
 /** What a rule is, for the docs table and for a host overriding a severity. */
@@ -60,18 +60,13 @@ export const RENDERED_RULES: readonly RuleDefinition[] = [
 
 const SEVERITY = new Map(RENDERED_RULES.map((rule) => [rule.id, rule.severity]));
 
-/** The anchor for a record: the source rung when the tagger ran, always the selector. */
-function anchorOf(record: StyleRecord): FindingAnchor {
-  return { ...(record.src === undefined ? {} : { src: record.src }), selector: record.selector };
-}
-
 function finding(rule: string, record: StyleRecord, message: string): Finding {
   return {
     rule,
     tier: "rendered",
     severity: SEVERITY.get(rule) ?? "warn",
     message,
-    anchor: anchorOf(record),
+    anchor: record.anchor,
     url: `${DOCS}#${rule.replace("maple/", "")}`,
   };
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { collectStyleRecords } from "../src/rendered/collect.js";
+import { readPage } from "../src/rendered/collect.js";
 
 import type { StyleRecord } from "../src/rendered/collect.js";
 
@@ -18,7 +18,7 @@ function mount(html: string, css = ""): void {
 }
 
 function bySrc(src: string): StyleRecord {
-  const found = collectStyleRecords().find((record) => record.src === src);
+  const found = readPage().records.find((record) => record.anchor.source === src);
   if (!found) throw new Error(`no record for ${src}`);
   return found;
 }
@@ -32,7 +32,7 @@ afterEach(() => {
 describe("what is collected", () => {
   it("reads only tagged elements", () => {
     mount(`<p data-maple-src="a.tsx:1:1">tagged</p><p>untagged</p>`);
-    expect(collectStyleRecords()).toHaveLength(1);
+    expect(readPage().records).toHaveLength(1);
   });
 
   it("resolves computed values rather than the declared ones", () => {
@@ -47,14 +47,14 @@ describe("what is collected", () => {
 
   it("gives a selector that finds the element again", () => {
     mount(`<section><span data-maple-src="a.tsx:1:1">x</span></section>`);
-    expect(document.querySelector(bySrc("a.tsx:1:1").selector)).toBe(
+    expect(document.querySelector(bySrc("a.tsx:1:1").anchor.selector!)).toBe(
       container.querySelector("span"),
     );
   });
 
   it("prefers an id to a path, because an id survives a reorder", () => {
     mount(`<span id="save" data-maple-src="a.tsx:1:1">x</span>`);
-    expect(bySrc("a.tsx:1:1").selector).toBe("#save");
+    expect(bySrc("a.tsx:1:1").anchor.selector).toBe("#save");
   });
 });
 

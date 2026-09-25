@@ -7,10 +7,10 @@
  */
 
 import { isData } from "./codec.js";
-import { reshape } from "./transform.js";
+import { reshape, reshapeTyped } from "./transform.js";
 
 import type { Answer, Call, Codec } from "./codec.js";
-import type { Inventory } from "./inventory.js";
+import type { Inventory, Sample } from "./inventory.js";
 import type { BodyState } from "./transform.js";
 import type { MockState, Recipe } from "@maple-kit/core/mock";
 
@@ -63,18 +63,20 @@ export async function resolve(
   inventory: Inventory,
   options: ResolveOptions,
 ): Promise<Response | undefined> {
-  const split = await splitRequest(request, recipe, options.codecs);
+  const applies = recipe?.route === undefined || recipe.route === options.route;
+  const split = await splitRequest(request, applies ? recipe : undefined, options.codecs);
   if (split === undefined || split.states.every((state) => state === undefined)) return undefined;
   if (split.states.includes("loading")) return hold(request.signal);
 
   const needsServer = split.states.some((state) => state === undefined || BODY_STATES.has(state));
-  const real = needsServer ? await options.forward(request) : undefined;
+  const sent = split.codec.prepare?.(request) ?? request;
+  const real = needsServer ? await options.forward(sent) : undefined;
   const live = real === undefined ? undefined : await split.codec.read(real.clone(), split.calls);
   if (real !== undefined && live === undefined) return real;
 
   record(inventory, split.calls, live, options);
   const answers = split.calls.map((call, index) =>
-    answer(split.states[index], live?.[index], inventory.sample(call.key, options.route)?.body),
+    answer(split.states[index], live?.[index], inventory.sample(call.key, options.route)),
   );
   return split.codec.join(split.calls, answers, real);
 }
@@ -90,21 +92,31 @@ export function record(
   calls.forEach((call, index) => {
     const answer = answers?.[index];
     if (!isData(answer)) return;
-    inventory.record(options.route, {
-      key: call.key,
-      status: answer.status,
-      body: answer.body,
-      at,
-    });
+    const { body, meta, status } = answer;
+    inventory.record(options.route, { key: call.key, status, body, at, ...(meta ? { meta } : {}) });
   });
 }
 
-function answer(state: MockState | undefined, live: Answer | undefined, sample: unknown): Answer {
-  if (state === "error" || state === "forbidden") return { kind: "failure", state };
+/**
+ * One call's answer. A failure borrows the envelope the call was last seen in,
+ * so a superjson client can read a failure nothing was fetched for.
+ */
+function answer(state: MockState | undefined, live: Answer | undefined, sample?: Sample): Answer {
+  if (state === "error" || state === "forbidden") {
+    const meta = live?.meta ?? sample?.meta;
+    return { kind: "failure", state, ...(meta === undefined ? {} : { meta: {} }) };
+  }
   if (state === undefined || !BODY_STATES.has(state)) return live ?? failure();
-  const source = isData(live) ? live.body : sample;
+  const source = isData(live) ? live : sample;
   if (source === undefined) return live ?? failure();
-  return { kind: "data", status: 200, body: reshape(state as BodyState, source) };
+  if (source.meta === undefined) {
+    return { kind: "data", status: 200, body: reshape(state as BodyState, source.body) };
+  }
+  return {
+    kind: "data",
+    status: 200,
+    ...reshapeTyped(state as BodyState, source.body, source.meta),
+  };
 }
 
 function failure(): Answer {

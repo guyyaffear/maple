@@ -425,7 +425,7 @@ maple mock plan "no projects yet" --url=https://preview.example.com/api/maple \
   --route=/projects "--calls=trpc:project.list,trpc:user.me"
 ```
 
-It prints the recipe the box's first chip would apply, `request` included, and
+It prints the recipe the box would put in its draft, `request` included, and
 exits 1 with the reason when the gate says nothing: a sentence that names no
 state, a plan under the floor, a route that plans nothing (404) or wants a
 signed-in reviewer (401). Asking the route rather than a local classifier keeps
@@ -483,9 +483,9 @@ listed flag, `{ key, value, concerned, p }` with `value` one of its values,
 and a `role` when the sentence names a listed one.
 
 - **The gate carries them.** Named flags and a role at even odds or better
-  ride on each state's chip, or make a chip of their own when the sentence
-  names no state: "as a barista" is `new-roaster Off · as barista`, not "That
-  doesn't name a state". The chip's words come from the lazy chunk.
+  ride on each state's reading, or make a reading of their own when the
+  sentence names no state: "as a barista" sets the role and the flag, not
+  "That doesn't name a state".
 - **The keyword planner** sets a flag when every word of its key is in the
   sentence (a camel-cased or kebab key split, a ticket prefix like
   `ROAST-2210-` dropped), on unless "no", "without", "off" or the like sits
@@ -676,14 +676,18 @@ before anything is drawn:
 | ----------------------------------------- | ------------------------------------------------------- |
 | confidence below 0.4                      | nothing                                                 |
 | `none`                                    | "That doesn't name a state this page's data can be in." |
-| a state, the runner-up more than 0.15 off | one chip: `Empty · 3 calls`                             |
-| the runner-up within 0.15                 | two chips, `Empty · 3 calls or Error · 3 calls`         |
+| a state, the runner-up more than 0.15 off | the calls go into that state                            |
+| the runner-up within 0.15                 | the likelier one, alone                                 |
 | no call concerned                         | nothing                                                 |
 
-A chip puts its calls in its state beside whatever the draft holds, and the
-sentence goes into the recipe's `request`; Clear drops it. No number is shown,
-and nothing moves while a plan is on its way: the chip's row is held open from
-the first word, so an answer landing pushes nothing down. A failure is swallowed, as the
+The reading goes straight into the draft, over what the draft held before the
+sentence, and the sentence goes into the recipe's `request`. A chip to take it
+was one more thing to read and click between the sentence and the result. Each
+new reading replaces the last one over that same starting point; emptying the
+field puts it back, and so does a sentence that names no state. A change by
+hand makes the draft the reviewer's own, so emptying the field after it keeps
+it. While a plan is on its way a sweep runs along the field's lower edge
+(`aria-busy`), so nothing moves when it lands. A failure is swallowed, as the
 assist tier's is, and a 404 turns the field back into a filter for the page's
 life: every word must match a key, as before a plan existed. `plan: false`
 keeps it a filter.
@@ -693,8 +697,8 @@ rest, since a mocked answer is never recorded.
 
 **Flags and who the page is shown as are a second panel**, under the calls,
 and the two scroll together between the field and the footer, so a short
-window never squeezes the calls to a sliver. Taking a chip scrolls the rows it
-set into view. The panel is
+window never squeezes the calls to a sliver. A reading scrolls the rows it set
+into view. The panel is
 a role picker and a Granted / Taken away pair per permission, from the
 host's identity rules (`handle.identity()`, read once from
 `/mock/identity`), and a toggle per flag the page evaluated (`seenFlags()`):

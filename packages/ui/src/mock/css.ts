@@ -100,51 +100,19 @@ function box(): string {
 `.trim();
 }
 
+/** A sentence the route is reading draws a sweep along the field's edge. */
 function suggest(): string {
   return `
-.mk-mock-suggest {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-height: 43px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--mk-line);
-  color: var(--mk-faint);
-  font-size: 11px;
-}
-
-.mk-mock-chip {
-  padding: 3px 10px;
-  border: 1px solid var(--mk-line-firm);
-  border-radius: 999px;
-  background: var(--mk-bg);
-  color: var(--mk-fg);
-  font: inherit;
-  font-size: 12px;
-  line-height: 18px;
-  cursor: pointer;
-}
-
-.mk-mock-chip:hover {
-  background: var(--mk-sunk);
-}
-
-.mk-mock-thinking {
+.mk-mock-head {
   position: relative;
-  width: 148px;
-  height: 26px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--mk-sunk);
 }
 
-.mk-mock-thinking::after {
+.mk-mock-head[data-mk-thinking="true"]::after {
   content: "";
   position: absolute;
-  inset: 0;
-  background: radial-gradient(closest-side, var(--mk-line), transparent);
+  inset: auto 0 -1px;
+  height: 2px;
+  background: radial-gradient(closest-side, var(--mk-accent), transparent);
   animation: mk-mock-sweep var(--mk-dur-shimmer) var(--mk-ease-swap) infinite;
 }
 
@@ -158,7 +126,9 @@ function suggest(): string {
 }
 
 .mk-mock-unnamed {
+  flex: none;
   margin: 0;
+  padding: 8px 12px 0;
   color: var(--mk-muted);
   font-size: 12px;
 }

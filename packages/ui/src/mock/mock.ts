@@ -206,6 +206,17 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
  */
 function suggestions(state: MockClientState, client: MockClient, layers?: LayerChunk): ReactNode {
   if (!state.planning || state.query.trim() === "") return null;
+  if (state.thinking) {
+    return createElement(
+      "div",
+      { className: "mk-mock-suggest" },
+      createElement("span", {
+        className: "mk-mock-thinking",
+        role: "status",
+        "aria-label": MOCK_COPY.thinking,
+      }),
+    );
+  }
   if (state.unnamed) {
     return createElement(
       "div",

@@ -115,6 +115,7 @@ export const MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-dur-swap": "150ms",
   "--mk-dur-mark-in": "500ms",
   "--mk-dur-fade": "150ms",
+  "--mk-dur-shimmer": "1100ms",
 
   "--mk-delay-tooltip": "80ms",
   "--mk-stagger-step": "40ms",
@@ -128,6 +129,7 @@ export const MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-shift-composer": "100%",
   "--mk-icon-scale": "0.25",
   "--mk-icon-blur": "4px",
+  "--mk-shimmer-sweep": "100%",
 };
 
 /**
@@ -150,6 +152,7 @@ export const REDUCED_MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-dur-swap": "100ms",
   "--mk-dur-mark-in": "100ms",
   "--mk-dur-fade": "100ms",
+  "--mk-dur-shimmer": "100ms",
 
   "--mk-delay-tooltip": "0ms",
   "--mk-stagger-step": "0ms",
@@ -163,6 +166,7 @@ export const REDUCED_MOTION_TOKENS: Readonly<Record<string, string>> = {
   "--mk-shift-composer": "0%",
   "--mk-icon-scale": "1",
   "--mk-icon-blur": "0px",
+  "--mk-shimmer-sweep": "0%",
 };
 
 /**

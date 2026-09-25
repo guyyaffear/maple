@@ -707,8 +707,14 @@ a role picker and a Granted / Taken away pair per permission, from the
 host's identity rules (`handle.identity()`, read once from
 `/mock/identity`), and a toggle per flag the page evaluated (`seenFlags()`):
 On / Off for a boolean, its variants where the source lists them, and its
-real value, read-only, otherwise. Choosing the chosen option puts it back to
-real. The words are the host's and the page's; the box has no role list.
+real value, read-only, otherwise. Each row starts on the real value, marked
+with a green dot: the role and permissions from the identity call's last real
+answer (`MockClientState.realAs`), a flag from what the page evaluated.
+Choosing the real option, or the chosen one again, drops the override. The
+role is always shown; permissions and flags fold to `Permissions · 8` and
+`Flags · 12`, since a host can declare dozens and a page evaluate hundreds, and
+a folded list still shows every row the draft overrides. The words are the
+host's and the page's; the box has no role list.
 
 - **It is a lazy chunk.** `mock/layers.js` is loaded by a dynamic import only
   when the page has identity rules, has evaluated a flag, or has a recipe with

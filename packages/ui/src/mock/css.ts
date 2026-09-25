@@ -91,6 +91,21 @@ function box(): string {
   font-weight: 400;
 }
 
+.mk-mock-fold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mk-mock-fold[aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+
 .mk-mock-empty {
   margin: 0;
   padding: 14px 12px 16px;

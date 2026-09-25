@@ -39,6 +39,10 @@ export interface RenderedLintOptions {
   readonly url: string;
   /** CSS files the token set is read from, the same ones the static tier uses. */
   readonly tokenFiles: readonly string[];
+  /**
+   * The sizes to judge at. Any list, any number: a wall display and no phone
+   * is as valid as the default. Omitted, `DEFAULT_VIEWPORTS` is used.
+   */
   readonly viewports?: readonly Viewport[];
   /**
    * The preview platform's bypass, sent as request headers. Reviewer cookies

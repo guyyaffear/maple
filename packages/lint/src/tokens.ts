@@ -26,6 +26,10 @@ export const ROOT_FONT_SIZE = 16;
 
 /** A custom-property declaration, wherever it sits: a token file may be minified. */
 const DECLARATION = /(--\w[\w-]*)\s*:([^;}]+)/g;
+const REFERENCE = /^var\(\s*(--[\w-]+)\s*(?:,([^)]*))?\)$/;
+
+/** How far a chain of `var()` is followed before it is called a cycle. */
+const MAX_INDIRECTION = 8;
 const LENGTH = /^(-?[\d.]+)(px|rem|em)$/;
 
 /** Converts a CSS length to px, or undefined when it is not one. */
@@ -37,21 +41,32 @@ export function lengthToPx(value: string, rootFontSize = ROOT_FONT_SIZE): number
 }
 
 /**
- * Scans CSS text for custom properties. A declaration whose value is another
- * `var()` is kept under its name but contributes no value, because the value
- * it resolves to is already in the set under the name it was declared with.
+ * Follows `var(--other)` to the value it stands for, taking the fallback when
+ * the name is not declared. A chain that loops stops at the depth cap.
+ */
+function resolve(value: string, names: ReadonlyMap<string, string>, depth = 0): string {
+  const reference = REFERENCE.exec(value.trim());
+  if (!reference || depth >= MAX_INDIRECTION) return value;
+  const next = names.get(reference[1]!) ?? reference[2]?.trim();
+  return next === undefined ? value : resolve(next, names, depth + 1);
+}
+
+/**
+ * Scans CSS text for custom properties. A theme layer that declares
+ * `--surface: var(--grey-100)` contributes the colour it resolves to, because
+ * an element painted from it computes to that colour and nothing else.
  */
 export function parseTokens(css: string, rootFontSize = ROOT_FONT_SIZE): TokenSet {
   const colors = new Set<string>();
   const fontSizes = new Set<number>();
   const names = new Map<string, string>();
-  for (const [, name, raw] of css.matchAll(DECLARATION)) {
-    const value = raw!.trim();
-    names.set(name!, value);
+  for (const [, name, raw] of css.matchAll(DECLARATION)) names.set(name!, raw!.trim());
+  for (const [name, declared] of names) {
+    const value = resolve(declared, names);
     const color = parseColor(value);
     if (color) colors.add(colorKey(color));
     const length = lengthToPx(value, rootFontSize);
-    if (length !== undefined && isTypeToken(name!)) fontSizes.add(length);
+    if (length !== undefined && isTypeToken(name)) fontSizes.add(length);
   }
   return { colors, fontSizes, names };
 }
@@ -64,13 +79,16 @@ function isTypeToken(name: string): boolean {
   return /(^|-)(text|font|type)(-|$)/.test(name);
 }
 
-/** Reads and merges every configured token file. */
+/**
+ * Reads every configured token file as one sheet, so a theme file that refers
+ * to a base file's token resolves the way the browser resolves it.
+ */
 export async function readTokenFiles(
   paths: readonly string[],
   rootFontSize = ROOT_FONT_SIZE,
 ): Promise<TokenSet> {
   const sources = await Promise.all(paths.map((path) => readFile(path, "utf8")));
-  return mergeTokens(sources.map((css) => parseTokens(css, rootFontSize)));
+  return parseTokens(sources.join("\n"), rootFontSize);
 }
 
 /** Merges token sets, later files adding to earlier ones. */

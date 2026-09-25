@@ -15,12 +15,56 @@ describe("parseColor", () => {
     expect(parseColor(value)).toEqual(expected);
   });
 
-  it.each(["rebeccapurple", "color(display-p3 1 0 0)", "", "rgb(1, 2)", "not a colour"])(
-    "says nothing about %s rather than guessing",
-    (value) => {
-      expect(parseColor(value)).toBeUndefined();
-    },
-  );
+  it.each([
+    ["hsl(220 70% 50%)", { r: 38, g: 98, b: 217, a: 1 }],
+    ["hsl(220, 70%, 50%)", { r: 38, g: 98, b: 217, a: 1 }],
+    ["hsl(220deg 70% 50%)", { r: 38, g: 98, b: 217, a: 1 }],
+    ["hsla(220, 70%, 50%, 0.5)", { r: 38, g: 98, b: 217, a: 0.5 }],
+    ["hsl(220 70% 50% / 0.5)", { r: 38, g: 98, b: 217, a: 0.5 }],
+    ["hsl(0 0% 0%)", { r: 0, g: 0, b: 0, a: 1 }],
+    ["hsl(0 0% 100%)", { r: 255, g: 255, b: 255, a: 1 }],
+  ])("reads %s, which a token file may declare", (value, expected) => {
+    const found = parseColor(value)!;
+    expect(Math.round(found.r)).toBe(expected.r);
+    expect(Math.round(found.g)).toBe(expected.g);
+    expect(Math.round(found.b)).toBe(expected.b);
+    expect(found.a).toBeCloseTo(expected.a, 3);
+  });
+
+  it.each([
+    ["turn", "hsl(0.611turn 70% 50%)"],
+    ["grad", "hsl(244.4grad 70% 50%)"],
+    ["rad", "hsl(3.84rad 70% 50%)"],
+  ])("reads a hue in %s", (_unit, value) => {
+    const found = parseColor(value)!;
+    expect(Math.round(found.r)).toBeCloseTo(38, -1);
+    expect(Math.round(found.b)).toBeCloseTo(217, -1);
+  });
+
+  it("wraps a hue past 360 the way CSS does", () => {
+    expect(parseColor("hsl(580 70% 50%)")).toEqual(parseColor("hsl(220 70% 50%)"));
+  });
+
+  it("reads color(srgb …), which is what color-mix() computes to", () => {
+    expect(parseColor("color(srgb 0.5 0 0.5)")).toEqual({ r: 127.5, g: 0, b: 127.5, a: 1 });
+  });
+
+  it("keys the same as what Chromium computes that hsl() to, which is what matches a token", () => {
+    expect(colorKey(parseColor("hsl(220 70% 50%)")!)).toBe(
+      colorKey(parseColor("rgb(38, 98, 217)")!),
+    );
+  });
+
+  it.each([
+    "rebeccapurple",
+    "color(display-p3 1 0 0)",
+    "oklch(0.7 0.1 220)",
+    "",
+    "rgb(1, 2)",
+    "not a colour",
+  ])("says nothing about %s rather than guessing", (value) => {
+    expect(parseColor(value)).toBeUndefined();
+  });
 });
 
 describe("colorKey", () => {

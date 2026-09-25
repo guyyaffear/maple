@@ -161,7 +161,11 @@ export function motionPropertyFindings(record: StyleRecord): Finding[] {
   return [finding(rule, record, `Motion is on ${offending.join(", ")}, not opacity or transform.`)];
 }
 
-/** Every rule that reads one pass of the page. */
+/**
+ * Every rule that reads one pass of the page, called once per viewport by the
+ * driver. These are the rendered tier's own rules only: a judged rule reaches a
+ * model through a connector, and lands with #126 rather than here.
+ */
 export function renderedFindings(
   records: readonly StyleRecord[],
   tokens: TokenSet,

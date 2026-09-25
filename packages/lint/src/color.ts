@@ -19,6 +19,14 @@ export interface Rgb {
 const HEX_SHORT = /^#([\da-f])([\da-f])([\da-f])$/i;
 const HEX_LONG = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i;
 const FUNCTIONAL = /^rgba?\(([^)]+)\)$/i;
+const HSL = /^hsla?\(([^)]+)\)$/i;
+const SRGB = /^color\(\s?srgb\s([^)]+)\)$/i;
+const TURNS: Readonly<Record<string, number>> = {
+  deg: 1,
+  grad: 0.9,
+  rad: 180 / Math.PI,
+  turn: 360,
+};
 
 /** Reads one `rgb()` argument, which may be a percentage. */
 function channel(part: string, scale: number): number {
@@ -28,41 +36,106 @@ function channel(part: string, scale: number): number {
   return text.endsWith("%") ? (value / 100) * scale : value;
 }
 
-/**
- * Parses what `getComputedStyle` returns and what a token file declares:
- * `#abc`, `#aabbcc`, `rgb(0 0 0)`, `rgb(0, 0, 0)` and the `rgba` spellings.
- * Anything else — a named colour, `color(display-p3 …)` — returns undefined,
- * and a rule that cannot read a colour says nothing rather than guessing.
- */
-export function parseColor(value: string): Rgb | undefined {
-  const text = value.trim();
+/** Hex, in both lengths. */
+function parseHex(text: string): Rgb | undefined {
   const short = HEX_SHORT.exec(text);
   if (short) {
     const [r, g, b] = short.slice(1, 4).map((part) => Number.parseInt(part + part, 16));
     return { r: r!, g: g!, b: b!, a: 1 };
   }
   const long = HEX_LONG.exec(text);
-  if (long) {
-    const [r, g, b] = long.slice(1, 4).map((part) => Number.parseInt(part, 16));
-    return { r: r!, g: g!, b: b!, a: 1 };
-  }
-  return parseFunctional(text);
+  if (!long) return undefined;
+  const [r, g, b] = long.slice(1, 4).map((part) => Number.parseInt(part, 16));
+  return { r: r!, g: g!, b: b!, a: 1 };
+}
+
+/** Splits a colour function's arguments into its channels and its alpha. */
+function argumentsOf(body: string): { parts: string[]; alpha: string | undefined } {
+  const [channels, slashed] = body.split("/");
+  const parts = channels!
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  return { parts, alpha: slashed ?? parts[3] };
 }
 
 /** `rgb()` and `rgba()`, in both the comma and the space spelling. */
 function parseFunctional(text: string): Rgb | undefined {
   const call = FUNCTIONAL.exec(text);
   if (!call) return undefined;
-  const [rgb, alpha] = call[1]!.split("/");
-  const parts = rgb!
-    .trim()
-    .split(/[\s,]+/)
-    .filter(Boolean);
+  const { parts, alpha } = argumentsOf(call[1]!);
   if (parts.length < 3) return undefined;
   const [r, g, b] = parts.map((part) => channel(part, 255));
-  const a = alpha === undefined ? channel(parts[3] ?? "1", 1) : channel(alpha, 1);
-  if ([r, g, b, a].some((value) => Number.isNaN(value!))) return undefined;
+  const a = channel(alpha ?? "1", 1);
+  if ([r, g, b, a].some((value) => Number.isNaN(value))) return undefined;
   return { r: r!, g: g!, b: b!, a: a };
+}
+
+/** A hue in any of the four angle units CSS allows, as degrees. */
+function hue(part: string): number {
+  const text = part.trim();
+  const value = Number.parseFloat(text);
+  if (Number.isNaN(value)) return Number.NaN;
+  const lower = text.toLowerCase();
+  const unit = Object.entries(TURNS).find(([name]) => lower.endsWith(name));
+  return value * (unit === undefined ? 1 : unit[1]);
+}
+
+/** The conversion from CSS Color 4, section 7. */
+function fromHsl(degrees: number, saturation: number, lightness: number): Omit<Rgb, "a"> {
+  const turned = ((degrees % 360) + 360) % 360;
+  const reach = saturation * Math.min(lightness, 1 - lightness);
+  const at = (offset: number): number => {
+    const k = (offset + turned / 30) % 12;
+    return (lightness - reach * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255;
+  };
+  return { r: at(0), g: at(8), b: at(4) };
+}
+
+/**
+ * `hsl()` and `hsla()`. A computed style is already `rgb()`; a token file is
+ * read as text, and a token nobody can read is one every element is judged against.
+ */
+function parseHsl(text: string): Rgb | undefined {
+  const call = HSL.exec(text);
+  if (!call) return undefined;
+  const { parts, alpha } = argumentsOf(call[1]!);
+  if (parts.length < 3) return undefined;
+  const degrees = hue(parts[0]!);
+  const saturation = channel(parts[1]!, 1) / (parts[1]!.includes("%") ? 1 : 100);
+  const lightness = channel(parts[2]!, 1) / (parts[2]!.includes("%") ? 1 : 100);
+  const a = channel(alpha ?? "1", 1);
+  if ([degrees, saturation, lightness, a].some((value) => Number.isNaN(value))) return undefined;
+  return { ...fromHsl(degrees, saturation, lightness), a };
+}
+
+/** `color(srgb …)`, which is what `color-mix()` computes to. */
+function parseSrgb(text: string): Rgb | undefined {
+  const call = SRGB.exec(text);
+  if (!call) return undefined;
+  const { parts, alpha } = argumentsOf(call[1]!);
+  if (parts.length < 3) return undefined;
+  const [r, g, b] = parts.map((part) => channel(part, 1) * 255);
+  const a = channel(alpha ?? "1", 1);
+  if ([r, g, b, a].some((value) => Number.isNaN(value))) return undefined;
+  return { r: r!, g: g!, b: b!, a: a };
+}
+
+const PARSERS = [parseHex, parseFunctional, parseHsl, parseSrgb];
+
+/**
+ * Parses what `getComputedStyle` returns and what a token file declares: hex,
+ * `rgb()`, `hsl()` and `color(srgb …)`, in every spelling of each. A named
+ * colour or a wider gamut — `oklch()`, `color(display-p3 …)` — returns
+ * undefined, and a rule that cannot read a colour says nothing rather than guess.
+ */
+export function parseColor(value: string): Rgb | undefined {
+  const text = value.trim();
+  for (const parse of PARSERS) {
+    const found = parse(text);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 /** Normalises a colour to `r,g,b,a`, so two spellings of one colour compare equal. */

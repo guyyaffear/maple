@@ -123,9 +123,11 @@ export interface MockClient {
   destroy(): void;
   setOpen(open: boolean): void;
   toggle(): void;
+  /**
+   * The field's words. Where the route plans, its best reading goes into the
+   * draft over what was there before the sentence; emptied, it puts that back.
+   */
   setQuery(query: string): void;
-  /** Puts a suggestion's calls in its state, and keeps the sentence for the recipe. */
-  suggest(index: number): void;
   /** Puts a call in a state, or takes it out of the draft when undefined. */
   choose(key: string, state: MockState | undefined): void;
   /** Answers a flag with `value`, or lets it keep its real value when undefined. */
@@ -169,6 +171,8 @@ interface Runtime {
   planFlight?: AbortController;
   /** Set once the route says it plans nothing, for the page's life. */
   planOff?: boolean;
+  /** The draft before the sentence, which each reading is applied over. */
+  base?: Draft;
 }
 
 /** A mock box controller over the installed transport. */
@@ -209,17 +213,17 @@ export function createMockClient(options: MockClientOptions = {}): MockClient {
     toggle: () => patch(runtime, { open: !runtime.state.open }),
     setQuery(query) {
       patch(runtime, { query });
+      if (query.trim() === "") restore(runtime);
       schedulePlan(runtime);
     },
-    suggest: (index) => suggest(runtime, index),
-    choose: (key, state) => patch(runtime, { draft: chosen(runtime.state.draft, key, state) }),
+    choose: (key, state) => edit(runtime, { draft: chosen(runtime.state.draft, key, state) }),
     setFlag: (key, value) =>
-      patch(runtime, { draftFlags: withEntry(runtime.state.draftFlags, key, value) }),
-    setRole: (role) => patch(runtime, { draftAs: withRole(runtime.state.draftAs, role) }),
+      edit(runtime, { draftFlags: withEntry(runtime.state.draftFlags, key, value) }),
+    setRole: (role) => edit(runtime, { draftAs: withRole(runtime.state.draftAs, role) }),
     setPermission: (name, granted) =>
-      patch(runtime, { draftAs: withPermission(runtime.state.draftAs, name, granted) }),
+      edit(runtime, { draftAs: withPermission(runtime.state.draftAs, name, granted) }),
     clear: () =>
-      patch(runtime, { draft: [], draftFlags: {}, draftAs: undefined, request: undefined }),
+      edit(runtime, { draft: [], draftFlags: {}, draftAs: undefined, request: undefined }),
     recipe: () => recipeOf(runtime.state),
     link: () => linkRecipe(hrefOf(runtime), recipeOf(runtime.state)),
     apply: () => apply(runtime),
@@ -378,7 +382,7 @@ async function runPlan(runtime: Runtime, sentence: string): Promise<void> {
   try {
     const asked = { request: sentence, route, calls, ...(flags.length === 0 ? {} : { flags }) };
     const plan = await lookup(asked, flight.signal);
-    if (!flight.signal.aborted) patch(runtime, { ...readPlan(plan), thinking: false });
+    if (!flight.signal.aborted) read(runtime, readPlan(plan));
   } catch (error) {
     if (error instanceof PlanUnavailableError) runtime.planOff = true;
     if (!flight.signal.aborted) patch(runtime, QUIET);
@@ -387,25 +391,46 @@ async function runPlan(runtime: Runtime, sentence: string): Promise<void> {
   }
 }
 
-/**
- * A chip, taken: its calls go into the draft in its state, its flags beside
- * the draft's, and its role in place of the draft's, keeping its permissions.
- */
-function suggest(runtime: Runtime, index: number): void {
-  const suggestion = runtime.state.suggestions[index];
-  if (suggestion === undefined) return;
-  const { state } = runtime;
+type Draft = Pick<MockClientState, "draft" | "draftFlags" | "draftAs">;
+
+/** A reading lands: its best suggestion over the draft as it was before the sentence. */
+function read(runtime: Runtime, reading: PlanReading): void {
+  patch(runtime, { ...reading, thinking: false });
+  const [best] = reading.suggestions;
+  if (best === undefined) {
+    if (reading.unnamed) restore(runtime);
+    return;
+  }
+  const base = (runtime.base ??= pick(runtime.state));
   const draft =
-    suggestion.state === undefined
-      ? state.draft
-      : suggestion.calls.reduce((next, key) => chosen(next, key, suggestion.state), state.draft);
-  const role = suggestion.as?.role;
+    best.state === undefined
+      ? base.draft
+      : best.calls.reduce((next, key) => chosen(next, key, best.state), base.draft);
+  const role = best.as?.role;
   patch(runtime, {
     draft,
-    draftFlags: { ...state.draftFlags, ...suggestion.flags },
-    draftAs: role === undefined ? state.draftAs : withRole(state.draftAs, role),
-    request: state.query.trim(),
+    draftFlags: { ...base.draftFlags, ...best.flags },
+    draftAs: role === undefined ? base.draftAs : withRole(base.draftAs, role),
+    request: runtime.state.query.trim(),
   });
+}
+
+/** The field emptied, or a sentence naming nothing: the draft goes back. */
+function restore(runtime: Runtime): void {
+  const { base } = runtime;
+  if (base === undefined) return;
+  delete runtime.base;
+  patch(runtime, { ...base, request: undefined, suggestions: [], unnamed: false });
+}
+
+/** A change by hand: what the sentence put there is the reviewer's now. */
+function edit(runtime: Runtime, next: Partial<Draft & { request: undefined }>): void {
+  delete runtime.base;
+  patch(runtime, next);
+}
+
+function pick(state: MockClientState): Draft {
+  return { draft: state.draft, draftFlags: state.draftFlags, draftAs: state.draftAs };
 }
 
 /** The recipe in force, when it applies on `route`. */

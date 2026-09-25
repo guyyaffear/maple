@@ -425,11 +425,12 @@ describe("the box, reading a sentence", () => {
     return { client, fake, lookup };
   }
 
-  it("offers a chip for a clear state, and Apply carries the sentence", async () => {
+  it("puts a clear reading straight into the calls, and Apply carries the sentence", async () => {
     const { fake } = await typed("no reviews yet", planned({ empty: 0.8 }));
 
-    await vi.waitFor(() => expect(find(".mk-mock-chip")).not.toBeNull());
-    buttonNamed("Empty · 1 call").click();
+    await vi.waitFor(() =>
+      expect(find(`.mk-mock-call[data-mk-mocked="true"]`)?.textContent).toContain("/api/reviews"),
+    );
     await vi.waitFor(() => expect(buttonNamed("Apply and reload").disabled).toBe(false));
     buttonNamed("Apply and reload").click();
 
@@ -442,12 +443,20 @@ describe("the box, reading a sentence", () => {
     });
   });
 
-  it("offers two chips when the sentence is torn between two states", async () => {
+  it("takes the likelier reading when the sentence is torn between two states", async () => {
     await typed("no reviews or broken", planned({ empty: 0.45, error: 0.35 }));
 
     await vi.waitFor(() =>
-      expect(find(".mk-mock-suggest")?.textContent).toBe("Empty · 1 callorError · 1 call"),
+      expect(find(`.mk-mock-call[data-mk-mocked="true"]`)?.textContent).toContain("Empty"),
     );
+  });
+
+  it("puts the calls back to real when the field is emptied", async () => {
+    const { client } = await typed("no reviews yet", planned({ empty: 0.8 }));
+    await vi.waitFor(() => expect(client.getState().draft).toHaveLength(1));
+
+    await userEvent.clear(find<HTMLInputElement>(".mk-mock-field")!);
+    await vi.waitFor(() => expect(find(`.mk-mock-call[data-mk-mocked="true"]`)).toBeNull());
   });
 
   it("says so when the sentence names no state, and offers nothing", async () => {
@@ -458,7 +467,7 @@ describe("the box, reading a sentence", () => {
         "That doesn't name a state this page's data can be in.",
       ),
     );
-    expect(find(".mk-mock-chip")).toBeNull();
+    expect(find(`.mk-mock-call[data-mk-mocked="true"]`)).toBeNull();
   });
 
   it("shows nothing at all for a plan it is unsure of", async () => {
@@ -466,11 +475,11 @@ describe("the box, reading a sentence", () => {
 
     await vi.waitFor(() => expect(lookup).toHaveBeenCalled());
     await new Promise((settle) => setTimeout(settle, 50));
-    expect(find(".mk-mock-chip")).toBeNull();
+    expect(find(`.mk-mock-call[data-mk-mocked="true"]`)).toBeNull();
     expect(find(".mk-mock-unnamed")).toBeNull();
   });
 
-  it("holds the chip's place with a skeleton while it waits, and the answer moves nothing", async () => {
+  it("sweeps the field's edge while it reads, and the answer moves nothing", async () => {
     const held: { answer?: (plan: MockPlan) => void } = {};
     const later = new Promise<MockPlan>((resolve) => (held.answer = resolve));
     const client = track(
@@ -484,7 +493,9 @@ describe("the box, reading a sentence", () => {
     await render(createElement(MapleMock, { client }));
     await vi.waitFor(() => expect(find(".mk-mock-field")).not.toBeNull());
     await userEvent.type(find<HTMLInputElement>(".mk-mock-field")!, "no reviews yet");
-    await vi.waitFor(() => expect(find('[role="status"].mk-mock-thinking')).not.toBeNull());
+    await vi.waitFor(() =>
+      expect(find('[data-mk-thinking="true"][aria-busy="true"]')).not.toBeNull(),
+    );
     await Promise.all(
       find(".mk-mock")!
         .getAnimations()
@@ -494,8 +505,8 @@ describe("the box, reading a sentence", () => {
     const before = top();
 
     held.answer?.(planned({ empty: 0.8 }));
-    await vi.waitFor(() => expect(find(".mk-mock-chip")).not.toBeNull());
-    expect(find(".mk-mock-thinking")).toBeNull();
+    await vi.waitFor(() => expect(find('.mk-mock-call[data-mk-mocked="true"]')).not.toBeNull());
+    expect(find('[data-mk-thinking="true"]')).toBeNull();
     expect(top()).toBe(before);
   });
 
@@ -601,7 +612,7 @@ describe("the box, reading a sentence that names a role or a flag", () => {
     requires: {},
   };
 
-  it("offers a chip in the chunk's words, and Apply carries the role and the flag", async () => {
+  it("puts a reading's role and flag straight into the panel, and Apply carries them", async () => {
     const fake = fakePage();
     const plan: MockPlan = {
       ...planned({ none: 0.8 }),
@@ -625,10 +636,6 @@ describe("the box, reading a sentence that names a role or a flag", () => {
     await vi.waitFor(() => expect(find(".mk-mock-layers")).not.toBeNull());
     await userEvent.type(find<HTMLInputElement>(".mk-mock-field")!, "as a barista, no new roaster");
 
-    await vi.waitFor(() =>
-      expect(find(".mk-mock-chip")?.textContent).toBe("new-roaster Off · as barista"),
-    );
-    buttonNamed("new-roaster Off · as barista").click();
     await vi.waitFor(() => expect(buttonNamed("Apply and reload").disabled).toBe(false));
     buttonNamed("Apply and reload").click();
 

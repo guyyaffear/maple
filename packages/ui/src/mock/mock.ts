@@ -33,7 +33,6 @@ import {
   MOCK_COPY,
   SHAPE_LABELS,
   STATE_LABELS,
-  suggestionLabel,
 } from "./language.js";
 import { MOCK_CSS } from "./sheet.js";
 
@@ -173,7 +172,11 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
     },
     createElement(
       "div",
-      { className: "mk-mock-head" },
+      {
+        className: "mk-mock-head",
+        "data-mk-thinking": String(state.thinking),
+        "aria-busy": state.thinking,
+      },
       createElement("input", {
         className: "mk-mock-field",
         type: "text",
@@ -186,7 +189,7 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
       }),
       createElement("kbd", { className: "mk-mock-key-hint" }, MOCK_COPY.escape),
     ),
-    suggestions(state, client, layers),
+    state.unnamed ? createElement("p", { className: "mk-mock-unnamed" }, MOCK_COPY.unnamed) : null,
     createElement(
       "div",
       { className: "mk-mock-body" },
@@ -200,58 +203,6 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
       layers && createElement(layers.Layers, { state, client }),
     ),
     createElement(Foot, { client, state }),
-  );
-}
-
-/**
- * At most two chips, or the one line for a sentence that names no state. The
- * slot is held open from the first word, so an answer landing moves nothing.
- */
-function suggestions(state: MockClientState, client: MockClient, layers?: LayerChunk): ReactNode {
-  if (!state.planning || state.query.trim() === "") return null;
-  if (state.thinking) {
-    return createElement(
-      "div",
-      { className: "mk-mock-suggest" },
-      createElement("span", {
-        className: "mk-mock-thinking",
-        role: "status",
-        "aria-label": MOCK_COPY.thinking,
-      }),
-    );
-  }
-  if (state.unnamed) {
-    return createElement(
-      "div",
-      { className: "mk-mock-suggest mk-live" },
-      createElement("p", { className: "mk-mock-unnamed" }, MOCK_COPY.unnamed),
-    );
-  }
-  return createElement(
-    "div",
-    { className: "mk-mock-suggest mk-live" },
-    state.suggestions.flatMap((suggestion, index) => {
-      const label = [
-        suggestion.state && suggestionLabel(suggestion.state, suggestion.calls.length),
-        layers?.layerLabel(suggestion),
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      return [
-        index === 0 ? null : createElement("span", { key: `or${String(index)}` }, MOCK_COPY.or),
-        label &&
-          createElement(
-            "button",
-            {
-              key: index,
-              type: "button",
-              className: "mk-mock-chip mk-press",
-              onClick: () => client.suggest(index),
-            },
-            label,
-          ),
-      ];
-    }),
   );
 }
 

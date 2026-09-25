@@ -21,11 +21,10 @@ const MOCK_MAX = 4 * 1024;
 
 /** Each budget is the gzipped size of the modules only that column reaches. */
 const BUDGETS = [
-  // 13 KB until the score card, 0.7 KB of distribution bars drawn honestly;
-  // 14 KB until the mock box, 0.6 KB whose rules ride in this sheet so
-  // Maple.Mock needs no second one inside <Maple />. A page that only mocks
-  // adopts MOCK_CSS instead, weighed with the box's own graph below.
-  { name: "the adopted stylesheet", entries: ["stylesheet.js"], max: 15 * 1024 },
+  // 13 KB until the score card; 14 KB until the mock box, whose rules ride in
+  // this sheet so Maple.Mock needs no second one inside <Maple /> (a page that
+  // only mocks adopts MOCK_CSS, weighed below); 16 KB once its menu joined.
+  { name: "the adopted stylesheet", entries: ["stylesheet.js"], max: 16 * 1024 },
   // 22 KB until the wordmark, 1.7 KB of path data the header always reaches;
   // 24 KB until the sign-off and the unsent list, 0.7 KB between them; 26 KB
   // until the pixel leaf, whose 263 rectangles are 1.3 KB the header reaches
@@ -42,11 +41,12 @@ const BUDGETS = [
   { name: "picker, on top", entries: ["picker/index.js"], max: 3 * 1024 },
   { name: "notice, on top", entries: ["notice/index.js"], max: 1024 },
   { name: "the mock box, on top", entries: ["mock/index.js"], max: MOCK_MAX },
-  // Loaded by the box only on a page with evaluated flags or identity rules.
+  // Loaded by the box only on a page with evaluated flags or identity rules;
+  // 2.5 KB once it read real values and folded long lists.
   {
     name: "the box's flags and identity, loaded later",
     entries: ["mock/layers.js"],
-    max: 2 * 1024,
+    max: 2.5 * 1024,
   },
   { name: "the default composition, on top", entries: ["maple.js"], max: 1024 },
 ];

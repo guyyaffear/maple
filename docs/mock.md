@@ -713,7 +713,7 @@ real. The words are the host's and the page's; the box has no role list.
 - **It is a lazy chunk.** `mock/layers.js` is loaded by a dynamic import only
   when the page has identity rules, has evaluated a flag, or has a recipe with
   either layer, so the box alone stays under 8.5 KB. `scripts/size.js` weighs a
-  dynamic import as its own entry (2 KB), and fails on one no budget names.
+  dynamic import as its own entry (2.5 KB), and fails on one no budget names.
 - **The banner says what `as` cannot do**, exactly: "Showing as barista. The
   server still acts as you." It counts the flags set, and every write that
   reached the server under `as`: "2 writes reached the server as you."

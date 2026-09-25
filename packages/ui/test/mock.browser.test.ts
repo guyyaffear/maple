@@ -303,6 +303,25 @@ describe("the banner", () => {
     expect(new URL(assign.mock.calls[0]?.[0] as string).searchParams.has("maple-mock")).toBe(false);
   });
 
+  it.each([
+    [1100, 12],
+    [360, 56],
+  ])("docks bottom-left at %i px, clear of the top bar and the island", async (width, bottom) => {
+    const size = { width: window.innerWidth, height: window.innerHeight };
+    await page.viewport(width, 640);
+    try {
+      const client = track(createMockClient({ handle: handle(active), view: fakePage().view }));
+      await render(createElement(MapleMock, { client }));
+      await vi.waitFor(() => expect(find(".mk-mock-banner")).not.toBeNull());
+
+      const box = find(".mk-mock-banner")!.getBoundingClientRect();
+      expect(box.left).toBe(12);
+      expect(Math.round(640 - box.bottom)).toBe(bottom);
+    } finally {
+      await page.viewport(size.width, size.height);
+    }
+  });
+
   it("opens the box from Edit, with the mock's calls already chosen", async () => {
     const client = track(createMockClient({ handle: handle(active), view: fakePage().view }));
     await render(createElement(MapleMock, { client }));

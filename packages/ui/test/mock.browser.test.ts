@@ -224,6 +224,28 @@ describe("picking and applying", () => {
     });
   });
 
+  it("draws a row's name as a label until the row is set, and its choice as the value", async () => {
+    const { view } = fakePage();
+    const client = track(createMockClient({ handle: handle(), view, defaultOpen: true }));
+    await render(createElement(MapleMock, { client }));
+    await vi.waitFor(() => expect(find(".mk-mock")).not.toBeNull());
+    const row = find<HTMLElement>(".mk-mock-call")!;
+    const name = row.querySelector(".mk-mock-name")!;
+    const color = (element: Element) => getComputedStyle(element).color;
+    const muted = color(name);
+
+    const empty = buttonNamed("Empty", row);
+    expect(color(empty)).toBe(muted);
+    empty.click();
+    await vi.waitFor(() => expect(color(name)).not.toBe(muted));
+
+    const box = getComputedStyle(find(".mk-mock")!);
+    await vi.waitFor(() => {
+      expect(color(empty)).toBe(box.backgroundColor);
+      expect(getComputedStyle(empty).backgroundColor).toBe(color(name));
+    });
+  });
+
   it("copies a link and a recipe, with no store to post to", async () => {
     const { view, writeText } = fakePage();
     const client = track(createMockClient({ handle: handle(), view, defaultOpen: true }));

@@ -40,8 +40,7 @@ export function Layers(props: LayerProps): ReactElement {
     const role = state.draftAs?.role;
     rows.push(
       row(
-        "role",
-        LAYER_COPY.role,
+        { key: "role", name: LAYER_COPY.role, set: role !== undefined, prose: true },
         choices(LAYER_COPY.role, roles, role, (next) => client.setRole(next)),
       ),
     );
@@ -53,8 +52,7 @@ export function Layers(props: LayerProps): ReactElement {
     const current = granted === undefined ? undefined : grantedLabel(granted);
     rows.push(
       row(
-        `p:${name}`,
-        name,
+        { key: `p:${name}`, name, set: current !== undefined },
         choices(name, [LAYER_COPY.granted, LAYER_COPY.takenAway], current, pick),
       ),
     );
@@ -117,7 +115,7 @@ function flagRow(flag: MockFlagRow, client: MockClient): ReactNode {
       : choices(flag.key, labels, current, (label) =>
           pick(values[labels.indexOf(label ?? "")] ?? undefined),
         );
-  return row(`f:${flag.key}`, flag.key, control, title);
+  return row({ key: `f:${flag.key}`, name: flag.key, set: current !== undefined, title }, control);
 }
 
 function valueLabel(value: FlagValue): string {
@@ -143,11 +141,22 @@ function section(title: string, rows: ReactNode[]): ReactElement {
   );
 }
 
-function row(key: string, name: string, control: ReactNode, title?: string): ReactElement {
+interface RowLabel {
+  readonly key: string;
+  readonly name: string;
+  /** Whether the draft sets this row, which is what lights its label. */
+  readonly set: boolean;
+  /** A word rather than a code name, so it stays out of the monospace. */
+  readonly prose?: boolean;
+  readonly title?: string;
+}
+
+function row(label: RowLabel, control: ReactNode): ReactElement {
+  const { key, name, prose, set, title } = label;
   return createElement(
     "li",
-    { key, className: "mk-mock-call", title: title ?? name },
-    createElement("span", { className: "mk-mock-name mk-mono" }, name),
+    { key, className: "mk-mock-call", "data-mk-mocked": String(set), title: title ?? name },
+    createElement("span", { className: prose ? "mk-mock-name" : "mk-mock-name mk-mono" }, name),
     control,
   );
 }

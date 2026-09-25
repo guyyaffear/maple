@@ -72,9 +72,15 @@ function box(): string {
 .mk-mock-route {
   flex: none;
   margin: 0;
-  padding: 8px 12px 4px;
+  padding: 10px 12px 4px;
   color: var(--mk-muted);
   font-size: 11px;
+  font-weight: 600;
+}
+
+.mk-mock-route .mk-mono {
+  color: var(--mk-fg);
+  font-weight: 400;
 }
 
 .mk-mock-empty {
@@ -154,6 +160,7 @@ function calls(): string {
   align-items: baseline;
   gap: 6px;
   overflow: hidden;
+  color: var(--mk-muted);
   font-size: 12px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -176,8 +183,12 @@ function calls(): string {
   white-space: nowrap;
 }
 
+.mk-mock-call[data-mk-mocked="true"] .mk-mock-name {
+  color: var(--mk-fg);
+}
+
 .mk-mock-call[data-mk-seen="false"] .mk-mock-name {
-  color: var(--mk-muted);
+  color: var(--mk-faint);
 }
 `.trim();
 }
@@ -189,14 +200,17 @@ function states(): string {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 2px;
+  gap: 1px;
   margin-left: auto;
+  padding: 2px;
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-sunk);
 }
 
 .mk-mock-state {
   padding: 2px 7px;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  border: 0;
+  border-radius: var(--mk-r-xs);
   background: transparent;
   color: var(--mk-muted);
   font: inherit;
@@ -208,14 +222,12 @@ function states(): string {
 }
 
 .mk-mock-state:hover {
-  background: var(--mk-sunk);
   color: var(--mk-fg);
 }
 
 .mk-mock-state[aria-checked="true"] {
-  border-color: var(--mk-line-firm);
-  background: var(--mk-bg);
-  color: var(--mk-fg);
+  background: var(--mk-fg);
+  color: var(--mk-bg);
   font-weight: 600;
 }
 `.trim();

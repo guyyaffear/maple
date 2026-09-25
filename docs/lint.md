@@ -87,8 +87,17 @@ element, which is what the eye actually sees, and a translucent text colour is
 composited onto it first. Large text — 24px, or 18.66px at weight 700 — is held
 to 3:1 and everything else to 4.5:1, as WCAG 2.1 AA defines them.
 
-A colour the parser cannot read, such as `color(display-p3 …)` or a named
-colour, produces no finding rather than a guess.
+### Colours it can read
+
+Hex in all four lengths, `rgb()`, `hsl()`, `color(srgb …)` — which is what
+`color-mix()` computes to — and the 148 CSS named colours. A token written
+`--ink: black` or `--scrim: #00000080` is a token, not a gap.
+
+A wider gamut (`oklch()`, `color(display-p3 …)`) still cannot be read, and that
+is reported rather than passed over: a run warns through Maple's logger, naming
+the token and the value, and again for any colour on the page it could not
+judge. A colour nobody can parse is not a clean page, it is an unchecked one.
+Pass your own `logger` to capture those instead.
 
 ### Viewports
 

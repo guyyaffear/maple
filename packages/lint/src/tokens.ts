@@ -9,7 +9,7 @@
 
 import { readFile } from "node:fs/promises";
 
-import { colorKey, parseColor } from "./color.js";
+import { colorKey, isUnreadableColor, parseColor } from "./color.js";
 
 /** Every value a rule is allowed to see, keyed the way the rule compares it. */
 export interface TokenSet {
@@ -19,6 +19,11 @@ export interface TokenSet {
   readonly fontSizes: ReadonlySet<number>;
   /** Custom-property names, for a message that can name the token. */
   readonly names: ReadonlyMap<string, string>;
+  /**
+   * Declarations meant to be a colour that could not be read, by name. Every
+   * element painted from one would be judged against a set lacking it.
+   */
+  readonly unreadable: ReadonlyMap<string, string>;
 }
 
 /** How a rem in a token file converts to the px a computed style reports. */
@@ -60,15 +65,17 @@ export function parseTokens(css: string, rootFontSize = ROOT_FONT_SIZE): TokenSe
   const colors = new Set<string>();
   const fontSizes = new Set<number>();
   const names = new Map<string, string>();
+  const unreadable = new Map<string, string>();
   for (const [, name, raw] of css.matchAll(DECLARATION)) names.set(name!, raw!.trim());
   for (const [name, declared] of names) {
     const value = resolve(declared, names);
     const color = parseColor(value);
     if (color) colors.add(colorKey(color));
+    else if (isUnreadableColor(value)) unreadable.set(name, value);
     const length = lengthToPx(value, rootFontSize);
     if (length !== undefined && isTypeToken(name)) fontSizes.add(length);
   }
-  return { colors, fontSizes, names };
+  return { colors, fontSizes, names, unreadable };
 }
 
 /**
@@ -96,10 +103,12 @@ export function mergeTokens(sets: readonly TokenSet[]): TokenSet {
   const colors = new Set<string>();
   const fontSizes = new Set<number>();
   const names = new Map<string, string>();
+  const unreadable = new Map<string, string>();
   for (const set of sets) {
     for (const color of set.colors) colors.add(color);
     for (const size of set.fontSizes) fontSizes.add(size);
     for (const [name, value] of set.names) names.set(name, value);
+    for (const [name, value] of set.unreadable) unreadable.set(name, value);
   }
-  return { colors, fontSizes, names };
+  return { colors, fontSizes, names, unreadable };
 }

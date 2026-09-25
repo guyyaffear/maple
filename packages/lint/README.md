@@ -36,6 +36,13 @@ comment does. `findingComment(finding, { branch, context })` turns one into a
 [docs/lint.md](../../docs/lint.md) covers each of them and the tiers around this
 one.
 
+## What it cannot read
+
+Hex, `rgb()`, `hsl()`, `color(srgb …)` and the named colours all read. A wider
+gamut — `oklch()`, `color(display-p3 …)` — does not, and a run warns through
+Maple's logger naming what it skipped rather than reporting a clean page it
+did not fully check.
+
 ## Authentication
 
 A run sends the preview platform's bypass as request headers and nothing else.

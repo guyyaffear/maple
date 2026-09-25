@@ -9,15 +9,17 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { createLogger } from "@maple-kit/core/logger";
 import { toCommentContext } from "@maple-kit/core/overlay";
 import { chromium } from "playwright";
 
 import { readTokenFiles, type TokenSet } from "../tokens.js";
-import { reducedMotionFindings, renderedFindings } from "./rules.js";
+import { reducedMotionFindings, renderedFindings, unreadableColors } from "./rules.js";
 
 import type { Finding } from "../types.js";
 import type { Reading } from "./collect.js";
 import type { CommentContext } from "@maple-kit/core";
+import type { Logger } from "@maple-kit/core/logger";
 import type { Browser, BrowserContext, Page } from "playwright";
 
 /** One size the page is judged at. */
@@ -51,6 +53,11 @@ export interface RenderedLintOptions {
   readonly bypassHeaders?: Readonly<Record<string, string>>;
   /** An already-launched browser, which a test supplies and a run does not. */
   readonly browser?: Browser;
+  /**
+   * Where a run says what it could not check. Defaults to warning through
+   * Maple's own logger; a host that captures its own passes one in.
+   */
+  readonly logger?: Logger;
 }
 
 /** A finished run: what was found, and the page it was found on. */
@@ -63,11 +70,26 @@ export interface RenderedRun {
   readonly context: CommentContext;
 }
 
+/**
+ * Says what the run could not read: a colour nobody can parse is not a clean
+ * page but an unchecked one, and a green result should not hide that.
+ */
+function warnUnreadable(log: Logger, tokens: TokenSet, seen: readonly string[]): void {
+  for (const [name, value] of tokens.unreadable) {
+    log.warn("Token could not be read, so nothing is checked against it", { token: name, value });
+  }
+  if (seen.length > 0) {
+    log.warn("Colours on the page could not be read, so they were not judged", { values: seen });
+  }
+}
+
 /** Findings from one viewport, kept apart so a dedupe can say where they were. */
 export interface Pass {
   readonly viewport: Viewport;
   readonly findings: readonly Finding[];
   readonly context: CommentContext;
+  /** Colours this viewport painted that no rule could read. */
+  readonly unreadable: readonly string[];
 }
 
 function label(viewport: Viewport): string {
@@ -124,6 +146,7 @@ async function auditViewport(
   return {
     viewport,
     context: toCommentContext(seen.context),
+    unreadable: unreadableColors(seen.records),
     findings: [
       ...renderedFindings(seen.records, tokens),
       ...reducedMotionFindings(reduced.records),
@@ -176,6 +199,8 @@ export async function lintRendered(options: RenderedLintOptions): Promise<Render
     for (const viewport of viewports) {
       passes.push(await auditViewport(browser, options, viewport, tokens));
     }
+    const log = options.logger ?? createLogger({ level: "warn" });
+    warnUnreadable(log, tokens, [...new Set(passes.flatMap((pass) => pass.unreadable))]);
     return { findings: dedupe(passes), context: widest(passes) };
   } finally {
     if (options.browser === undefined) await browser.close();

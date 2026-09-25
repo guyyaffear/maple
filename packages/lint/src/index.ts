@@ -6,10 +6,18 @@
  * the same `Finding`.
  */
 
-export { colorKey, contrastRatio, over, parseColor, relativeLuminance } from "./color.js";
+export {
+  colorKey,
+  contrastRatio,
+  isUnreadableColor,
+  over,
+  parseColor,
+  relativeLuminance,
+} from "./color.js";
 export type { Rgb } from "./color.js";
 export { findingComment, findingCommentId, findingComments, LINT_AUTHOR } from "./comment.js";
 export type { FindingCommentOptions } from "./comment.js";
+export { NAMED_COLORS } from "./named-colors.js";
 export { DEFAULT_VIEWPORTS, dedupe, lintRendered } from "./rendered/audit.js";
 export type { Pass, RenderedLintOptions, RenderedRun, Viewport } from "./rendered/audit.js";
 export { readPage } from "./rendered/collect.js";
@@ -19,6 +27,7 @@ export {
   MOTION_SAFE,
   RENDERED_RULES,
   renderedFindings,
+  unreadableColors,
 } from "./rendered/rules.js";
 export type { RuleDefinition } from "./rendered/rules.js";
 export { lengthToPx, mergeTokens, parseTokens, readTokenFiles, ROOT_FONT_SIZE } from "./tokens.js";

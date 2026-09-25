@@ -6,7 +6,7 @@
  * a media query finally produced. Keeping them pure keeps them table-tested.
  */
 
-import { colorKey, contrastRatio, over, parseColor } from "../color.js";
+import { colorKey, contrastRatio, isUnreadableColor, over, parseColor } from "../color.js";
 import { type TokenSet } from "../tokens.js";
 
 import type { Finding, Severity } from "../types.js";
@@ -177,6 +177,21 @@ export function renderedFindings(
     ...contrastFindings(record),
     ...motionPropertyFindings(record),
   ]);
+}
+
+/**
+ * Colours the page painted that no rule could judge, distinct and in the order
+ * they were met. A run reports these rather than quietly checking less than it
+ * was asked to.
+ */
+export function unreadableColors(records: readonly StyleRecord[]): readonly string[] {
+  const found = new Set<string>();
+  for (const record of records) {
+    for (const value of [record.color, record.backgroundColor, record.backdrop]) {
+      if (isUnreadableColor(value)) found.add(value);
+    }
+  }
+  return [...found];
 }
 
 /**

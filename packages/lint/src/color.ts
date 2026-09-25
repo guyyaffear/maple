@@ -8,6 +8,8 @@
  * #dfn-contrast-ratio.
  */
 
+import { NAMED_COLORS } from "./named-colors.js";
+
 /** A colour in sRGB, each channel 0-255, alpha 0-1. */
 export interface Rgb {
   readonly r: number;
@@ -16,8 +18,8 @@ export interface Rgb {
   readonly a: number;
 }
 
-const HEX_SHORT = /^#([\da-f])([\da-f])([\da-f])$/i;
-const HEX_LONG = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i;
+const HEX_SHORT = /^#([\da-f])([\da-f])([\da-f])([\da-f])?$/i;
+const HEX_LONG = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})?$/i;
 const FUNCTIONAL = /^rgba?\(([^)]+)\)$/i;
 const HSL = /^hsla?\(([^)]+)\)$/i;
 const SRGB = /^color\(\s?srgb\s([^)]+)\)$/i;
@@ -36,17 +38,19 @@ function channel(part: string, scale: number): number {
   return text.endsWith("%") ? (value / 100) * scale : value;
 }
 
-/** Hex, in both lengths. */
+/** Hex in all four lengths, the two longer ones carrying alpha. */
 function parseHex(text: string): Rgb | undefined {
-  const short = HEX_SHORT.exec(text);
-  if (short) {
-    const [r, g, b] = short.slice(1, 4).map((part) => Number.parseInt(part + part, 16));
-    return { r: r!, g: g!, b: b!, a: 1 };
-  }
-  const long = HEX_LONG.exec(text);
-  if (!long) return undefined;
-  const [r, g, b] = long.slice(1, 4).map((part) => Number.parseInt(part, 16));
-  return { r: r!, g: g!, b: b!, a: 1 };
+  const match = HEX_SHORT.exec(text) ?? HEX_LONG.exec(text);
+  if (!match) return undefined;
+  const short = match[0].length <= 5;
+  const read = (part: string): number => Number.parseInt(short ? part + part : part, 16);
+  const alpha = match[4];
+  return {
+    r: read(match[1]!),
+    g: read(match[2]!),
+    b: read(match[3]!),
+    a: alpha === undefined ? 1 : read(alpha) / 255,
+  };
 }
 
 /** Splits a colour function's arguments into its channels and its alpha. */
@@ -121,13 +125,34 @@ function parseSrgb(text: string): Rgb | undefined {
   return { r: r!, g: g!, b: b!, a: a };
 }
 
-const PARSERS = [parseHex, parseFunctional, parseHsl, parseSrgb];
+/** A CSS named colour, and `transparent`, which is the one keyword with a value. */
+function parseNamed(text: string): Rgb | undefined {
+  const name = text.toLowerCase();
+  if (name === "transparent") return { r: 0, g: 0, b: 0, a: 0 };
+  const found = NAMED_COLORS[name];
+  return found === undefined ? undefined : { r: found[0], g: found[1], b: found[2], a: 1 };
+}
+
+const PARSERS = [parseHex, parseFunctional, parseHsl, parseSrgb, parseNamed];
 
 /**
- * Parses what `getComputedStyle` returns and what a token file declares: hex,
- * `rgb()`, `hsl()` and `color(srgb …)`, in every spelling of each. A named
- * colour or a wider gamut — `oklch()`, `color(display-p3 …)` — returns
- * undefined, and a rule that cannot read a colour says nothing rather than guess.
+ * A value that was meant to be a colour, so a token nobody can read is told
+ * apart from one that was never a colour.
+ */
+const COLOUR_SHAPED = /^(#|rgba?\(|hsla?\(|hwb\(|lab\(|lch\(|oklab\(|oklch\(|color\()/i;
+
+/** Whether a value looks like an attempt at a colour this cannot read. */
+export function isUnreadableColor(value: string): boolean {
+  const text = value.trim();
+  if (parseColor(text) !== undefined) return false;
+  return COLOUR_SHAPED.test(text);
+}
+
+/**
+ * Parses what `getComputedStyle` returns and what a token file declares: hex
+ * in four lengths, `rgb()`, `hsl()`, `color(srgb …)` and the named colours. A
+ * wider gamut — `oklch()`, `color(display-p3 …)` — returns undefined, which
+ * `isUnreadableColor` reports rather than passing over in silence.
  */
 export function parseColor(value: string): Rgb | undefined {
   const text = value.trim();

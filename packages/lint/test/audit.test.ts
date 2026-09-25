@@ -10,7 +10,7 @@ const LAPTOP = { width: 1440, height: 900 };
 
 /** One viewport's result, with the context every pass carries. */
 function pass(viewport: typeof PHONE, findings: readonly Finding[]) {
-  return { viewport, findings, context: SAMPLE_CONTEXT };
+  return { viewport, findings, context: SAMPLE_CONTEXT, unreadable: [] };
 }
 
 function finding(over: Partial<Finding> = {}): Finding {

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { colorKey, contrastRatio, over, parseColor, relativeLuminance } from "../src/color.js";
+import {
+  colorKey,
+  contrastRatio,
+  isUnreadableColor,
+  over,
+  parseColor,
+  relativeLuminance,
+} from "../src/color.js";
 
 describe("parseColor", () => {
   it.each([
@@ -56,15 +63,50 @@ describe("parseColor", () => {
   });
 
   it.each([
-    "rebeccapurple",
-    "color(display-p3 1 0 0)",
-    "oklch(0.7 0.1 220)",
-    "",
-    "rgb(1, 2)",
-    "not a colour",
-  ])("says nothing about %s rather than guessing", (value) => {
-    expect(parseColor(value)).toBeUndefined();
+    ["rebeccapurple", { r: 102, g: 51, b: 153, a: 1 }],
+    ["black", { r: 0, g: 0, b: 0, a: 1 }],
+    ["REBECCAPURPLE", { r: 102, g: 51, b: 153, a: 1 }],
+    ["transparent", { r: 0, g: 0, b: 0, a: 0 }],
+  ])("reads the named colour %s", (value, expected) => {
+    expect(parseColor(value)).toEqual(expected);
   });
+
+  it.each([
+    ["#11223344", { r: 17, g: 34, b: 51, a: 68 / 255 }],
+    ["#abcd", { r: 170, g: 187, b: 204, a: 221 / 255 }],
+  ])("reads hex with alpha: %s", (value, expected) => {
+    expect(parseColor(value)).toEqual(expected);
+  });
+
+  it.each(["color(display-p3 1 0 0)", "oklch(0.7 0.1 220)", "", "rgb(1, 2)", "not a colour"])(
+    "says nothing about %s rather than guessing",
+    (value) => {
+      expect(parseColor(value)).toBeUndefined();
+    },
+  );
+});
+
+describe("isUnreadableColor", () => {
+  it.each(["oklch(0.7 0.1 220)", "color(display-p3 1 0 0)", "lab(50% 40 59)", "#gg0000"])(
+    "flags %s, which was meant to be a colour and could not be read",
+    (value) => {
+      expect(isUnreadableColor(value)).toBe(true);
+    },
+  );
+
+  it.each(["#abc", "rgb(1, 2, 3)", "hsl(220 70% 50%)", "rebeccapurple", "transparent"])(
+    "says nothing about %s, which reads fine",
+    (value) => {
+      expect(isUnreadableColor(value)).toBe(false);
+    },
+  );
+
+  it.each(["1px solid", "14px", "auto", "var(--unresolved)", ""])(
+    "says nothing about %s, which was never a colour",
+    (value) => {
+      expect(isUnreadableColor(value)).toBe(false);
+    },
+  );
 });
 
 describe("colorKey", () => {

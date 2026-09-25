@@ -69,6 +69,24 @@ describe("parseTokens", () => {
   });
 });
 
+describe("what cannot be read", () => {
+  it("records a token that was meant to be a colour and is not readable", () => {
+    const wide = parseTokens(":host { --brand: oklch(0.7 0.1 220); }");
+    expect(wide.unreadable.get("--brand")).toBe("oklch(0.7 0.1 220)");
+    expect(wide.colors.size).toBe(0);
+  });
+
+  it("does not record a token that was never a colour", () => {
+    expect(parseTokens(":host { --gap: 8px; }").unreadable.size).toBe(0);
+  });
+
+  it("does not record a named colour, now that those are read", () => {
+    const named = parseTokens(":host { --ink: black; }");
+    expect(named.unreadable.size).toBe(0);
+    expect(named.colors.size).toBe(1);
+  });
+});
+
 describe("var() indirection", () => {
   it("contributes the colour an alias resolves to, which is what an element computes to", () => {
     const aliased = parseTokens(":host { --grey-100: #eeeeee; --surface: var(--grey-100); }");

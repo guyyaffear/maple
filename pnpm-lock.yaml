@@ -132,6 +132,9 @@ importers:
       '@maple-kit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@maple-kit/mock':
+        specifier: workspace:*
+        version: link:../../packages/mock
       '@maple-kit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -210,6 +213,9 @@ importers:
       '@maple-kit/core':
         specifier: workspace:*
         version: link:../core
+      '@mswjs/interceptors':
+        specifier: 0.41.9
+        version: 0.41.9
 
   packages/react:
     dependencies:

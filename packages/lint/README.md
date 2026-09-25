@@ -17,9 +17,10 @@ const findings = await lintRendered({
 });
 ```
 
-Every finding is a `Finding`, anchored through `data-maple-src` when the build
-ran the tagger and through a CSS selector otherwise, so it can be pinned on the
-page the way a comment is.
+Every finding carries the anchor cascade's own `Anchor`, recorded by
+`describeElement` in the page, so it means the same thing by "where" that a
+comment does. `findingComment(finding, { branch, context })` turns one into a
+`Comment` the overlay pins; a run does not do that on its own.
 
 ## Rules
 

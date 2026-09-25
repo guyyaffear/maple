@@ -16,9 +16,10 @@ interface Finding {
 }
 ```
 
-The anchor is the cascade's, so a finding pins on the page exactly the way a
-comment does: `src` is `data-maple-src` on a build that ran the tagger, and
-`selector` is the rung that is always there.
+`anchor` is the cascade's own `Anchor`, not a shape of lint's own, so a finding
+and a comment mean the same thing by "where". The page is read through
+`describeElement`, which records every rung it can — the source location, the
+component name, a text quote, and the CSS path that is always there.
 
 ## The tiers
 
@@ -95,6 +96,32 @@ With no `viewports` configured a run uses a phone, a tablet and a laptop:
 375×812, 768×1024 and 1440×900. A finding at every viewport is reported once,
 as written. A finding at only some of them names them, because "only on the
 phone" is most of what the reader needs.
+
+### Pinning a finding
+
+`findingComment(finding, { branch, context })` turns a finding into a `Comment`,
+which is what the overlay draws marks from:
+
+```ts
+import { findingComments, lintRendered } from "@maple-kit/lint";
+
+const run = await lintRendered({ url, tokenFiles });
+const pinned = findingComments(run.findings, { branch: "feature/x", context: run.context });
+```
+
+Hand them to `MapleMarkLayer`'s `comments` prop and they pin where they were
+found, beside the human ones. The author is `Maple lint`, never a person.
+
+The id is derived from the branch, the rule, the most durable anchor rung and
+the message, so a second run over an unchanged page produces the same ids and a
+store that already holds them can say so rather than appending them twice.
+
+This is a separate export, and a run does not call it. Whether findings belong
+in the PR ledger at all is [discussion #112][112]'s first open question, and
+nothing here answers it: the adapter makes pinning possible without making it
+happen.
+
+[112]: https://github.com/maple-kit/maple/discussions/112
 
 ### Authentication
 

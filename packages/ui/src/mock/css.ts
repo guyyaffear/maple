@@ -10,7 +10,7 @@ import { SHEET_BREAKPOINT_PX } from "../tokens.js";
 
 /** Every rule the box and the banner need, and nothing another part owns. */
 export function mockCss(): string {
-  return [box(), suggest(), calls(), states(), foot(), banner()].join("\n\n");
+  return [box(), suggest(), calls(), states(), menu(), foot(), banner()].join("\n\n");
 }
 
 function box(): string {
@@ -232,6 +232,83 @@ function states(): string {
   background: var(--mk-fg);
   color: var(--mk-bg);
   font-weight: 600;
+}
+`.trim();
+}
+
+/** The pick for a call's state, and the menu it opens in the top layer. */
+function menu(): string {
+  return `
+.mk-mock-pick,
+.mk-mock-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--mk-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mk-mock-pick {
+  flex: none;
+  gap: 4px;
+  min-width: 80px;
+  margin-left: auto;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--mk-line-firm);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+}
+
+.mk-mock-pick[data-mk-real="true"] {
+  color: var(--mk-muted);
+  font-weight: 400;
+}
+
+.mk-mock-chevron {
+  margin-left: auto;
+  color: var(--mk-faint);
+}
+
+.mk-mock-menu {
+  position: fixed;
+  inset: 0 auto auto 0;
+  margin: 0;
+  translate: var(--mk-x) var(--mk-y);
+  min-width: 132px;
+  padding: 3px;
+  border: 1px solid var(--mk-line-firm);
+  border-radius: var(--mk-r);
+  background: var(--mk-bg);
+  box-shadow: var(--mk-sh2);
+}
+
+.mk-mock-item {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--mk-r-sm);
+}
+
+.mk-mock-item:hover,
+.mk-mock-item:focus-visible {
+  outline: none;
+  background: var(--mk-sunk);
+}
+
+.mk-mock-item[aria-checked="true"] {
+  font-weight: 600;
+}
+
+.mk-mock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mk-ok);
 }
 `.trim();
 }

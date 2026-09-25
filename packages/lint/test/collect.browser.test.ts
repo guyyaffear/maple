@@ -58,6 +58,30 @@ describe("what is collected", () => {
   });
 });
 
+describe("who paints the text", () => {
+  it("counts an element with its own text", () => {
+    mount(`<p data-maple-src="a.tsx:1:1">painted here</p>`);
+    expect(bySrc("a.tsx:1:1").paintsText).toBe(true);
+  });
+
+  it("does not count a wrapper whose text is all in a child", () => {
+    mount(`<div data-maple-src="a.tsx:1:1"><span>painted there</span></div>`);
+    const record = bySrc("a.tsx:1:1");
+    expect(record.text).toBe("painted there");
+    expect(record.paintsText).toBe(false);
+  });
+
+  it("counts an element that paints some text beside a child", () => {
+    mount(`<div data-maple-src="a.tsx:1:1">before<span>inside</span></div>`);
+    expect(bySrc("a.tsx:1:1").paintsText).toBe(true);
+  });
+
+  it("does not count whitespace between children as text", () => {
+    mount(`<div data-maple-src="a.tsx:1:1">\n  <span>inside</span>\n</div>`);
+    expect(bySrc("a.tsx:1:1").paintsText).toBe(false);
+  });
+});
+
 describe("the backdrop", () => {
   it("is the element's own background when it paints one", () => {
     mount(

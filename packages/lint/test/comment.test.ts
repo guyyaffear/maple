@@ -1,7 +1,13 @@
 import { SAMPLE_CONTEXT } from "@maple-kit/core/testing";
 import { describe, expect, it } from "vitest";
 
-import { findingComment, findingCommentId, findingComments, LINT_AUTHOR } from "../src/comment.js";
+import {
+  commentsForRun,
+  findingComment,
+  findingCommentId,
+  findingComments,
+  LINT_AUTHOR,
+} from "../src/comment.js";
 
 import type { Finding } from "../src/types.js";
 
@@ -103,5 +109,26 @@ describe("findingComments", () => {
 
   it("is empty for a clean run", () => {
     expect(findingComments([], OPTIONS)).toEqual([]);
+  });
+});
+
+describe("commentsForRun", () => {
+  it("gives each comment the context its finding was seen in", () => {
+    const phone = { ...SAMPLE_CONTEXT, viewportWidth: 375, viewportHeight: 812 };
+    const run = {
+      findings: [finding(), finding({ message: "Second." })],
+      contexts: [phone, SAMPLE_CONTEXT],
+      context: SAMPLE_CONTEXT,
+    };
+    const comments = commentsForRun(run, { branch: "feature/x", now: NOW });
+    expect(comments[0]!.context.viewportWidth).toBe(375);
+    expect(comments[1]!.context.viewportWidth).toBe(SAMPLE_CONTEXT.viewportWidth);
+  });
+
+  it("falls back to the run's context when one is missing", () => {
+    const run = { findings: [finding()], contexts: [], context: SAMPLE_CONTEXT };
+    expect(commentsForRun(run, { branch: "feature/x", now: NOW })[0]!.context).toEqual(
+      SAMPLE_CONTEXT,
+    );
   });
 });

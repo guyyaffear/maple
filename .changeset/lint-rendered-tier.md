@@ -12,4 +12,6 @@ where it was found.
 
 Colours are read as hex in all four lengths, `rgb()`, `hsl()`, `color(srgb …)`
 and the 148 named colours; anything wider is named in a warning rather than
-silently narrowing what the run checked.
+silently narrowing what the run checked. A run that
+found no token of a kind reports nothing for that rule and says so, rather than
+reporting every value on the page.

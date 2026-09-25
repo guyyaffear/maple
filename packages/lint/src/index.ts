@@ -15,11 +15,17 @@ export {
   relativeLuminance,
 } from "./color.js";
 export type { Rgb } from "./color.js";
-export { findingComment, findingCommentId, findingComments, LINT_AUTHOR } from "./comment.js";
-export type { FindingCommentOptions } from "./comment.js";
+export {
+  commentsForRun,
+  findingComment,
+  findingCommentId,
+  findingComments,
+  LINT_AUTHOR,
+} from "./comment.js";
+export type { FindingCommentOptions, RunCommentOptions } from "./comment.js";
 export { NAMED_COLORS } from "./named-colors.js";
 export { DEFAULT_VIEWPORTS, dedupe, lintRendered } from "./rendered/audit.js";
-export type { Pass, RenderedLintOptions, RenderedRun, Viewport } from "./rendered/audit.js";
+export type { Pass, RenderedLintOptions, RenderedRun, Seen, Viewport } from "./rendered/audit.js";
 export { readPage } from "./rendered/collect.js";
 export type { Reading, StyleRecord } from "./rendered/collect.js";
 export {
@@ -30,6 +36,6 @@ export {
   unreadableColors,
 } from "./rendered/rules.js";
 export type { RuleDefinition } from "./rendered/rules.js";
-export { lengthToPx, mergeTokens, parseTokens, readTokenFiles, ROOT_FONT_SIZE } from "./tokens.js";
+export { lengthToPx, parseTokens, readTokenFiles, ROOT_FONT_SIZE } from "./tokens.js";
 export type { TokenSet } from "./tokens.js";
 export type { Finding, Severity, Tier } from "./types.js";

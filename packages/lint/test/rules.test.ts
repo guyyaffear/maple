@@ -31,6 +31,7 @@ const BASE: StyleRecord = {
   anchor: { selector: SELECTOR },
   tag: "button",
   text: "Save",
+  paintsText: true,
   interactive: true,
   color: "#111111",
   backgroundColor: "#ffffff",
@@ -86,12 +87,25 @@ describe("maple/rendered-color-token", () => {
     expect(colorFindings(record({ color: "rgb(17, 17, 17)" }), TOKENS)).toEqual([]);
   });
 
+  it("accepts a token used at a lower alpha, which is still that token", () => {
+    expect(colorFindings(record({ color: "rgba(17, 17, 17, 0.6)" }), TOKENS)).toEqual([]);
+  });
+
+  it("still reports a colour that is off-token at every alpha", () => {
+    expect(colorFindings(record({ color: "rgba(171, 205, 239, 0.6)" }), TOKENS)).toHaveLength(1);
+  });
+
   it("says nothing about a fully transparent background", () => {
     expect(colorFindings(record({ backgroundColor: "rgba(0, 0, 0, 0)" }), TOKENS)).toEqual([]);
   });
 
   it("says nothing about a colour it cannot read", () => {
     expect(colorFindings(record({ color: "color(display-p3 1 0 0)" }), TOKENS)).toEqual([]);
+  });
+
+  it("says nothing when no colour token was configured, rather than failing everything", () => {
+    const none = parseTokens(":host { --mk-gap: 8px; }");
+    expect(colorFindings(record({ color: "#abcdef" }), none)).toEqual([]);
   });
 
   it("names the value in the message", () => {
@@ -160,6 +174,10 @@ describe("maple/rendered-contrast", () => {
   it("says nothing about an element with no text", () => {
     expect(contrastFindings(record({ text: "", color: "#999999" }))).toEqual([]);
   });
+
+  it("says nothing about a wrapper whose text is painted by a child", () => {
+    expect(contrastFindings(record({ paintsText: false, color: "#999999" }))).toEqual([]);
+  });
 });
 
 describe("maple/rendered-motion-property", () => {
@@ -192,7 +210,25 @@ describe("maple/rendered-motion-property", () => {
 
 describe("maple/rendered-reduced-motion", () => {
   it("finds motion that survives the query", () => {
-    expect(reducedMotionFindings([record({ transitionDuration: "0.2s" })])).toHaveLength(1);
+    expect(
+      reducedMotionFindings([record({ transitionProperty: "height", transitionDuration: "0.2s" })]),
+    ).toHaveLength(1);
+  });
+
+  it("says nothing about a pure opacity fade, which the safe list permits", () => {
+    expect(
+      reducedMotionFindings([
+        record({ transitionProperty: "opacity", transitionDuration: "0.2s" }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("reports a transform that survives, which is movement a reader can feel", () => {
+    expect(
+      reducedMotionFindings([
+        record({ transitionProperty: "transform", transitionDuration: "0.2s" }),
+      ]),
+    ).toHaveLength(1);
   });
 
   it("says nothing about a page that stops", () => {
@@ -202,6 +238,10 @@ describe("maple/rendered-reduced-motion", () => {
   });
 
   it("reads a duration list where only one entry still moves", () => {
-    expect(reducedMotionFindings([record({ transitionDuration: "0s, 0.3s" })])).toHaveLength(1);
+    expect(
+      reducedMotionFindings([
+        record({ transitionProperty: "height, width", transitionDuration: "0s, 0.3s" }),
+      ]),
+    ).toHaveLength(1);
   });
 });

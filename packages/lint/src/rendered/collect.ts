@@ -21,6 +21,11 @@ export interface StyleRecord {
   readonly tag: string;
   /** Trimmed text, capped, for a message that can quote what it is about. */
   readonly text: string;
+  /**
+   * Whether it paints text itself rather than only through a child, so an
+   * ancestor is not judged on a colour it never puts on screen.
+   */
+  readonly paintsText: boolean;
   /** Whether a pointer is meant to hit it, which is what a touch target is. */
   readonly interactive: boolean;
   readonly color: string;
@@ -104,6 +109,16 @@ function collectKeyframes(rules: CSSRuleList, wanted: string[], found: Set<strin
   }
 }
 
+/**
+ * Whether a direct child node is text with ink in it: `textContent` includes
+ * every descendant, and a wrapper paints none of what its children paint.
+ */
+function paintsOwnText(element: Element): boolean {
+  return [...element.childNodes].some(
+    (node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim() !== "",
+  );
+}
+
 function recordOf(element: Element): StyleRecord {
   const style = getComputedStyle(element);
   const box = element.getBoundingClientRect();
@@ -111,6 +126,7 @@ function recordOf(element: Element): StyleRecord {
     anchor: describeElement(element),
     tag: element.tagName.toLowerCase(),
     text: (element.textContent ?? "").trim().slice(0, TEXT_CAP),
+    paintsText: paintsOwnText(element),
     interactive: isInteractive(element),
     color: style.color,
     backgroundColor: style.backgroundColor,

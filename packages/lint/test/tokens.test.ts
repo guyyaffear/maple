@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { colorKey, parseColor } from "../src/color.js";
-import { lengthToPx, mergeTokens, parseTokens } from "../src/tokens.js";
+import { lengthToPx, parseTokens } from "../src/tokens.js";
 
 const SHEET = `
 :host {
@@ -112,17 +112,5 @@ describe("var() indirection", () => {
   it("resolves a type token through an alias too", () => {
     const aliased = parseTokens(":host { --scale-2: 13px; --text-sm: var(--scale-2); }");
     expect(aliased.fontSizes).toEqual(new Set([13]));
-  });
-});
-
-describe("mergeTokens", () => {
-  it("adds a later file to an earlier one and lets it win a name", () => {
-    const merged = mergeTokens([
-      parseTokens(":host { --mk-ink: #000; --mk-text-sm: 12px; }"),
-      parseTokens(":host { --mk-ink: #111; --mk-text-lg: 20px; }"),
-    ]);
-    expect(merged.fontSizes).toEqual(new Set([12, 20]));
-    expect(merged.colors.size).toBe(2);
-    expect(merged.names.get("--mk-ink")).toBe("#111");
   });
 });

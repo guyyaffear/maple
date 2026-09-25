@@ -11,7 +11,6 @@ import { fileURLToPath } from "node:url";
 
 import { createLogger } from "@maple-kit/core/logger";
 import { toCommentContext } from "@maple-kit/core/overlay";
-import { chromium } from "playwright";
 
 import { readTokenFiles, type TokenSet } from "../tokens.js";
 import { reducedMotionFindings, renderedFindings, unreadableColors } from "./rules.js";
@@ -51,6 +50,13 @@ export interface RenderedLintOptions {
    * are never used: a lint run is CI's and does not borrow a person's session.
    */
   readonly bypassHeaders?: Readonly<Record<string, string>>;
+  /** How long one page is given to load, in ms. Default 30000. */
+  readonly timeout?: number;
+  /**
+   * How long to wait after load before reading, in ms. Default 0. An app that
+   * paints after hydration needs a little; nothing else does.
+   */
+  readonly settleMs?: number;
   /** An already-launched browser, which a test supplies and a run does not. */
   readonly browser?: Browser;
   /**
@@ -64,9 +70,11 @@ export interface RenderedLintOptions {
 export interface RenderedRun {
   readonly findings: readonly Finding[];
   /**
-   * The context of the widest viewport read, which is what a finding turned
-   * into a comment stores as the environment it was seen in.
+   * The environment each finding was seen in, aligned with `findings`. A
+   * finding seen only at 375px carries 375px, not the run's widest viewport.
    */
+  readonly contexts: readonly CommentContext[];
+  /** The widest viewport read, for a caller that wants one context. */
   readonly context: CommentContext;
 }
 
@@ -74,13 +82,27 @@ export interface RenderedRun {
  * Says what the run could not read: a colour nobody can parse is not a clean
  * page but an unchecked one, and a green result should not hide that.
  */
-function warnUnreadable(log: Logger, tokens: TokenSet, seen: readonly string[]): void {
+function warnGaps(log: Logger, tokens: TokenSet, seen: readonly string[]): void {
   for (const [name, value] of tokens.unreadable) {
     log.warn("Token could not be read, so nothing is checked against it", { token: name, value });
   }
   if (seen.length > 0) {
     log.warn("Colours on the page could not be read, so they were not judged", { values: seen });
   }
+  if (tokens.colors.size === 0) {
+    log.warn("No colour token was found, so the colour rule checked nothing", {});
+  }
+  if (tokens.fontSizes.size === 0) {
+    log.warn("No type token was found, so the type-scale rule checked nothing", {
+      hint: "a type token is named --…-text-…, --…-font-… or --…-type-…",
+    });
+  }
+}
+
+/** A finding and the environment it was first seen in. */
+export interface Seen {
+  readonly finding: Finding;
+  readonly context: CommentContext;
 }
 
 /** Findings from one viewport, kept apart so a dedupe can say where they were. */
@@ -116,11 +138,20 @@ async function read(page: Page): Promise<Reading> {
   return reading;
 }
 
+/** Where a page is opened from, and how long it is given. */
+interface Visit {
+  readonly url: string;
+  readonly timeout: number;
+  readonly settleMs: number;
+}
+
 /** Opens a page, reads it, and closes the context it opened. */
-async function collect(context: BrowserContext, url: string): Promise<Reading> {
+async function collect(context: BrowserContext, visit: Visit): Promise<Reading> {
+  const { url, timeout, settleMs } = visit;
   const page = await context.newPage();
   try {
-    await page.goto(url, { waitUntil: "networkidle" });
+    await page.goto(url, { waitUntil: "load", timeout });
+    if (settleMs > 0) await page.waitForTimeout(settleMs);
     return await read(page);
   } finally {
     await context.close();
@@ -136,12 +167,20 @@ async function auditViewport(
 ): Promise<Pass> {
   const shared = {
     viewport,
+    // The reader is injected, and a preview with a strict script-src would
+    // otherwise refuse it and fail the run rather than lint it.
+    bypassCSP: true,
     ...(options.bypassHeaders === undefined ? {} : { extraHTTPHeaders: options.bypassHeaders }),
   };
-  const seen = await collect(await browser.newContext(shared), options.url);
+  const visit: Visit = {
+    url: options.url,
+    timeout: options.timeout ?? 30_000,
+    settleMs: options.settleMs ?? 0,
+  };
+  const seen = await collect(await browser.newContext(shared), visit);
   const reduced = await collect(
     await browser.newContext({ ...shared, reducedMotion: "reduce" }),
-    options.url,
+    visit,
   );
   return {
     viewport,
@@ -154,8 +193,14 @@ async function auditViewport(
   };
 }
 
+/**
+ * What makes a finding the same finding: every rung, not the selector alone.
+ * `cssPathTo` gives none when no path identifies the element uniquely.
+ */
 function keyOf(found: Finding): string {
-  return `${found.rule}|${found.anchor.selector ?? ""}|${found.message}`;
+  const { key, source, component, selector } = found.anchor;
+  const place = [key, source, component, selector].map((rung) => rung ?? "").join("\u0000");
+  return `${found.rule}\u0000${place}\u0000${found.message}`;
 }
 
 /**
@@ -163,20 +208,31 @@ function keyOf(found: Finding): string {
  * written; one at only some names them, because "only on the phone" is most of
  * what the reader needs to know.
  */
-export function dedupe(passes: readonly Pass[]): readonly Finding[] {
-  const groups = new Map<string, { found: Finding; at: string[] }>();
+export function dedupe(passes: readonly Pass[]): readonly Seen[] {
+  const groups = new Map<string, { found: Finding; at: string[]; context: CommentContext }>();
   for (const pass of passes) {
     for (const found of pass.findings) {
-      const group = groups.get(keyOf(found)) ?? { found, at: [] };
+      const group = groups.get(keyOf(found)) ?? { found, at: [], context: pass.context };
       group.at.push(label(pass.viewport));
       groups.set(keyOf(found), group);
     }
   }
-  return [...groups.values()].map(({ found, at }) =>
-    at.length === passes.length
-      ? found
-      : { ...found, message: `${found.message} At ${at.join(", ")}.` },
-  );
+  return [...groups.values()].map(({ found, at, context }) => ({
+    finding:
+      at.length === passes.length
+        ? found
+        : { ...found, message: `${found.message} At ${at.join(", ")}.` },
+    context,
+  }));
+}
+
+/**
+ * Playwright is loaded here rather than at the top of the module, so importing
+ * this package for `findingComment` alone needs no peer dependency.
+ */
+async function launch(): Promise<Browser> {
+  const { chromium } = await import("playwright");
+  return chromium.launch();
 }
 
 /** The widest viewport's context: the one a stored comment should carry. */
@@ -193,15 +249,20 @@ function widest(passes: readonly Pass[]): CommentContext {
 export async function lintRendered(options: RenderedLintOptions): Promise<RenderedRun> {
   const tokens = await readTokenFiles(options.tokenFiles);
   const viewports = options.viewports ?? DEFAULT_VIEWPORTS;
-  const browser = options.browser ?? (await chromium.launch());
+  const browser = options.browser ?? (await launch());
   try {
     const passes: Pass[] = [];
     for (const viewport of viewports) {
       passes.push(await auditViewport(browser, options, viewport, tokens));
     }
     const log = options.logger ?? createLogger({ level: "warn" });
-    warnUnreadable(log, tokens, [...new Set(passes.flatMap((pass) => pass.unreadable))]);
-    return { findings: dedupe(passes), context: widest(passes) };
+    warnGaps(log, tokens, [...new Set(passes.flatMap((pass) => pass.unreadable))]);
+    const seen = dedupe(passes);
+    return {
+      findings: seen.map((one) => one.finding),
+      contexts: seen.map((one) => one.context),
+      context: widest(passes),
+    };
   } finally {
     if (options.browser === undefined) await browser.close();
   }

@@ -66,6 +66,10 @@ alone.
 | `maple/rendered-motion-property` | Motion on a property other than `opacity` or `transform`.   |
 | `maple/rendered-reduced-motion`  | Motion that survives `prefers-reduced-motion`.              |
 
+A token used at any alpha is still that token: `rgb(17 17 17 / 0.6)` matches an
+`--ink: #111111`, because secondary text written that way is using the token
+rather than a raw colour beside it.
+
 The token set is read from the `tokenFiles` the static tier is configured with,
 so the two tiers cannot disagree about what a token is. A `rem` in a token file
 converts at a 16px root; `ROOT_FONT_SIZE` overrides that. Only tokens whose
@@ -80,10 +84,19 @@ motion emulated. A page that honours the query computes every duration to zero
 under it, so whatever still moves in the second pass has hard-coded its motion.
 This is the only way to tell the two apart from the outside.
 
+A pure `opacity` fade that survives is not reported. Opacity is the property
+the safe list permits, and flagging it here would set the two motion rules
+against each other; reduced-motion guidance is about movement, not fades.
+
 ### Contrast
 
-Contrast is measured against the first opaque background at or above the
-element, which is what the eye actually sees, and a translucent text colour is
+Contrast is judged only on elements that paint text themselves. `textContent`
+includes every descendant, so a wrapper whose text is all painted by a child
+would otherwise be judged on a colour that never reaches the screen — and a
+perfectly accessible page would fail.
+
+It is measured against the first opaque background at or above the element,
+which is what the eye actually sees, and a translucent text colour is
 composited onto it first. Large text — 24px, or 18.66px at weight 700 — is held
 to 3:1 and everything else to 4.5:1, as WCAG 2.1 AA defines them.
 
@@ -118,6 +131,10 @@ const run = await lintRendered({ url, tokenFiles });
 const pinned = findingComments(run.findings, { branch: "feature/x", context: run.context });
 ```
 
+`commentsForRun(run, { branch })` does the whole run at once and gives each
+comment the viewport it was actually seen in, so a phone-only finding does not
+store a 1440px context.
+
 Hand them to `MapleMarkLayer`'s `comments` prop and they pin where they were
 found, beside the human ones. The author is `Maple lint`, never a person.
 
@@ -131,6 +148,25 @@ nothing here answers it: the adapter makes pinning possible without making it
 happen.
 
 [112]: https://github.com/maple-kit/maple/discussions/112
+
+### Loading, and a preview that pushes back
+
+A page is read after `load`, with a `timeout` (default 30s) and an optional
+`settleMs` for an app that paints after hydration. Waiting for network idle
+would be more thorough and never finishes: one websocket, poll or analytics
+beacon keeps a preview busy forever.
+
+Contexts run with `bypassCSP`, because the reader is injected and a preview
+with a strict `script-src` would otherwise refuse it and fail the whole run
+rather than be linted. See [docs/overlay-csp.md](overlay-csp.md).
+
+### When a run checks less than you think
+
+A misconfigured `tokenFiles` is the quiet failure this tier is most prone to,
+so it is not quiet. With no colour token the colour rule reports nothing rather
+than reporting everything, with no type token the type-scale rule does the
+same, and both say so through the logger. The same goes for a token or a
+painted colour that could not be read.
 
 ### Authentication
 

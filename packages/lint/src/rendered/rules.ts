@@ -9,6 +9,7 @@
 import { colorKey, contrastRatio, isUnreadableColor, over, parseColor } from "../color.js";
 import { type TokenSet } from "../tokens.js";
 
+import type { Rgb } from "../color.js";
 import type { Finding, Severity } from "../types.js";
 import type { StyleRecord } from "./collect.js";
 
@@ -71,16 +72,27 @@ function finding(rule: string, record: StyleRecord, message: string): Finding {
   };
 }
 
+/**
+ * Whether a colour is a token, at any alpha. Secondary text is often the ink
+ * token at 60%, and that is the token in use, not a raw colour beside it.
+ */
+function isTokenColor(color: Rgb, tokens: TokenSet): boolean {
+  return tokens.colors.has(colorKey(color)) || tokens.colors.has(colorKey({ ...color, a: 1 }));
+}
+
 /** A colour the token set does not declare, for text and for a painted background. */
 export function colorFindings(record: StyleRecord, tokens: TokenSet): Finding[] {
   const rule = "maple/rendered-color-token";
+  // No token set is a misconfigured run, not a page where every colour is
+  // wrong. The type scale already reads it that way; a run warns instead.
+  if (tokens.colors.size === 0) return [];
   const checked: [string, string][] = [
     ["text colour", record.color],
     ["background", record.backgroundColor],
   ];
   return checked.flatMap(([what, value]) => {
     const color = parseColor(value);
-    if (!color || color.a === 0 || tokens.colors.has(colorKey(color))) return [];
+    if (!color || color.a === 0 || isTokenColor(color, tokens)) return [];
     return [finding(rule, record, `The ${what} ${value} is not a token.`)];
   });
 }
@@ -119,7 +131,7 @@ function isLargeText(record: StyleRecord): boolean {
 
 /** Text that does not meet WCAG AA against what is actually behind it. */
 export function contrastFindings(record: StyleRecord): Finding[] {
-  if (record.text === "") return [];
+  if (!record.paintsText || record.text === "") return [];
   const foreground = parseColor(record.color);
   const backdrop = parseColor(record.backdrop);
   if (!foreground || !backdrop) return [];
@@ -195,12 +207,23 @@ export function unreadableColors(records: readonly StyleRecord[]): readonly stri
 }
 
 /**
+ * Whether anything but a fade still runs. Opacity is the motion the safe list
+ * permits, so flagging it here would set the two motion rules against it.
+ */
+function movesBeyondFade(record: StyleRecord): boolean {
+  const moving = isStill(record.transitionDuration) ? [] : transitioned(record);
+  const animated = isStill(record.animationDuration) ? [] : record.animationProperties;
+  const properties = [...new Set([...moving, ...animated])];
+  return properties.length > 0 && properties.some((property) => property !== "opacity");
+}
+
+/**
  * The second pass. A page that honours the query computes every duration to
  * zero under it, so anything still moving has hard-coded its motion.
  */
 export function reducedMotionFindings(records: readonly StyleRecord[]): readonly Finding[] {
   return records
-    .filter((record) => !isStill(record.transitionDuration) || !isStill(record.animationDuration))
+    .filter((record) => movesBeyondFade(record))
     .map((record) =>
       finding(
         "maple/rendered-reduced-motion",

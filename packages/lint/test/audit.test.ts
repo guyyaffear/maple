@@ -27,12 +27,12 @@ function finding(over: Partial<Finding> = {}): Finding {
 describe("dedupe", () => {
   it("reports a finding present at every viewport once, unchanged", () => {
     const passes = [pass(PHONE, [finding()]), pass(LAPTOP, [finding()])];
-    expect(dedupe(passes)).toEqual([finding()]);
+    expect(dedupe(passes).map((one) => one.finding)).toEqual([finding()]);
   });
 
   it("names the viewports when a finding is not at all of them", () => {
     const passes = [pass(PHONE, [finding()]), pass(LAPTOP, [])];
-    expect(dedupe(passes)[0]!.message).toContain("At 375×812.");
+    expect(dedupe(passes)[0]!.finding.message).toContain("At 375×812.");
   });
 
   it("keeps two findings on one element apart when the rules differ", () => {
@@ -49,6 +49,21 @@ describe("dedupe", () => {
 
   it("is empty for a clean run", () => {
     expect(dedupe([pass(PHONE, [])])).toEqual([]);
+  });
+
+  it("keeps two untagged elements apart when neither has a selector", () => {
+    const bare = { rule: "maple/rendered-touch-target", anchor: {} };
+    const passes = [
+      pass(PHONE, [
+        finding({ ...bare, anchor: { component: "IconButton" } }),
+        finding({ ...bare, anchor: { component: "CloseButton" } }),
+      ]),
+    ];
+    expect(dedupe(passes)).toHaveLength(2);
+  });
+
+  it("carries the context the finding was seen in", () => {
+    expect(dedupe([pass(PHONE, [finding()])])[0]!.context).toEqual(SAMPLE_CONTEXT);
   });
 });
 

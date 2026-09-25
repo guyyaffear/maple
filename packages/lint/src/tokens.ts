@@ -97,18 +97,3 @@ export async function readTokenFiles(
   const sources = await Promise.all(paths.map((path) => readFile(path, "utf8")));
   return parseTokens(sources.join("\n"), rootFontSize);
 }
-
-/** Merges token sets, later files adding to earlier ones. */
-export function mergeTokens(sets: readonly TokenSet[]): TokenSet {
-  const colors = new Set<string>();
-  const fontSizes = new Set<number>();
-  const names = new Map<string, string>();
-  const unreadable = new Map<string, string>();
-  for (const set of sets) {
-    for (const color of set.colors) colors.add(color);
-    for (const size of set.fontSizes) fontSizes.add(size);
-    for (const [name, value] of set.names) names.set(name, value);
-    for (const [name, value] of set.unreadable) unreadable.set(name, value);
-  }
-  return { colors, fontSizes, names, unreadable };
-}

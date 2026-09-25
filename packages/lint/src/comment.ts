@@ -8,6 +8,7 @@
  * all, and this decides nothing for it.
  */
 
+import type { RenderedRun } from "./rendered/audit.js";
 import type { Finding } from "./types.js";
 import type { Comment, CommentAuthor, CommentContext } from "@maple-kit/core";
 
@@ -86,4 +87,17 @@ export function findingComments(
   options: FindingCommentOptions,
 ): readonly Comment[] {
   return findings.map((finding) => findingComment(finding, options));
+}
+
+/** What a run needs beyond itself to become comments. */
+export type RunCommentOptions = Omit<FindingCommentOptions, "context">;
+
+/**
+ * A whole run as comments, each keeping the environment it was seen in. A
+ * finding found only at 375px stores 375px rather than the run's widest.
+ */
+export function commentsForRun(run: RenderedRun, options: RunCommentOptions): readonly Comment[] {
+  return run.findings.map((finding, index) =>
+    findingComment(finding, { ...options, context: run.contexts[index] ?? run.context }),
+  );
 }

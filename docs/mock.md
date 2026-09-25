@@ -257,10 +257,13 @@ longer text is built from its own characters, so the promise became
   item gets a unique `id`, `_id`, `uuid`, `key` or `slug`.
 
 - **`long`** makes every text as long as the page could really receive: to its
-  `maxLength` exactly, else four times over (at least 32 characters), half of
-  it the value's own words repeated so it wraps, half one unbroken run of its
-  characters for `overflow-wrap`. An address grows its local part (at most 64
-  characters) and a URL a path segment after its origin, so both still parse.
+  `maxLength` exactly, else four times over (at least 32 characters), in the
+  shape the value already has, so the page looks like it received a long
+  value rather than like it broke. Words repeat with a space between, so they
+  wrap, and without a `maxLength` a text ends on a whole word. Only a value that is already one unbroken run grows as one, for
+  `overflow-wrap`: a slug or a branch (`fix/chart`) by its own words after a
+  dash, an address by its local part (at most 64 characters) and a URL by a
+  path segment after its origin, so both still parse.
   A number goes to 1,234,567, never past its schema's bound. Identifiers,
   references (`ownerId`), cursors, enums, `const`, `pattern`, dates, UUIDs
   and colours are left alone, as is every superjson-typed value. Lists keep
@@ -425,7 +428,7 @@ maple mock plan "no projects yet" --url=https://preview.example.com/api/maple \
   --route=/projects "--calls=trpc:project.list,trpc:user.me"
 ```
 
-It prints the recipe the box's first chip would apply, `request` included, and
+It prints the recipe the box would put in its draft, `request` included, and
 exits 1 with the reason when the gate says nothing: a sentence that names no
 state, a plan under the floor, a route that plans nothing (404) or wants a
 signed-in reviewer (401). Asking the route rather than a local classifier keeps
@@ -483,9 +486,9 @@ listed flag, `{ key, value, concerned, p }` with `value` one of its values,
 and a `role` when the sentence names a listed one.
 
 - **The gate carries them.** Named flags and a role at even odds or better
-  ride on each state's chip, or make a chip of their own when the sentence
-  names no state: "as a barista" is `new-roaster Off · as barista`, not "That
-  doesn't name a state". The chip's words come from the lazy chunk.
+  ride on each state's reading, or make a reading of their own when the
+  sentence names no state: "as a barista" sets the role and the flag, not
+  "That doesn't name a state".
 - **The keyword planner** sets a flag when every word of its key is in the
   sentence (a camel-cased or kebab key split, a ticket prefix like
   `ROAST-2210-` dropped), on unless "no", "without", "off" or the like sits
@@ -627,11 +630,15 @@ leaves it working in memory.
 ## The box
 
 `<MapleMock />` from `@maple-kit/ui/mock` is how a reviewer picks a state. It
-lists the calls the page has made on this route and the nine states beside each,
-and Apply reloads into the choice. A call's name keeps at least 160 px: where
-the nine buttons do not fit beside it they wrap onto their own line, and onto
-two at phone width, rather than going behind a menu, so every state stays one
-click away. `m` opens and closes it and Escape closes it.
+lists the calls the page has made on this route, each with one button naming
+its state, and Apply reloads into the choice. The button opens a menu of Real,
+marked with a green dot as what the page does on its own, and the nine states.
+Nine buttons per call made the box a wall of options that a reviewer scanned
+past; the menu keeps each row to one line. It is a `popover="auto"` in the top
+layer, since the box's body scrolls, and it closes when the body does. `m`
+opens and closes the box and Escape closes it; inside an open menu, Escape
+closes only the menu (`watchEscape` in `@maple-kit/core/client` leaves an open
+`popover="auto"` its own Escape).
 Inside `<Maple />` it is `Maple.Mock`, the same part, in the overlay's own
 shadow root.
 
@@ -653,13 +660,15 @@ The Vite example's `verify` checks both halves: a production build with
 of the island, the composer or the marks.
 
 **On its own it has its own shadow host** and adopts `MOCK_CSS`: the tokens,
-the base rules and the box's, which `scripts/size.js` keeps under 7 KB with
+the base rules and the box's, which `scripts/size.js` keeps under 8.5 KB with
 everything it reaches. Its scheme is the opposite of the page's, as the
 overlay's is by default.
 
 **A banner is on while a mock is**, naming the first call and counting the
 rest. It has Edit and Turn off and no dismiss: a reviewer who forgets a mock is
-on reads mocked data as real.
+on reads mocked data as real. It docks bottom-left, where a host's own controls
+rarely are and the island is not (bottom-right); under 640 px it takes the width
+and sits a row above the island, wrapping rather than covering the top bar.
 
 **Where the route plans, the field is a sentence.** `installMock({ route })`
 leaves a `plan` lookup on the handle beside `shape`, over the real `fetch`, and
@@ -674,14 +683,18 @@ before anything is drawn:
 | ----------------------------------------- | ------------------------------------------------------- |
 | confidence below 0.4                      | nothing                                                 |
 | `none`                                    | "That doesn't name a state this page's data can be in." |
-| a state, the runner-up more than 0.15 off | one chip: `Empty · 3 calls`                             |
-| the runner-up within 0.15                 | two chips, `Empty · 3 calls or Error · 3 calls`         |
+| a state, the runner-up more than 0.15 off | the calls go into that state                            |
+| the runner-up within 0.15                 | the likelier one, alone                                 |
 | no call concerned                         | nothing                                                 |
 
-A chip puts its calls in its state beside whatever the draft holds, and the
-sentence goes into the recipe's `request`; Clear drops it. No number is shown,
-and nothing moves while a plan is on its way: the chip's row is held open from
-the first word, so an answer landing pushes nothing down. A failure is swallowed, as the
+The reading goes straight into the draft, over what the draft held before the
+sentence, and the sentence goes into the recipe's `request`. A chip to take it
+was one more thing to read and click between the sentence and the result. Each
+new reading replaces the last one over that same starting point; emptying the
+field puts it back, and so does a sentence that names no state. A change by
+hand makes the draft the reviewer's own, so emptying the field after it keeps
+it. While a plan is on its way a sweep runs along the field's lower edge
+(`aria-busy`), so nothing moves when it lands. A failure is swallowed, as the
 assist tier's is, and a 404 turns the field back into a filter for the page's
 life: every word must match a key, as before a plan existed. `plan: false`
 keeps it a filter.
@@ -691,19 +704,25 @@ rest, since a mocked answer is never recorded.
 
 **Flags and who the page is shown as are a second panel**, under the calls,
 and the two scroll together between the field and the footer, so a short
-window never squeezes the calls to a sliver. Taking a chip scrolls the rows it
-set into view. The panel is
+window never squeezes the calls to a sliver. A reading scrolls the rows it set
+into view. The panel is
 a role picker and a Granted / Taken away pair per permission, from the
 host's identity rules (`handle.identity()`, read once from
 `/mock/identity`), and a toggle per flag the page evaluated (`seenFlags()`):
 On / Off for a boolean, its variants where the source lists them, and its
-real value, read-only, otherwise. Choosing the chosen option puts it back to
-real. The words are the host's and the page's; the box has no role list.
+real value, read-only, otherwise. Each row starts on the real value, marked
+with a green dot: the role and permissions from the identity call's last real
+answer (`MockClientState.realAs`), a flag from what the page evaluated.
+Choosing the real option, or the chosen one again, drops the override. The
+role is always shown; permissions and flags fold to `Permissions · 8` and
+`Flags · 12`, since a host can declare dozens and a page evaluate hundreds, and
+a folded list still shows every row the draft overrides. The words are the
+host's and the page's; the box has no role list.
 
 - **It is a lazy chunk.** `mock/layers.js` is loaded by a dynamic import only
   when the page has identity rules, has evaluated a flag, or has a recipe with
-  either layer, so the box alone stays under 7 KB. `scripts/size.js` weighs a
-  dynamic import as its own entry (2 KB), and fails on one no budget names.
+  either layer, so the box alone stays under 8.5 KB. `scripts/size.js` weighs a
+  dynamic import as its own entry (2.5 KB), and fails on one no budget names.
 - **The banner says what `as` cannot do**, exactly: "Showing as barista. The
   server still acts as you." It counts the flags set, and every write that
   reached the server under `as`: "2 writes reached the server as you."

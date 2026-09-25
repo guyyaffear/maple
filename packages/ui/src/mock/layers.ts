@@ -5,9 +5,11 @@
  */
 
 import { describeIdentity } from "@maple-kit/core/mock";
-import { createElement, useEffect, useRef } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
-import type { FlagValue, MockSuggestion } from "@maple-kit/core/mock";
+import { ChevronIcon } from "../icons/chevron.js";
+
+import type { FlagValue } from "@maple-kit/core/mock";
 import type { MockClient, MockClientState, MockFlagRow } from "@maple-kit/mock/client";
 import type { ReactElement, ReactNode, RefObject } from "react";
 
@@ -18,6 +20,7 @@ export const LAYER_COPY = {
   granted: "Granted",
   takenAway: "Taken away",
   flags: "Flags",
+  permissions: "Permissions",
   on: "On",
   off: "Off",
   realValue: "Real value",
@@ -37,13 +40,17 @@ export function Layers(props: LayerProps): ReactElement {
   const panel = useRef<HTMLDivElement>(null);
   useShowTaken(panel, state.request);
   const rows: ReactNode[] = [];
+  const grants: Folded[] = [];
+  const real = state.realAs;
   const roles = identity?.role?.values ?? [];
   if (roles.length > 0) {
     const role = state.draftAs?.role;
     rows.push(
       row(
         { key: "role", name: LAYER_COPY.role, set: role !== undefined, prose: true },
-        choices(LAYER_COPY.role, roles, role, (next) => client.setRole(next)),
+        choices(LAYER_COPY.role, roles, { set: role, real: real?.role }, (next) =>
+          client.setRole(next),
+        ),
       ),
     );
   }
@@ -52,22 +59,68 @@ export function Layers(props: LayerProps): ReactElement {
     const pick = (next: string | undefined) =>
       client.setPermission(name, next === undefined ? undefined : next === LAYER_COPY.granted);
     const current = granted === undefined ? undefined : grantedLabel(granted);
-    rows.push(
-      row(
+    const held = real === undefined ? undefined : grantedLabel(real.permissions.includes(name));
+    grants.push({
+      set: current !== undefined,
+      node: row(
         { key: `p:${name}`, name, set: current !== undefined },
-        choices(name, [LAYER_COPY.granted, LAYER_COPY.takenAway], current, pick),
+        choices(
+          name,
+          [LAYER_COPY.granted, LAYER_COPY.takenAway],
+          { set: current, real: held },
+          pick,
+        ),
       ),
-    );
+    });
   }
+  const flags = state.flags.map((flag) => ({
+    set: flag.set !== undefined,
+    node: flagRow(flag, client),
+  }));
   return createElement(
     "div",
     { className: "mk-mock-layers", ref: panel },
     rows.length === 0 ? null : section(LAYER_COPY.shownAs, rows),
-    state.flags.length === 0
+    grants.length === 0
       ? null
-      : section(
-          LAYER_COPY.flags,
-          state.flags.map((flag) => flagRow(flag, client)),
+      : createElement(Fold, { title: LAYER_COPY.permissions, rows: grants }),
+    flags.length === 0 ? null : createElement(Fold, { title: LAYER_COPY.flags, rows: flags }),
+  );
+}
+
+interface Folded {
+  readonly set: boolean;
+  readonly node: ReactNode;
+}
+
+/**
+ * A list that can run to hundreds, folded to its count. Folded, it still
+ * shows every row the draft overrides, so nothing set is ever out of sight.
+ */
+function Fold(props: { readonly title: string; readonly rows: readonly Folded[] }): ReactElement {
+  const [open, setOpen] = useState(false);
+  const { rows, title } = props;
+  const shown = open ? rows : rows.filter((folded) => folded.set);
+  return createElement(
+    "section",
+    { "aria-label": title },
+    createElement(
+      "button",
+      {
+        type: "button",
+        className: "mk-mock-route mk-mock-fold",
+        "aria-expanded": open,
+        onClick: () => setOpen(!open),
+      },
+      `${title} · ${String(rows.length)}`,
+      createElement(ChevronIcon, { size: 11 }),
+    ),
+    shown.length === 0
+      ? null
+      : createElement(
+          "ul",
+          { className: "mk-mock-calls" },
+          shown.map((folded) => folded.node),
         ),
   );
 }
@@ -103,15 +156,6 @@ export function LayerBanner(props: { readonly state: MockClientState }): ReactNo
     : createElement("span", { className: "mk-mock-banner-as" }, said.join(" "));
 }
 
-/** A chip's flags and role, in the chip's own words: `new-roaster Off · as barista`. */
-export function layerLabel(suggestion: MockSuggestion): string {
-  const flags = Object.entries(suggestion.flags ?? {}).map(
-    ([key, value]) => `${key} ${valueLabel(value)}`,
-  );
-  const role = suggestion.as?.role;
-  return [...flags, ...(role === undefined ? [] : [`as ${role}`])].join(" · ");
-}
-
 function flagRow(flag: MockFlagRow, client: MockClient): ReactNode {
   const pick = (next: FlagValue | undefined) => client.setFlag(flag.key, next);
   const values: readonly FlagValue[] =
@@ -121,6 +165,7 @@ function flagRow(flag: MockFlagRow, client: MockClient): ReactNode {
     : `${flag.key}: ${LAYER_COPY.notEvaluated}`;
   const labels = values.map(valueLabel);
   const current = flag.set === undefined ? undefined : valueLabel(flag.set);
+  const real = flag.seen && flag.value !== undefined ? valueLabel(flag.value) : undefined;
   const control =
     values.length === 0
       ? createElement(
@@ -128,7 +173,7 @@ function flagRow(flag: MockFlagRow, client: MockClient): ReactNode {
           { className: "mk-mock-rung" },
           current ?? valueLabel(flag.value ?? null),
         )
-      : choices(flag.key, labels, current, (label) =>
+      : choices(flag.key, labels, { set: current, real }, (label) =>
           pick(values[labels.indexOf(label ?? "")] ?? undefined),
         );
   return row({ key: `f:${flag.key}`, name: flag.key, set: current !== undefined, title }, control);
@@ -177,13 +222,23 @@ function row(label: RowLabel, control: ReactNode): ReactElement {
   );
 }
 
-/** A radio group where choosing the chosen option puts it back to real. */
+/** What a row is set to, and what it really is: the second carries the dot. */
+interface Choice {
+  readonly set: string | undefined;
+  readonly real: string | undefined;
+}
+
+/**
+ * A radio group showing what the page will see: the draft's choice, else the
+ * real value. Choosing the real one, or the chosen one again, puts it back.
+ */
 function choices(
   label: string,
   options: readonly string[],
-  current: string | undefined,
+  choice: Choice,
   pick: (next: string | undefined) => void,
 ): ReactElement {
+  const shown = choice.set ?? choice.real;
   return createElement(
     "div",
     { className: "mk-mock-states", role: "radiogroup", "aria-label": label },
@@ -195,9 +250,12 @@ function choices(
           type: "button",
           role: "radio",
           className: "mk-mock-state mk-press",
-          "aria-checked": option === current,
-          onClick: () => pick(option === current ? undefined : option),
+          "aria-checked": option === shown,
+          onClick: () => pick(option === choice.set || option === choice.real ? undefined : option),
         },
+        option === choice.real
+          ? createElement("span", { className: "mk-mock-dot", "aria-hidden": true })
+          : null,
         option,
       ),
     ),

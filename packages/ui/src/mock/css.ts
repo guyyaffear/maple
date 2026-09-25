@@ -6,9 +6,11 @@
  * a page that only mocks. Built from the token contract like every other part.
  */
 
+import { SHEET_BREAKPOINT_PX } from "../tokens.js";
+
 /** Every rule the box and the banner need, and nothing another part owns. */
 export function mockCss(): string {
-  return [box(), suggest(), calls(), states(), foot(), banner()].join("\n\n");
+  return [box(), suggest(), calls(), states(), menu(), foot(), banner()].join("\n\n");
 }
 
 function box(): string {
@@ -73,7 +75,6 @@ function box(): string {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .mk-mock-route {
@@ -90,6 +91,21 @@ function box(): string {
   font-weight: 400;
 }
 
+.mk-mock-fold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mk-mock-fold[aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+
 .mk-mock-empty {
   margin: 0;
   padding: 14px 12px 16px;
@@ -99,39 +115,35 @@ function box(): string {
 `.trim();
 }
 
+/** A sentence the route is reading draws a sweep along the field's edge. */
 function suggest(): string {
   return `
-.mk-mock-suggest {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-height: 43px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--mk-line);
-  color: var(--mk-faint);
-  font-size: 11px;
+.mk-mock-head {
+  position: relative;
 }
 
-.mk-mock-chip {
-  padding: 3px 10px;
-  border: 1px solid var(--mk-line-firm);
-  border-radius: 999px;
-  background: var(--mk-bg);
-  color: var(--mk-fg);
-  font: inherit;
-  font-size: 12px;
-  line-height: 18px;
-  cursor: pointer;
+.mk-mock-head[data-mk-thinking="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 2px;
+  background: radial-gradient(closest-side, var(--mk-accent), transparent);
+  animation: mk-mock-sweep var(--mk-dur-shimmer) var(--mk-ease-swap) infinite;
 }
 
-.mk-mock-chip:hover {
-  background: var(--mk-sunk);
+@keyframes mk-mock-sweep {
+  from {
+    translate: calc(-1 * var(--mk-shimmer-sweep)) 0;
+  }
+  to {
+    translate: var(--mk-shimmer-sweep) 0;
+  }
 }
 
 .mk-mock-unnamed {
+  flex: none;
   margin: 0;
+  padding: 8px 12px 0;
   color: var(--mk-muted);
   font-size: 12px;
 }
@@ -214,6 +226,9 @@ function states(): string {
 }
 
 .mk-mock-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 2px 7px;
   border: 0;
   border-radius: var(--mk-r-xs);
@@ -239,6 +254,79 @@ function states(): string {
 `.trim();
 }
 
+/** The pick for a call's state, and the menu it opens in the top layer. */
+function menu(): string {
+  return `
+.mk-mock-pick,
+.mk-mock-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--mk-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mk-mock-pick {
+  flex: none;
+  gap: 4px;
+  min-width: 80px;
+  margin-left: auto;
+  padding: 1px 4px 1px 8px;
+  border-radius: 999px;
+  background: var(--mk-fg);
+  color: var(--mk-bg);
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+}
+
+.mk-mock-chevron {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.mk-mock-menu {
+  position: fixed;
+  inset: 0 auto auto 0;
+  margin: 0;
+  translate: var(--mk-x) var(--mk-y);
+  min-width: 132px;
+  padding: 3px;
+  border: 1px solid var(--mk-line-firm);
+  border-radius: var(--mk-r);
+  background: var(--mk-bg);
+  box-shadow: var(--mk-sh2);
+}
+
+.mk-mock-item {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--mk-r-sm);
+}
+
+.mk-mock-item:hover,
+.mk-mock-item:focus-visible {
+  outline: none;
+  background: var(--mk-sunk);
+}
+
+.mk-mock-item[aria-checked="true"] {
+  font-weight: 600;
+}
+
+.mk-mock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mk-ok);
+}
+`.trim();
+}
+
 function foot(): string {
   return `
 .mk-mock-foot {
@@ -255,6 +343,9 @@ function foot(): string {
 }
 
 .mk-mock-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 11px;
   border: 1px solid var(--mk-line-firm);
   border-radius: 999px;
@@ -264,6 +355,16 @@ function foot(): string {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.mk-mock-button[data-mk-quiet="true"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--mk-muted);
+}
+
+.mk-mock-button[data-mk-quiet="true"]:hover:not(:disabled) {
+  color: var(--mk-fg);
 }
 
 .mk-mock-button:disabled {
@@ -279,9 +380,7 @@ function foot(): string {
 }
 
 .mk-mock-button[data-mk-primary="true"]:disabled {
-  border-color: var(--mk-line-firm);
-  background: var(--mk-sunk);
-  color: var(--mk-faint);
+  opacity: 0.4;
 }
 `.trim();
 }
@@ -291,13 +390,13 @@ function banner(): string {
   return `
 .mk-mock-banner {
   position: absolute;
-  top: 10px;
-  left: 50%;
+  bottom: 12px;
+  left: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
   width: max-content;
-  max-width: calc(100vw - 24px);
+  max-width: calc(100vw - 160px);
   padding: 4px 4px 4px 12px;
   border: 1px solid var(--mk-warn);
   border-radius: 999px;
@@ -305,7 +404,6 @@ function banner(): string {
   box-shadow: var(--mk-sh1);
   color: var(--mk-fg);
   font-size: 12px;
-  translate: -50% 0;
 }
 
 .mk-mock-banner-said {
@@ -322,6 +420,17 @@ function banner(): string {
   flex: none;
   padding: 3px 10px;
   font-size: 11.5px;
+}
+
+@media (max-width: ${String(SHEET_BREAKPOINT_PX - 1)}px) {
+  .mk-mock-banner {
+    bottom: 56px;
+    left: 50%;
+    translate: -50% 0;
+    flex-wrap: wrap;
+    max-width: calc(100vw - 24px);
+    border-radius: var(--mk-r);
+  }
 }
 `.trim();
 }

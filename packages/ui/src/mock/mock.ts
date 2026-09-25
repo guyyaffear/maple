@@ -23,6 +23,8 @@ import { createPortal } from "react-dom";
 
 import { MapleUiContext } from "../context.js";
 import { cx } from "../cx.js";
+import { CodeIcon } from "../icons/code.js";
+import { LinkIcon } from "../icons/link.js";
 import { SCHEME_ATTRIBUTE } from "../sheet-base.js";
 import {
   bannerSentence,
@@ -31,10 +33,13 @@ import {
   MOCK_COPY,
   SHAPE_LABELS,
   STATE_LABELS,
-  suggestionLabel,
 } from "./language.js";
+import { Menu } from "./menu.js";
 import { MOCK_CSS } from "./sheet.js";
 
+import type { IconComponent } from "../icons/icon.js";
+import type { MenuOption } from "./menu.js";
+import type { MockState } from "@maple-kit/core/mock";
 import type { OverlayHost } from "@maple-kit/core/overlay";
 import type { MockCallRow, MockClient, MockClientState } from "@maple-kit/mock/client";
 import type { ForwardedRef, ReactElement, ReactNode } from "react";
@@ -170,7 +175,11 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
     },
     createElement(
       "div",
-      { className: "mk-mock-head" },
+      {
+        className: "mk-mock-head",
+        "data-mk-thinking": String(state.thinking),
+        "aria-busy": state.thinking,
+      },
       createElement("input", {
         className: "mk-mock-field",
         type: "text",
@@ -183,7 +192,7 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
       }),
       createElement("kbd", { className: "mk-mock-key-hint" }, MOCK_COPY.escape),
     ),
-    suggestions(state, client, layers),
+    state.unnamed ? createElement("p", { className: "mk-mock-unnamed" }, MOCK_COPY.unnamed) : null,
     createElement(
       "div",
       { className: "mk-mock-body" },
@@ -197,47 +206,6 @@ function Box(props: SurfaceProps & { layers: LayerChunk | undefined }): ReactEle
       layers && createElement(layers.Layers, { state, client }),
     ),
     createElement(Foot, { client, state }),
-  );
-}
-
-/**
- * At most two chips, or the one line for a sentence that names no state. The
- * slot is held open from the first word, so an answer landing moves nothing.
- */
-function suggestions(state: MockClientState, client: MockClient, layers?: LayerChunk): ReactNode {
-  if (!state.planning || state.query.trim() === "") return null;
-  if (state.unnamed) {
-    return createElement(
-      "div",
-      { className: "mk-mock-suggest mk-live" },
-      createElement("p", { className: "mk-mock-unnamed" }, MOCK_COPY.unnamed),
-    );
-  }
-  return createElement(
-    "div",
-    { className: "mk-mock-suggest mk-live" },
-    state.suggestions.flatMap((suggestion, index) => {
-      const label = [
-        suggestion.state && suggestionLabel(suggestion.state, suggestion.calls.length),
-        layers?.layerLabel(suggestion),
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      return [
-        index === 0 ? null : createElement("span", { key: `or${String(index)}` }, MOCK_COPY.or),
-        label &&
-          createElement(
-            "button",
-            {
-              key: index,
-              type: "button",
-              className: "mk-mock-chip mk-press",
-              onClick: () => client.suggest(index),
-            },
-            label,
-          ),
-      ];
-    }),
   );
 }
 
@@ -279,26 +247,20 @@ function CallRow(props: { row: MockCallRow; client: MockClient }): ReactElement 
           },
           SHAPE_LABELS[row.source],
         ),
-    createElement(
-      "div",
-      { className: "mk-mock-states", role: "radiogroup", "aria-label": callName(row.key) },
-      MOCK_STATES.map((state) =>
-        createElement(
-          "button",
-          {
-            key: state,
-            type: "button",
-            role: "radio",
-            className: "mk-mock-state mk-press",
-            "aria-checked": row.state === state,
-            onClick: () => client.choose(row.key, row.state === state ? undefined : state),
-          },
-          STATE_LABELS[state],
-        ),
-      ),
-    ),
+    createElement(Menu, {
+      label: callName(row.key),
+      options: STATE_OPTIONS,
+      value: row.state,
+      onPick: (state) => client.choose(row.key, state as MockState | undefined),
+    }),
   );
 }
+
+/** What the page does on its own, then every state it can be put in. */
+const STATE_OPTIONS: readonly MenuOption[] = [
+  { value: undefined, label: MOCK_COPY.real, real: true },
+  ...MOCK_STATES.map((state) => ({ value: state, label: STATE_LABELS[state] })),
+];
 
 type Copy = "link" | "recipe";
 
@@ -333,10 +295,13 @@ function Foot(props: { state: MockClientState; client: MockClient }): ReactEleme
     button(label(copied, "link", MOCK_COPY.copyLink), copy("link"), {
       key: "link",
       disabled: empty,
+      icon: LinkIcon,
     }),
     button(label(copied, "recipe", MOCK_COPY.copyRecipe), copy("recipe"), {
       key: "recipe",
       disabled: empty,
+      icon: CodeIcon,
+      quiet: true,
     }),
     createElement("span", { key: "spacer", className: "mk-mock-spacer" }),
     button(MOCK_COPY.apply, () => client.apply(), {
@@ -352,11 +317,16 @@ function label(copied: Copied | undefined, what: Copy, idle: string): string {
   return copied.ok ? MOCK_COPY.copied : MOCK_COPY.copyFailed;
 }
 
-function button(
-  text: string,
-  onClick: () => void,
-  flags: { key?: string; disabled?: boolean; primary?: boolean } = {},
-): ReactElement {
+interface ButtonFlags {
+  readonly key?: string;
+  readonly disabled?: boolean;
+  readonly primary?: boolean;
+  /** A secondary action: no border, so it reads apart from the one beside it. */
+  readonly quiet?: boolean;
+  readonly icon?: IconComponent;
+}
+
+function button(text: string, onClick: () => void, flags: ButtonFlags = {}): ReactElement {
   return createElement(
     "button",
     {
@@ -365,8 +335,10 @@ function button(
       className: "mk-mock-button mk-press",
       disabled: flags.disabled === true,
       "data-mk-primary": flags.primary === true ? "true" : undefined,
+      "data-mk-quiet": flags.quiet === true ? "true" : undefined,
       onClick,
     },
+    flags.icon && createElement(flags.icon, { key: "icon" }),
     text,
   );
 }

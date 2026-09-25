@@ -112,7 +112,29 @@ describe("the box, planning a sentence", () => {
     vi.useRealTimers();
   });
 
-  it("puts a chip's calls in its state and keeps the sentence in the recipe", async () => {
+  it("thinks while the route reads the sentence, and not while it is typed", async () => {
+    vi.useFakeTimers();
+    const held: { answer?: (plan: MockPlan) => void } = {};
+    const plan = vi.fn<PlanLookup>(() => new Promise((resolve) => (held.answer = resolve)));
+    const client = createMockClient({ view: view(), handle: handle(plan) });
+    const thinking = () => client.getState().thinking;
+
+    client.setQuery("no roasts");
+    expect(thinking()).toBe(false);
+    await settle();
+    expect(thinking()).toBe(true);
+    client.setQuery("no roasts yet");
+    expect(thinking()).toBe(false);
+    await settle();
+    held.answer?.(planOf({ empty: 0.7 }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(thinking()).toBe(false);
+    expect(client.getState().suggestions).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
+  it("puts the reading's calls in its state and keeps the sentence in the recipe", async () => {
     vi.useFakeTimers();
     const client = createMockClient({
       view: view(),
@@ -120,7 +142,6 @@ describe("the box, planning a sentence", () => {
     });
     client.setQuery("  no roasts  ");
     await settle();
-    client.suggest(0);
 
     expect(client.recipe()).toEqual({
       version: 2,
@@ -130,6 +151,60 @@ describe("the box, planning a sentence", () => {
     });
     client.clear();
     expect(client.getState().request).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it("puts the draft back as it was when the field is emptied", async () => {
+    vi.useFakeTimers();
+    const client = createMockClient({
+      view: view(),
+      handle: handle(() => Promise.resolve(planOf({ empty: 0.7 }))),
+    });
+    client.choose(USER, "error");
+    client.setQuery("no roasts");
+    await settle();
+    expect(client.getState().draft).toEqual([
+      { key: USER, state: "error" },
+      { key: LIST, state: "empty" },
+    ]);
+
+    client.setQuery("");
+    expect(client.getState().draft).toEqual([{ key: USER, state: "error" }]);
+    expect(client.getState().request).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it("applies each new reading over the draft from before the sentence", async () => {
+    vi.useFakeTimers();
+    const plans = [planOf({ empty: 0.7 }), planOf({ error: 0.7 })];
+    const client = createMockClient({
+      view: view(),
+      handle: handle(() => Promise.resolve(plans.shift() ?? null)),
+    });
+    client.setQuery("no roasts");
+    await settle();
+    client.setQuery("roasts broken");
+    await settle();
+
+    expect(client.getState().draft).toEqual([{ key: LIST, state: "error" }]);
+    vi.useRealTimers();
+  });
+
+  it("keeps a hand edit when the field is emptied after it", async () => {
+    vi.useFakeTimers();
+    const client = createMockClient({
+      view: view(),
+      handle: handle(() => Promise.resolve(planOf({ empty: 0.7 }))),
+    });
+    client.setQuery("no roasts");
+    await settle();
+    client.choose(USER, "forbidden");
+    client.setQuery("");
+
+    expect(client.getState().draft).toEqual([
+      { key: LIST, state: "empty" },
+      { key: USER, state: "forbidden" },
+    ]);
     vi.useRealTimers();
   });
 
@@ -149,7 +224,7 @@ describe("the box, planning a sentence", () => {
     vi.useRealTimers();
   });
 
-  it("puts a chip's flags beside the draft's and its role in place of the draft's", async () => {
+  it("puts a reading's flags beside the draft's and its role in place of the draft's", async () => {
     vi.useFakeTimers();
     const planned: MockPlan = {
       ...planOf({ none: 0.7 }),
@@ -169,7 +244,6 @@ describe("the box, planning a sentence", () => {
     expect(client.getState().suggestions).toEqual([
       { calls: [], flags: { "new-roaster": false }, as: { role: "barista" } },
     ]);
-    client.suggest(0);
     expect(client.recipe()).toEqual({
       version: 2,
       calls: [],

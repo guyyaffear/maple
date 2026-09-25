@@ -85,6 +85,8 @@ export interface MockClientState {
   readonly suggestions: readonly MockSuggestion[];
   /** True when the sentence was read, confidently, as naming no state. */
   readonly unnamed: boolean;
+  /** True while the route is reading the sentence, and not while it is typed. */
+  readonly thinking: boolean;
   /** The sentence behind the draft, once a chip put it there. */
   readonly request: string | undefined;
   /** The page's route pattern, which a recipe applied from here is scoped to. */
@@ -235,6 +237,7 @@ function initial(open: boolean): MockClientState {
     planning: false,
     suggestions: [],
     unnamed: false,
+    thinking: false,
     request: undefined,
     route: "/",
     calls: [],
@@ -332,11 +335,17 @@ function plans(runtime: Runtime): boolean {
 function cancelPlan(runtime: Runtime): void {
   if (runtime.planTimer !== undefined) clearTimeout(runtime.planTimer);
   delete runtime.planTimer;
-  runtime.planFlight?.abort();
+  if (runtime.planFlight === undefined) return;
+  runtime.planFlight.abort();
   delete runtime.planFlight;
+  patch(runtime, { thinking: false });
 }
 
-const QUIET: PlanReading = { suggestions: [], unnamed: false };
+const QUIET: PlanReading & { thinking: false } = {
+  suggestions: [],
+  unnamed: false,
+  thinking: false,
+};
 
 /** A keystroke: restarts the wait and abandons whatever plan was in flight. */
 function schedulePlan(runtime: Runtime): void {
@@ -355,6 +364,7 @@ async function runPlan(runtime: Runtime, sentence: string): Promise<void> {
   if (lookup === undefined) return;
   const flight = new AbortController();
   runtime.planFlight = flight;
+  patch(runtime, { thinking: true });
   const { route } = runtime.state;
   const calls = (runtime.handle?.inventory.calls(route) ?? []).map(planCall);
   const flags = seenFlags()
@@ -368,7 +378,7 @@ async function runPlan(runtime: Runtime, sentence: string): Promise<void> {
   try {
     const asked = { request: sentence, route, calls, ...(flags.length === 0 ? {} : { flags }) };
     const plan = await lookup(asked, flight.signal);
-    if (!flight.signal.aborted) patch(runtime, readPlan(plan));
+    if (!flight.signal.aborted) patch(runtime, { ...readPlan(plan), thinking: false });
   } catch (error) {
     if (error instanceof PlanUnavailableError) runtime.planOff = true;
     if (!flight.signal.aborted) patch(runtime, QUIET);

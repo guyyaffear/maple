@@ -451,7 +451,7 @@ describe("the box, reading a sentence", () => {
     expect(find(".mk-mock-unnamed")).toBeNull();
   });
 
-  it("holds the chip's place while it waits, so the answer lands without moving the calls", async () => {
+  it("holds the chip's place with a skeleton while it waits, and the answer moves nothing", async () => {
     const held: { answer?: (plan: MockPlan) => void } = {};
     const later = new Promise<MockPlan>((resolve) => (held.answer = resolve));
     const client = track(
@@ -465,7 +465,7 @@ describe("the box, reading a sentence", () => {
     await render(createElement(MapleMock, { client }));
     await vi.waitFor(() => expect(find(".mk-mock-field")).not.toBeNull());
     await userEvent.type(find<HTMLInputElement>(".mk-mock-field")!, "no reviews yet");
-    await vi.waitFor(() => expect(find(".mk-mock-suggest")).not.toBeNull());
+    await vi.waitFor(() => expect(find('[role="status"].mk-mock-thinking')).not.toBeNull());
     await Promise.all(
       find(".mk-mock")!
         .getAnimations()
@@ -476,6 +476,7 @@ describe("the box, reading a sentence", () => {
 
     held.answer?.(planned({ empty: 0.8 }));
     await vi.waitFor(() => expect(find(".mk-mock-chip")).not.toBeNull());
+    expect(find(".mk-mock-thinking")).toBeNull();
     expect(top()).toBe(before);
   });
 

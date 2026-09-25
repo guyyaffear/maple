@@ -130,6 +130,32 @@ function suggest(): string {
   background: var(--mk-sunk);
 }
 
+.mk-mock-thinking {
+  position: relative;
+  width: 148px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--mk-sunk);
+}
+
+.mk-mock-thinking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(closest-side, var(--mk-line), transparent);
+  animation: mk-mock-sweep var(--mk-dur-shimmer) var(--mk-ease-swap) infinite;
+}
+
+@keyframes mk-mock-sweep {
+  from {
+    translate: calc(-1 * var(--mk-shimmer-sweep)) 0;
+  }
+  to {
+    translate: var(--mk-shimmer-sweep) 0;
+  }
+}
+
 .mk-mock-unnamed {
   margin: 0;
   color: var(--mk-muted);

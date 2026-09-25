@@ -112,6 +112,28 @@ describe("the box, planning a sentence", () => {
     vi.useRealTimers();
   });
 
+  it("thinks while the route reads the sentence, and not while it is typed", async () => {
+    vi.useFakeTimers();
+    const held: { answer?: (plan: MockPlan) => void } = {};
+    const plan = vi.fn<PlanLookup>(() => new Promise((resolve) => (held.answer = resolve)));
+    const client = createMockClient({ view: view(), handle: handle(plan) });
+    const thinking = () => client.getState().thinking;
+
+    client.setQuery("no roasts");
+    expect(thinking()).toBe(false);
+    await settle();
+    expect(thinking()).toBe(true);
+    client.setQuery("no roasts yet");
+    expect(thinking()).toBe(false);
+    await settle();
+    held.answer?.(planOf({ empty: 0.7 }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(thinking()).toBe(false);
+    expect(client.getState().suggestions).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
   it("puts a chip's calls in its state and keeps the sentence in the recipe", async () => {
     vi.useFakeTimers();
     const client = createMockClient({

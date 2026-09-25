@@ -257,22 +257,18 @@ function menu(): string {
   gap: 4px;
   min-width: 80px;
   margin-left: auto;
-  padding: 0 4px 0 8px;
-  border: 1px solid var(--mk-line-firm);
+  padding: 1px 4px 1px 8px;
   border-radius: 999px;
+  background: var(--mk-fg);
+  color: var(--mk-bg);
   font-size: 11px;
   line-height: 15px;
   font-weight: 600;
 }
 
-.mk-mock-pick[data-mk-real="true"] {
-  color: var(--mk-muted);
-  font-weight: 400;
-}
-
 .mk-mock-chevron {
   margin-left: auto;
-  color: var(--mk-faint);
+  opacity: 0.6;
 }
 
 .mk-mock-menu {

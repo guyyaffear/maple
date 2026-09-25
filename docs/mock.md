@@ -659,7 +659,9 @@ overlay's is by default.
 
 **A banner is on while a mock is**, naming the first call and counting the
 rest. It has Edit and Turn off and no dismiss: a reviewer who forgets a mock is
-on reads mocked data as real.
+on reads mocked data as real. It docks bottom-left, where a host's own controls
+rarely are and the island is not (bottom-right); under 640 px it takes the width
+and sits a row above the island, wrapping rather than covering the top bar.
 
 **Where the route plans, the field is a sentence.** `installMock({ route })`
 leaves a `plan` lookup on the handle beside `shape`, over the real `fetch`, and

@@ -6,6 +6,8 @@
  * a page that only mocks. Built from the token contract like every other part.
  */
 
+import { SHEET_BREAKPOINT_PX } from "../tokens.js";
+
 /** Every rule the box and the banner need, and nothing another part owns. */
 export function mockCss(): string {
   return [box(), suggest(), calls(), states(), foot(), banner()].join("\n\n");
@@ -73,7 +75,6 @@ function box(): string {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .mk-mock-route {
@@ -317,13 +318,13 @@ function banner(): string {
   return `
 .mk-mock-banner {
   position: absolute;
-  top: 10px;
-  left: 50%;
+  bottom: 12px;
+  left: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
   width: max-content;
-  max-width: calc(100vw - 24px);
+  max-width: calc(100vw - 160px);
   padding: 4px 4px 4px 12px;
   border: 1px solid var(--mk-warn);
   border-radius: 999px;
@@ -331,7 +332,6 @@ function banner(): string {
   box-shadow: var(--mk-sh1);
   color: var(--mk-fg);
   font-size: 12px;
-  translate: -50% 0;
 }
 
 .mk-mock-banner-said {
@@ -348,6 +348,15 @@ function banner(): string {
   flex: none;
   padding: 3px 10px;
   font-size: 11.5px;
+}
+
+@media (max-width: ${String(SHEET_BREAKPOINT_PX - 1)}px) {
+  .mk-mock-banner {
+    bottom: 56px;
+    flex-wrap: wrap;
+    max-width: calc(100vw - 24px);
+    border-radius: var(--mk-r);
+  }
 }
 `.trim();
 }

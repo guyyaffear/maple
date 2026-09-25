@@ -130,6 +130,18 @@ describe("MapleMock on a page with no <Maple />", () => {
   });
 });
 
+/** Opens every folded list in the panel: permissions and flags start folded. */
+async function unfold(): Promise<void> {
+  await vi.waitFor(() => expect(find(".mk-mock-fold")).not.toBeNull());
+  for (const root of roots()) {
+    for (const fold of root.querySelectorAll<HTMLButtonElement>(
+      '.mk-mock-fold[aria-expanded="false"]',
+    )) {
+      fold.click();
+    }
+  }
+}
+
 /** Opens a call's menu and takes one of its items. */
 async function pickState(row: ParentNode | null, name: string): Promise<void> {
   row?.querySelector<HTMLButtonElement>(".mk-mock-pick")?.click();
@@ -580,6 +592,8 @@ describe("flags and who the page is told the reviewer is", () => {
     await render(createElement(MapleMock, { client }));
 
     await vi.waitFor(() => expect(find('[role="radiogroup"][aria-label="Role"]')).not.toBeNull());
+    await unfold();
+    await vi.waitFor(() => expect(find('[aria-label="roasts.delete"]')).not.toBeNull());
     const layers = find<HTMLElement>(".mk-mock-layers");
     buttonNamed("barista", layers).click();
     buttonNamed("Granted", find('[aria-label="roasts.delete"]')).click();
@@ -607,6 +621,7 @@ describe("flags and who the page is told the reviewer is", () => {
       );
       client.start();
       await render(createElement(MapleMock, { client }));
+      await unfold();
       await vi.waitFor(() => expect(find('[aria-label="new-roaster"]')).not.toBeNull());
 
       const list = find<HTMLElement>(".mk-mock-calls")!;
@@ -616,6 +631,26 @@ describe("flags and who the page is told the reviewer is", () => {
     } finally {
       await page.viewport(size.width, size.height);
     }
+  });
+
+  it("folds permissions and flags to a count, and keeps what the draft sets in sight", async () => {
+    seenFlags().record({ key: "new-roaster", type: "boolean", value: false });
+    const client = track(
+      createMockClient({ handle: layered(), view: fakePage().view, defaultOpen: true }),
+    );
+    client.start();
+    await render(createElement(MapleMock, { client }));
+    await vi.waitFor(() => expect(find('[role="radiogroup"][aria-label="Role"]')).not.toBeNull());
+
+    const folds = () => roots().flatMap((root) => [...root.querySelectorAll(".mk-mock-fold")]);
+    await vi.waitFor(() =>
+      expect(folds().map((fold) => fold.textContent)).toEqual(["Permissions · 1", "Flags · 1"]),
+    );
+    expect(find('[aria-label="new-roaster"]')).toBeNull();
+
+    client.setFlag("new-roaster", true);
+    await vi.waitFor(() => expect(find('[aria-label="new-roaster"]')).not.toBeNull());
+    expect(find('[aria-label="roasts.delete"]')).toBeNull();
   });
 
   it("selects the reviewer's real role, permissions and flags, each marked as real", async () => {
@@ -632,6 +667,7 @@ describe("flags and who the page is told the reviewer is", () => {
     );
     client.start();
     await render(createElement(MapleMock, { client }));
+    await unfold();
     await vi.waitFor(() => expect(find('[aria-label="new-roaster"]')).not.toBeNull());
 
     const checked = (group: string) =>

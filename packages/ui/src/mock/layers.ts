@@ -5,7 +5,9 @@
  */
 
 import { describeIdentity } from "@maple-kit/core/mock";
-import { createElement, useEffect, useRef } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
+
+import { ChevronIcon } from "../icons/chevron.js";
 
 import type { FlagValue } from "@maple-kit/core/mock";
 import type { MockClient, MockClientState, MockFlagRow } from "@maple-kit/mock/client";
@@ -18,6 +20,7 @@ export const LAYER_COPY = {
   granted: "Granted",
   takenAway: "Taken away",
   flags: "Flags",
+  permissions: "Permissions",
   on: "On",
   off: "Off",
   realValue: "Real value",
@@ -37,6 +40,7 @@ export function Layers(props: LayerProps): ReactElement {
   const panel = useRef<HTMLDivElement>(null);
   useShowTaken(panel, state.request);
   const rows: ReactNode[] = [];
+  const grants: Folded[] = [];
   const real = state.realAs;
   const roles = identity?.role?.values ?? [];
   if (roles.length > 0) {
@@ -56,8 +60,9 @@ export function Layers(props: LayerProps): ReactElement {
       client.setPermission(name, next === undefined ? undefined : next === LAYER_COPY.granted);
     const current = granted === undefined ? undefined : grantedLabel(granted);
     const held = real === undefined ? undefined : grantedLabel(real.permissions.includes(name));
-    rows.push(
-      row(
+    grants.push({
+      set: current !== undefined,
+      node: row(
         { key: `p:${name}`, name, set: current !== undefined },
         choices(
           name,
@@ -66,17 +71,56 @@ export function Layers(props: LayerProps): ReactElement {
           pick,
         ),
       ),
-    );
+    });
   }
+  const flags = state.flags.map((flag) => ({
+    set: flag.set !== undefined,
+    node: flagRow(flag, client),
+  }));
   return createElement(
     "div",
     { className: "mk-mock-layers", ref: panel },
     rows.length === 0 ? null : section(LAYER_COPY.shownAs, rows),
-    state.flags.length === 0
+    grants.length === 0
       ? null
-      : section(
-          LAYER_COPY.flags,
-          state.flags.map((flag) => flagRow(flag, client)),
+      : createElement(Fold, { title: LAYER_COPY.permissions, rows: grants }),
+    flags.length === 0 ? null : createElement(Fold, { title: LAYER_COPY.flags, rows: flags }),
+  );
+}
+
+interface Folded {
+  readonly set: boolean;
+  readonly node: ReactNode;
+}
+
+/**
+ * A list that can run to hundreds, folded to its count. Folded, it still
+ * shows every row the draft overrides, so nothing set is ever out of sight.
+ */
+function Fold(props: { readonly title: string; readonly rows: readonly Folded[] }): ReactElement {
+  const [open, setOpen] = useState(false);
+  const { rows, title } = props;
+  const shown = open ? rows : rows.filter((folded) => folded.set);
+  return createElement(
+    "section",
+    { "aria-label": title },
+    createElement(
+      "button",
+      {
+        type: "button",
+        className: "mk-mock-route mk-mock-fold",
+        "aria-expanded": open,
+        onClick: () => setOpen(!open),
+      },
+      `${title} · ${String(rows.length)}`,
+      createElement(ChevronIcon, { size: 11 }),
+    ),
+    shown.length === 0
+      ? null
+      : createElement(
+          "ul",
+          { className: "mk-mock-calls" },
+          shown.map((folded) => folded.node),
         ),
   );
 }

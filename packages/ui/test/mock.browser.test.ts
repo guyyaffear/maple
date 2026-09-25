@@ -582,7 +582,7 @@ describe("flags and who the page is told the reviewer is", () => {
     await vi.waitFor(() => expect(find('[role="radiogroup"][aria-label="Role"]')).not.toBeNull());
     const layers = find<HTMLElement>(".mk-mock-layers");
     buttonNamed("barista", layers).click();
-    buttonNamed("Taken away", find('[aria-label="roasts.delete"]')).click();
+    buttonNamed("Granted", find('[aria-label="roasts.delete"]')).click();
     buttonNamed("On", find('[aria-label="new-roaster"]')).click();
     await vi.waitFor(() => expect(buttonNamed("Apply and reload").disabled).toBe(false));
     buttonNamed("Apply and reload").click();
@@ -592,7 +592,7 @@ describe("flags and who the page is told the reviewer is", () => {
       version: 2,
       calls: [],
       flags: { "new-roaster": true },
-      as: { role: "barista", permissions: { "roasts.delete": false } },
+      as: { role: "barista", permissions: { "roasts.delete": true } },
       route: HERE,
     });
   });
@@ -616,6 +616,38 @@ describe("flags and who the page is told the reviewer is", () => {
     } finally {
       await page.viewport(size.width, size.height);
     }
+  });
+
+  it("selects the reviewer's real role, permissions and flags, each marked as real", async () => {
+    seenFlags().record({ key: "new-roaster", type: "boolean", value: false });
+    const real = layered();
+    real.inventory.record(HERE, {
+      key: USER,
+      status: 200,
+      body: { role: "owner", grants: [] },
+      at: 2,
+    });
+    const client = track(
+      createMockClient({ handle: real, view: fakePage().view, defaultOpen: true }),
+    );
+    client.start();
+    await render(createElement(MapleMock, { client }));
+    await vi.waitFor(() => expect(find('[aria-label="new-roaster"]')).not.toBeNull());
+
+    const checked = (group: string) =>
+      find(`[role="radiogroup"][aria-label="${group}"] [aria-checked="true"]`);
+    await vi.waitFor(() => expect(checked("Role")?.textContent).toBe("owner"));
+    expect(checked("roasts.delete")?.textContent).toBe("Taken away");
+    expect(checked("new-roaster")?.textContent).toBe("Off");
+    for (const group of ["Role", "roasts.delete", "new-roaster"]) {
+      expect(checked(group)?.querySelector(".mk-mock-dot")).not.toBeNull();
+    }
+    expect(find('.mk-mock-layers [data-mk-mocked="true"]')).toBeNull();
+
+    buttonNamed("barista", find(".mk-mock-layers")).click();
+    await vi.waitFor(() => expect(checked("Role")?.textContent).toBe("barista"));
+    buttonNamed("owner", find(".mk-mock-layers")).click();
+    await vi.waitFor(() => expect(client.getState().draftAs).toBeUndefined());
   });
 
   it("says who the page is shown as, that the server still acts as you, and every write", async () => {

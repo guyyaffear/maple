@@ -37,13 +37,16 @@ export function Layers(props: LayerProps): ReactElement {
   const panel = useRef<HTMLDivElement>(null);
   useShowTaken(panel, state.request);
   const rows: ReactNode[] = [];
+  const real = state.realAs;
   const roles = identity?.role?.values ?? [];
   if (roles.length > 0) {
     const role = state.draftAs?.role;
     rows.push(
       row(
         { key: "role", name: LAYER_COPY.role, set: role !== undefined, prose: true },
-        choices(LAYER_COPY.role, roles, role, (next) => client.setRole(next)),
+        choices(LAYER_COPY.role, roles, { set: role, real: real?.role }, (next) =>
+          client.setRole(next),
+        ),
       ),
     );
   }
@@ -52,10 +55,16 @@ export function Layers(props: LayerProps): ReactElement {
     const pick = (next: string | undefined) =>
       client.setPermission(name, next === undefined ? undefined : next === LAYER_COPY.granted);
     const current = granted === undefined ? undefined : grantedLabel(granted);
+    const held = real === undefined ? undefined : grantedLabel(real.permissions.includes(name));
     rows.push(
       row(
         { key: `p:${name}`, name, set: current !== undefined },
-        choices(name, [LAYER_COPY.granted, LAYER_COPY.takenAway], current, pick),
+        choices(
+          name,
+          [LAYER_COPY.granted, LAYER_COPY.takenAway],
+          { set: current, real: held },
+          pick,
+        ),
       ),
     );
   }
@@ -112,6 +121,7 @@ function flagRow(flag: MockFlagRow, client: MockClient): ReactNode {
     : `${flag.key}: ${LAYER_COPY.notEvaluated}`;
   const labels = values.map(valueLabel);
   const current = flag.set === undefined ? undefined : valueLabel(flag.set);
+  const real = flag.seen && flag.value !== undefined ? valueLabel(flag.value) : undefined;
   const control =
     values.length === 0
       ? createElement(
@@ -119,7 +129,7 @@ function flagRow(flag: MockFlagRow, client: MockClient): ReactNode {
           { className: "mk-mock-rung" },
           current ?? valueLabel(flag.value ?? null),
         )
-      : choices(flag.key, labels, current, (label) =>
+      : choices(flag.key, labels, { set: current, real }, (label) =>
           pick(values[labels.indexOf(label ?? "")] ?? undefined),
         );
   return row({ key: `f:${flag.key}`, name: flag.key, set: current !== undefined, title }, control);
@@ -168,13 +178,23 @@ function row(label: RowLabel, control: ReactNode): ReactElement {
   );
 }
 
-/** A radio group where choosing the chosen option puts it back to real. */
+/** What a row is set to, and what it really is: the second carries the dot. */
+interface Choice {
+  readonly set: string | undefined;
+  readonly real: string | undefined;
+}
+
+/**
+ * A radio group showing what the page will see: the draft's choice, else the
+ * real value. Choosing the real one, or the chosen one again, puts it back.
+ */
 function choices(
   label: string,
   options: readonly string[],
-  current: string | undefined,
+  choice: Choice,
   pick: (next: string | undefined) => void,
 ): ReactElement {
+  const shown = choice.set ?? choice.real;
   return createElement(
     "div",
     { className: "mk-mock-states", role: "radiogroup", "aria-label": label },
@@ -186,9 +206,12 @@ function choices(
           type: "button",
           role: "radio",
           className: "mk-mock-state mk-press",
-          "aria-checked": option === current,
-          onClick: () => pick(option === current ? undefined : option),
+          "aria-checked": option === shown,
+          onClick: () => pick(option === choice.set || option === choice.real ? undefined : option),
         },
+        option === choice.real
+          ? createElement("span", { className: "mk-mock-dot", "aria-hidden": true })
+          : null,
         option,
       ),
     ),

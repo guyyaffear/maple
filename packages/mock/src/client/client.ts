@@ -13,6 +13,7 @@ import { linkRecipe, MOCK_STATES, readPlan, RECIPE_VERSION } from "@maple-kit/co
 import { flagType } from "../flag-source.js";
 import { seenFlags } from "../flags.js";
 import { installedMock } from "../handle.js";
+import { realIdentity } from "../identity.js";
 import { forgetRecipe, keepRecipeCookie, saveRecipe } from "../link.js";
 import { pathPattern } from "../rest.js";
 import { PlanUnavailableError } from "../schema/plan.js";
@@ -72,6 +73,12 @@ export interface MockFlagRow {
   readonly seen: boolean;
 }
 
+/** The reviewer's real role and permissions, which a surface draws as the defaults. */
+export interface RealAs {
+  readonly role?: string;
+  readonly permissions: readonly string[];
+}
+
 /** Everything a surface draws. Replaced whole on a change. */
 export interface MockClientState {
   /** False when no transport is installed: a surface draws nothing. */
@@ -107,6 +114,8 @@ export interface MockClientState {
   readonly identity: IdentityRules | undefined;
   /** Who Apply would tell the page the reviewer is. Starts as the active recipe's. */
   readonly draftAs: MockIdentity | undefined;
+  /** Who the reviewer really is, as the identity call last answered, once it has. */
+  readonly realAs: RealAs | undefined;
   /** How many writes reached the server, which acts as the reviewer, under `as`. */
   readonly writes: number;
   /** What a surface of its own is drawn in: the opposite of the page. */
@@ -252,6 +261,7 @@ function initial(open: boolean): MockClientState {
     draftFlags: {},
     identity: undefined,
     draftAs: undefined,
+    realAs: undefined,
     writes: 0,
     scheme: "light",
   };
@@ -269,6 +279,7 @@ function derive(runtime: Runtime, next: Partial<MockClientState>): MockClientSta
     active,
     calls: rows(runtime, route, merged),
     flags: flagRows(merged.draftFlags),
+    realAs: realAsOn(runtime, route, merged.identity),
     writes: runtime.handle?.writes?.list().length ?? 0,
     changed: changed(merged, active),
   };
@@ -431,6 +442,17 @@ function edit(runtime: Runtime, next: Partial<Draft & { request: undefined }>): 
 
 function pick(state: MockClientState): Draft {
   return { draft: state.draft, draftFlags: state.draftFlags, draftAs: state.draftAs };
+}
+
+/** Read from the identity call's last real answer; a mocked answer is never recorded. */
+function realAsOn(runtime: Runtime, route: string, rules: IdentityRules | undefined) {
+  const sample = rules && runtime.handle?.inventory.sample(rules.call, route);
+  if (rules === undefined || sample === undefined) return undefined;
+  const real = realIdentity(sample.body, rules);
+  return {
+    ...(real.role === undefined ? {} : { role: real.role }),
+    permissions: [...(real.permissions ?? [])],
+  };
 }
 
 /** The recipe in force, when it applies on `route`. */

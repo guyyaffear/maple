@@ -211,6 +211,9 @@ function states(): string {
 }
 
 .mk-mock-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 2px 7px;
   border: 0;
   border-radius: var(--mk-r-xs);

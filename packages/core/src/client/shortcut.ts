@@ -65,7 +65,7 @@ export interface EscapeOptions {
 /**
  * Escape, wherever the focus is. A surface that only hears it while focused
  * cannot be shut by a reviewer who clicked back onto the page, which is most
- * of the time the overlay is open.
+ * of the time the overlay is open. An open menu owns its own Escape.
  */
 export function watchEscape(options: EscapeOptions): void {
   const view = options.view ?? document;
@@ -74,10 +74,18 @@ export function watchEscape(options: EscapeOptions): void {
   view.addEventListener(
     "keydown",
     (event: Event) => {
-      if ((event as KeyboardEvent).key === "Escape") options.onEscape();
+      if ((event as KeyboardEvent).key !== "Escape" || inOpenMenu(event)) return;
+      options.onEscape();
     },
     { capture: true, ...when },
   );
+}
+
+/** A `popover="auto"` closes itself on Escape, and nothing under it should too. */
+function inOpenMenu(event: Event): boolean {
+  return event
+    .composedPath()
+    .some((node) => (node as Element).matches?.('[popover="auto"]:popover-open') === true);
 }
 
 /**

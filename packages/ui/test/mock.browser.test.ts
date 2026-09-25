@@ -130,11 +130,19 @@ describe("MapleMock on a page with no <Maple />", () => {
   });
 });
 
-describe("nine states beside a call", () => {
-  it.each([
-    [1100, 1],
-    [390, 2],
-  ])("keeps every button inside its row at %i px, on %i lines", async (width, lines) => {
+/** Opens a call's menu and takes one of its items. */
+async function pickState(row: ParentNode | null, name: string): Promise<void> {
+  row?.querySelector<HTMLButtonElement>(".mk-mock-pick")?.click();
+  const item = [...(row?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])].find(
+    (option) => option.textContent === name,
+  );
+  if (!item) throw new Error(`no state named ${name}`);
+  item.click();
+  await vi.waitFor(() => expect(item.getAttribute("aria-checked")).toBe("true"));
+}
+
+describe("a call's state, in a menu", () => {
+  it.each([1100, 390])("keeps one pick inside its row at %i px, beside the name", async (width) => {
     await page.viewport(width, 760);
     const client = track(
       createMockClient({ handle: handle(), view: fakePage().view, defaultOpen: true }),
@@ -144,17 +152,46 @@ describe("nine states beside a call", () => {
 
     const row = find(".mk-mock-call")!;
     const edge = row.getBoundingClientRect();
-    const buttons = [...row.querySelectorAll(".mk-mock-state")].map((button) =>
-      button.getBoundingClientRect(),
+    const pick = row.querySelector(".mk-mock-pick")!.getBoundingClientRect();
+    expect(pick.right).toBeLessThanOrEqual(edge.right);
+    expect(Math.round(pick.top)).toBeLessThan(Math.round(edge.top) + 12);
+    expect(
+      row.querySelector(".mk-mock-name")!.getBoundingClientRect().width,
+    ).toBeGreaterThanOrEqual(160);
+  });
+
+  it("offers Real and every state, starts on Real, and closes on Escape alone", async () => {
+    const client = track(
+      createMockClient({ handle: handle(), view: fakePage().view, defaultOpen: true }),
     );
-    expect(buttons.map((button) => button.width)).toHaveLength(9);
-    for (const button of buttons) {
-      expect(button.left).toBeGreaterThanOrEqual(edge.left);
-      expect(button.right).toBeLessThanOrEqual(edge.right);
-    }
-    expect(new Set(buttons.map((button) => Math.round(button.top))).size).toBe(lines);
-    const name = row.querySelector(".mk-mock-name")!.getBoundingClientRect();
-    expect(name.width).toBeGreaterThanOrEqual(160);
+    await render(createElement(MapleMock, { client }));
+    await vi.waitFor(() => expect(find(".mk-mock-pick")).not.toBeNull());
+
+    find<HTMLButtonElement>(".mk-mock-pick")!.click();
+    const menu = find<HTMLElement>(".mk-mock-menu")!;
+    await vi.waitFor(() => expect(menu.matches(":popover-open")).toBe(true));
+    const items = [...menu.querySelectorAll('[role="menuitemradio"]')];
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Real",
+      "Empty",
+      "Error",
+      "Forbidden",
+      "Loading",
+      "One",
+      "Many",
+      "Long",
+      "Sparse",
+      "Mixed",
+    ]);
+    expect(items[0]!.getAttribute("aria-checked")).toBe("true");
+    expect(items[0]!.querySelector(".mk-mock-dot")).not.toBeNull();
+
+    await vi.waitFor(() => expect(roots()[0]!.activeElement).toBe(items[0]));
+    await userEvent.keyboard("{ArrowDown}");
+    expect(roots()[0]!.activeElement).toBe(items[1]);
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(menu.matches(":popover-open")).toBe(false));
+    expect(find(".mk-mock")).not.toBeNull();
   });
 });
 
@@ -209,11 +246,7 @@ describe("picking and applying", () => {
     await vi.waitFor(() => expect(find(".mk-mock")).not.toBeNull());
 
     expect(buttonNamed("Apply and reload").disabled).toBe(true);
-    const row = find<HTMLElement>(".mk-mock-call:last-child");
-    buttonNamed("Empty", row).click();
-    await vi.waitFor(() =>
-      expect(buttonNamed("Empty", row).getAttribute("aria-checked")).toBe("true"),
-    );
+    await pickState(find(".mk-mock-call:last-child"), "Empty");
     buttonNamed("Apply and reload").click();
 
     const next = new URL(assign.mock.calls[0]?.[0] as string);
@@ -231,19 +264,15 @@ describe("picking and applying", () => {
     await vi.waitFor(() => expect(find(".mk-mock")).not.toBeNull());
     const row = find<HTMLElement>(".mk-mock-call")!;
     const name = row.querySelector(".mk-mock-name")!;
+    const pick = row.querySelector(".mk-mock-pick")!;
     const color = (element: Element) => getComputedStyle(element).color;
     const muted = color(name);
+    expect(pick.getAttribute("data-mk-real")).toBe("true");
 
-    const empty = buttonNamed("Empty", row);
-    expect(color(empty)).toBe(muted);
-    empty.click();
+    await pickState(row, "Empty");
     await vi.waitFor(() => expect(color(name)).not.toBe(muted));
-
-    const box = getComputedStyle(find(".mk-mock")!);
-    await vi.waitFor(() => {
-      expect(color(empty)).toBe(box.backgroundColor);
-      expect(getComputedStyle(empty).backgroundColor).toBe(color(name));
-    });
+    expect(pick.getAttribute("data-mk-real")).toBe("false");
+    expect(pick.textContent).toBe("Empty");
   });
 
   it("copies a link and a recipe, with no store to post to", async () => {
@@ -252,7 +281,7 @@ describe("picking and applying", () => {
     await render(createElement(MapleMock, { client }));
     await vi.waitFor(() => expect(find(".mk-mock")).not.toBeNull());
 
-    buttonNamed("Error", find(".mk-mock-call")).click();
+    await pickState(find(".mk-mock-call"), "Error");
     await vi.waitFor(() => expect(buttonNamed("Copy link").disabled).toBe(false));
     buttonNamed("Copy link").click();
     await vi.waitFor(() => expect(buttonNamed("Copied")).toBeDefined());

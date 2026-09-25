@@ -34,9 +34,12 @@ import {
   SHAPE_LABELS,
   STATE_LABELS,
 } from "./language.js";
+import { Menu } from "./menu.js";
 import { MOCK_CSS } from "./sheet.js";
 
 import type { IconComponent } from "../icons/icon.js";
+import type { MenuOption } from "./menu.js";
+import type { MockState } from "@maple-kit/core/mock";
 import type { OverlayHost } from "@maple-kit/core/overlay";
 import type { MockCallRow, MockClient, MockClientState } from "@maple-kit/mock/client";
 import type { ForwardedRef, ReactElement, ReactNode } from "react";
@@ -244,26 +247,20 @@ function CallRow(props: { row: MockCallRow; client: MockClient }): ReactElement 
           },
           SHAPE_LABELS[row.source],
         ),
-    createElement(
-      "div",
-      { className: "mk-mock-states", role: "radiogroup", "aria-label": callName(row.key) },
-      MOCK_STATES.map((state) =>
-        createElement(
-          "button",
-          {
-            key: state,
-            type: "button",
-            role: "radio",
-            className: "mk-mock-state mk-press",
-            "aria-checked": row.state === state,
-            onClick: () => client.choose(row.key, row.state === state ? undefined : state),
-          },
-          STATE_LABELS[state],
-        ),
-      ),
-    ),
+    createElement(Menu, {
+      label: callName(row.key),
+      options: STATE_OPTIONS,
+      value: row.state,
+      onPick: (state) => client.choose(row.key, state as MockState | undefined),
+    }),
   );
 }
+
+/** What the page does on its own, then every state it can be put in. */
+const STATE_OPTIONS: readonly MenuOption[] = [
+  { value: undefined, label: MOCK_COPY.real, real: true },
+  ...MOCK_STATES.map((state) => ({ value: state, label: STATE_LABELS[state] })),
+];
 
 type Copy = "link" | "recipe";
 
